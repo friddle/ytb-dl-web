@@ -1,0 +1,84 @@
+# ytb-dl-web docker-compose demo
+# - all-in-one: Gharmonize downloader + chrome-driverless built-in browser (login NetEase/QQ/Bilibili)
+# - mini + chrome-driverless: optionally split them into two containers instead of the combined image
+# - Recommended playback viewing: mount the outputs dir into alist / Navidrome (see README)
+#
+# Registry images are built by the GitHub Actions CI (see GitHub Actions CI) and pushed to
+# registry.internal.example/ytb-dl-web:{mini,all-in-one} and
+# registry.internal.example/chrome-driverless:{latest}.
+
+services:
+  ytbdl:
+    # All-in-one image (downloader + embedded browser in one container)
+    image: registry.internal.example/ytb-dl-web:all-in-one
+    container_name: ytb-dl-web
+    restart: unless-stopped
+    ports:
+      - "5174:5174"   # Gharmonize web UI
+      - "9223:9223"   # chrome-driverless web UI (also opened via the built-in browser tab)
+    environment:
+      GHARMONIZE_HOST=${GHARMONIZE_HOST:-0.0.0.0}
+      PORT=5174
+      # Built-in browser tab target (must be reachable from the user's browser)
+      CHROME_DRIVERLESS_URL=${CHROME_DRIVERLESS_URL:-http://127.0.0.1:9223}
+      # Optional download proxy (frontend-configurable too): http://user:pass@host:port
+      HTTP_PROXY=${HTTP_PROXY:-}
+      # 1 = Bilibili downloads auto-convert to audio
+      BILI_AUTO_AUDIO=${BILI_AUTO_AUDIO:-1}
+      # Optional direct platform credentials (alternatively just log in via the chrome-driverless tab)
+      NETEASE_USERNAME=${NETEASE_USERNAME:-}
+      NETEASE_PASSWORD=${NETEASE_PASSWORD:-}
+      QQ_USERNAME=${QQ_USERNAME:-}
+      QQ_PASSWORD=${QQ_PASSWORD:-}
+      BILI_USERNAME=${BILI_USERNAME:-}
+      BILI_PASSWORD=${BILI_PASSWORD:-}
+      DATA_DIR=/usr/src/app
+      OUTPUTS_DISPLAY_DIR=${OUTPUTS_DISPLAY_DIR:-/usr/src/app/outputs}
+    volumes:
+      - ytbdl-data:/usr/src/app            # outputs / cookies / uploads / config
+      - ./outputs:/usr/src/app/outputs     # downloaded files (share with alist / Navidrome)
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:' + (process.env.PORT||5174) + '/').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # Example: alist -> browse / play the downloaded outputs in a browser
+  # (uncomment to self-serve the downloaded files + WebDAV/stream playback)
+  alist:
+    image: registry.internal.example/library/alist:latest
+    container_name: alist
+    restart: unless-stopped
+    profiles: [playback]
+    ports:
+      - "5244:5244"
+    volumes:
+      - ./outputs:/raw/outputs:ro
+      - alist-data:/opt/alist/data
+    environment:
+      PUID: 0
+      PGID: 0
+      UMASK: 022
+
+  # Example: Navidrome -> self-hosted music streaming of the downloaded audio
+  # (uncomment for an integrated music server with covers/playlists)
+  navidrome:
+    image: registry.internal.example/library/navidrome:latest
+    container_name: navidrome
+    restart: unless-stopped
+    profiles: [playback]
+    ports:
+      - "4533:4533"
+    environment:
+      ND_SCANSCHEDULER: "1m"
+      ND_LOGLEVEL: info
+      ND_BASEURL: ""
+      ND_ENABLETRANSCODINGCONFIG: ""
+    volumes:
+      - ./outputs:/music:ro
+      - navidrome-data:/data
+
+volumes:
+  ytbdl-data:
+  alist-data:
+  navidrome-data:
