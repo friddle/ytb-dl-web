@@ -370,6 +370,11 @@ app.use((req, res, next) => {
   res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=()')
   res.setHeader('Cross-Origin-Resource-Policy', 'same-origin')
   if (isHttps) res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains')
+  const browserUrl = String(process.env.CHROME_DRIVERLESS_URL || '').trim()
+  let frameSrc = ["https://www.youtube.com", "https://www.youtube-nocookie.com"]
+  if (browserUrl) {
+    try { frameSrc.push(new URL(browserUrl).origin) } catch {}
+  }
   res.setHeader('Content-Security-Policy', [
     "default-src 'self'",
     "base-uri 'none'",
@@ -382,7 +387,7 @@ app.use((req, res, next) => {
     "font-src 'self' data:",
     "img-src 'self' data: blob: https:",
     "media-src 'self' blob: https:",
-    "frame-src https://www.youtube.com https://www.youtube-nocookie.com",
+    `frame-src ${frameSrc.join(' ')}`,
     "connect-src 'self' https://api.github.com https://*.spotify.com https://*.youtube.com https://music.youtube.com https://i.ytimg.com https://*.googlevideo.com",
     "worker-src 'self' blob:"
   ].join('; '))
@@ -508,6 +513,11 @@ app.get('/api/binaries', async (req, res) => {
     });
   }
 });
+
+app.get('/api/browser/url', rateLimit(120, 60_000), (req, res) => {
+  const url = String(process.env.CHROME_DRIVERLESS_URL || '').trim()
+  res.json({ enabled: !!url, url })
+})
 
 app.get('/api/binaries/status', (req, res) => {
   try {

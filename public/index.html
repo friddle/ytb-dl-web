@@ -38,6 +38,7 @@
       <span class="language-label" data-i18n="lang.label">Language</span>
       <select id="langSelect" class="language-select" aria-label="Language">
         <option value="en">English</option>
+        <option value="zh">简体中文</option>
         <option value="tr">Türkçe</option>
         <option value="es">Español</option>
         <option value="de">Deutsch</option>
@@ -72,6 +73,17 @@
       type="button"
     >
       ✂
+    </button>
+    <button
+      id="browserTabBtn"
+      class="btn-outline"
+      type="button"
+      data-i18n-title="browser.tab"
+      title="Chrome Browser"
+      aria-label="Chrome Browser"
+      style="display:none;"
+    >
+      🛩️
     </button>
     <button
       id="settingsBtn"
@@ -473,6 +485,7 @@
   </aside>
   <div id="jobsOverlay" class="jobs-overlay" hidden></div>
 <script src="/i18n.js"></script>
+<script src="/ui/browser-tab.js" defer></script>
 
   <script type="module" src="./ui/main.js" defer></script>
 
@@ -581,6 +594,14 @@
         ></div>
       </div>
     </div>
+  </div>
+
+  <div id="browserTabOverlay" class="browser-tab-overlay" style="display:none;">
+    <div class="browser-tab-bar">
+      <span class="browser-tab-title" data-i18n="browser.tab">Chrome Browser</span>
+      <button id="browserTabClose" class="btn-outline browser-tab-close" type="button" data-i18n="browser.close">Close</button>
+    </div>
+    <iframe id="browserTabFrame" class="browser-tab-frame" src="about:blank"></iframe>
   </div>
 </body>
 </html>

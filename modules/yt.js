@@ -122,6 +122,62 @@ function getYtDlpJobSpawnOptions(options = {}) {
   };
 }
 
+// Detects the source platform of a download URL to attach platform-specific
+// yt-dlp credentials when configured by the user.
+function detectSourcePlatform(sourceUrl = "") {
+  const url = String(sourceUrl || "").toLowerCase();
+  if (url.includes("music.163.com") || url.includes("163.com") || url.includes("126.net")) {
+    return "netease";
+  }
+  if (url.includes("y.qq.com") || url.includes("music.qq.com") || url.includes("i.y.qq.com")) {
+    return "qq";
+  }
+  if (url.includes("bilibili.com") || url.includes("b23.tv")) {
+    return "bilibili";
+  }
+  return "";
+}
+
+// Builds yt-dlp arguments for the configured HTTP proxy (frontend-configurable).
+function getProxyArgs() {
+  const proxy = String(process.env.HTTP_PROXY || process.env.http_proxy || "").trim();
+  if (!proxy) return [];
+  return ["--proxy", proxy];
+}
+
+// Builds yt-dlp credential arguments for the detected platform (account/password).
+function getPlatformCredentialArgs(sourceUrl = "") {
+  const platform = detectSourcePlatform(sourceUrl);
+  const cfg = {
+    netease: ["NETEASE_USERNAME", "NETEASE_PASSWORD"],
+    qq: ["QQ_USERNAME", "QQ_PASSWORD"],
+    bilibili: ["BILI_USERNAME", "BILI_PASSWORD"]
+  };
+  const pair = cfg[platform];
+  if (!pair) return [];
+  const user = String(process.env[pair[0]] || "").trim();
+  const pass = String(process.env[pair[1]] || "").trim();
+  if (!user) return [];
+  const args = ["--username", user];
+  if (pass) args.push("--password", pass);
+  return args;
+}
+
+// Appends proxy + platform credentials to the final yt-dlp arg list.
+function applyNetworkAndPlatformArgs(args, sourceUrl = "") {
+  args.push(...getProxyArgs());
+  args.push(...getPlatformCredentialArgs(sourceUrl));
+  if (detectSourcePlatform(sourceUrl) === "bilibili" && isBiliAutoAudioOn()) {
+    args.push("-x", "--audio-format", "best");
+  }
+  return args;
+}
+
+// Reads the frontend-configurable "auto-convert bilibili to audio" switch.
+function isBiliAutoAudioOn() {
+  return ["1", "true", "yes", "on"].includes(String(process.env.BILI_AUTO_AUDIO || "").trim().toLowerCase());
+}
+
 function terminateYtDlpJobProcess(child, signal = "SIGTERM") {
   const pid = Number(child?.pid);
   if (!pid) return;
@@ -4853,6 +4909,7 @@ if (opts.video) {
   addFfmpegLocationArgs(args);
   args.push(...getJsRuntimeArgs());
   args = withDailymotionNoImpersonation(args, cookieSourceUrl);
+  applyNetworkAndPlatformArgs(args, cookieSourceUrl);
 
   return new Promise((resolve, reject) => {
     let stderrBuf = "";
@@ -5112,6 +5169,7 @@ async function downloadSelectedIdsParallel(
     addFfmpegLocationArgs(args);
     args.push(...getJsRuntimeArgs());
     args = withDailymotionNoImpersonation(args, url);
+    applyNetworkAndPlatformArgs(args, url);
 
     return new Promise((resolve, reject) => {
       let stderrBuf = "";
@@ -5419,6 +5477,7 @@ async function downloadStandard(
   }
 
   const finalArgs = withDailymotionNoImpersonation(args, opts?.sourceUrl || url);
+  applyNetworkAndPlatformArgs(finalArgs, opts?.sourceUrl || url);
   return new Promise((resolve, reject) => {
     const child = spawnSafe(ytDlpBin, finalArgs, {
       ...getYtDlpJobSpawnOptions(),

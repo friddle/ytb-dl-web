@@ -170,6 +170,7 @@ export class SettingsManager {
         <div class="settings-tabs">
             <div class="settings-tabs__bar" role="tablist" aria-label="${this.t('settings.tabs.ariaLabel')}">
             <button class="settings-tab" role="tab" aria-selected="false" data-tab="tab-system" data-i18n="settings.tabs.system"></button>
+            <button class="settings-tab" role="tab" aria-selected="false" data-tab="tab-platform" data-i18n="settings.tabs.platform"></button>
             <button class="settings-tab" role="tab" aria-selected="false" data-tab="tab-spotify" data-i18n="settings.tabs.spotify"></button>
             <button class="settings-tab" role="tab" aria-selected="false" data-tab="tab-youtube" data-i18n="settings.tabs.youtube"></button>
             <button class="settings-tab" role="tab" aria-selected="false" data-tab="tab-widget" data-i18n="settings.tabs.widgetKey"></button>
@@ -521,6 +522,62 @@ export class SettingsManager {
                 <select id="f_YT_STRIP_COOKIES">
                     <option value="0">0</option>
                     <option value="1">1</option>
+                </select>
+                </div>
+
+                <div class="form-group">
+                <label for="f_HTTP_PROXY" class="settings-field-label">HTTP_PROXY</label>
+                <div class="settings-field-hint muted" data-i18n="settings.httpProxy"></div>
+                <input id="f_HTTP_PROXY" type="text" placeholder="http://user:pass@host:port" autocomplete="off" autocapitalize="none" spellcheck="false" data-lpignore="true" data-1p-ignore>
+                </div>
+            </section>
+
+            <section class="settings-panel" id="tab-platform" role="tabpanel">
+                <h4 class="settings-section-title" data-i18n="settings.platformAccounts">Platform Accounts (NetEase / QQ Music / Bilibili)</h4>
+                <p class="settings-section-hint muted" data-i18n="settings.platformAccountsHint">Optional. Used when yt-dlp needs a logged-in session. For best reliability, prefer cookies.txt / a browser session through the chrome companion service. NetEase (music.163.com), QQ Music (y.qq.com / music.qq.com), Bilibili (bilibili.com / b23.tv).</p>
+
+                <div class="form-group">
+                <label for="f_NETEASE_USERNAME" class="settings-field-label">NETEASE_USERNAME</label>
+                <div class="settings-field-hint muted" data-i18n="settings.neteaseUsername"></div>
+                <input id="f_NETEASE_USERNAME" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" data-lpignore="true" data-1p-ignore>
+                </div>
+
+                <div class="form-group">
+                <label for="f_NETEASE_PASSWORD" class="settings-field-label">NETEASE_PASSWORD</label>
+                <div class="settings-field-hint muted" data-i18n="settings.neteasePassword"></div>
+                <input id="f_NETEASE_PASSWORD" type="password" autocomplete="new-password" data-lpignore="true" data-1p-ignore>
+                </div>
+
+                <div class="form-group">
+                <label for="f_QQ_USERNAME" class="settings-field-label">QQ_USERNAME</label>
+                <div class="settings-field-hint muted" data-i18n="settings.qqUsername"></div>
+                <input id="f_QQ_USERNAME" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" data-lpignore="true" data-1p-ignore>
+                </div>
+
+                <div class="form-group">
+                <label for="f_QQ_PASSWORD" class="settings-field-label">QQ_PASSWORD</label>
+                <div class="settings-field-hint muted" data-i18n="settings.qqPassword"></div>
+                <input id="f_QQ_PASSWORD" type="password" autocomplete="new-password" data-lpignore="true" data-1p-ignore>
+                </div>
+
+                <div class="form-group">
+                <label for="f_BILI_USERNAME" class="settings-field-label">BILI_USERNAME</label>
+                <div class="settings-field-hint muted" data-i18n="settings.biliUsername"></div>
+                <input id="f_BILI_USERNAME" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" data-lpignore="true" data-1p-ignore>
+                </div>
+
+                <div class="form-group">
+                <label for="f_BILI_PASSWORD" class="settings-field-label">BILI_PASSWORD</label>
+                <div class="settings-field-hint muted" data-i18n="settings.biliPassword"></div>
+                <input id="f_BILI_PASSWORD" type="password" autocomplete="new-password" data-lpignore="true" data-1p-ignore>
+                </div>
+
+                <div class="form-group">
+                <label for="f_BILI_AUTO_AUDIO" class="settings-field-label">BILI_AUTO_AUDIO</label>
+                <div class="settings-field-hint muted" data-i18n="settings.biliAutoAudio"></div>
+                <select id="f_BILI_AUTO_AUDIO">
+                    <option value="1">1 - Auto convert Bilibili downloads to audio</option>
+                    <option value="0">0 - Keep video</option>
                 </select>
                 </div>
             </section>
@@ -946,6 +1003,21 @@ export class SettingsManager {
             document.getElementById('f_YT_SEARCH_STAGGER_MS').value = s.YT_SEARCH_STAGGER_MS || '180';
             document.getElementById('f_HOMEPAGE_WIDGET_KEY').value = s.HOMEPAGE_WIDGET_KEY || '';
 
+            const proxyInput = document.getElementById('f_HTTP_PROXY');
+            if (proxyInput) proxyInput.value = s.HTTP_PROXY || '';
+
+            const setField = (id, val, def = '') => {
+                const el = document.getElementById(id);
+                if (el) el.value = (typeof val !== 'undefined' && val !== null) ? String(val) : def;
+            };
+            setField('f_NETEASE_USERNAME', s.NETEASE_USERNAME);
+            setField('f_NETEASE_PASSWORD', s.NETEASE_PASSWORD);
+            setField('f_QQ_USERNAME', s.QQ_USERNAME);
+            setField('f_QQ_PASSWORD', s.QQ_PASSWORD);
+            setField('f_BILI_USERNAME', s.BILI_USERNAME);
+            setField('f_BILI_PASSWORD', s.BILI_PASSWORD);
+            setField('f_BILI_AUTO_AUDIO', s.BILI_AUTO_AUDIO, '0');
+
         } catch (e) {
             modalManager.showAlert({
                 title: this.t('settings.title') || 'Ayarlar',
@@ -1006,6 +1078,14 @@ export class SettingsManager {
                 YT_SEARCH_TIMEOUT_MS: document.getElementById('f_YT_SEARCH_TIMEOUT_MS').value.trim(),
                 YT_SEARCH_STAGGER_MS: document.getElementById('f_YT_SEARCH_STAGGER_MS').value.trim(),
                 HOMEPAGE_WIDGET_KEY: document.getElementById('f_HOMEPAGE_WIDGET_KEY').value.trim(),
+                HTTP_PROXY: document.getElementById('f_HTTP_PROXY').value.trim(),
+                NETEASE_USERNAME: document.getElementById('f_NETEASE_USERNAME').value.trim(),
+                NETEASE_PASSWORD: document.getElementById('f_NETEASE_PASSWORD').value.trim(),
+                QQ_USERNAME: document.getElementById('f_QQ_USERNAME').value.trim(),
+                QQ_PASSWORD: document.getElementById('f_QQ_PASSWORD').value.trim(),
+                BILI_USERNAME: document.getElementById('f_BILI_USERNAME').value.trim(),
+                BILI_PASSWORD: document.getElementById('f_BILI_PASSWORD').value.trim(),
+                BILI_AUTO_AUDIO: document.getElementById('f_BILI_AUTO_AUDIO').value.trim(),
             }
         };
 

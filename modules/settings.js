@@ -41,7 +41,9 @@ const ALLOWED_KEYS = [
   'CLEAN_PARENS','PREVIEW_MAX_ENTRIES','AUTOMIX_ALL_TIMEOUT_MS','AUTOMIX_PAGE_TIMEOUT_MS',
   'PLAYLIST_ALL_TIMEOUT_MS','PLAYLIST_PAGE_TIMEOUT_MS','PLAYLIST_META_TIMEOUT_MS',
   'PLAYLIST_META_FALLBACK_TIMEOUT_MS','YT_UI_FORCE_COOKIES','YT_SEARCH_RESULTS','YT_SEARCH_TIMEOUT_MS',
-  'YT_SEARCH_STAGGER_MS','HOMEPAGE_WIDGET_KEY'
+  'YT_SEARCH_STAGGER_MS','HOMEPAGE_WIDGET_KEY',
+  'HTTP_PROXY','NETEASE_USERNAME','NETEASE_PASSWORD','QQ_USERNAME','QQ_PASSWORD',
+  'BILI_USERNAME','BILI_PASSWORD','BILI_AUTO_AUDIO','CHROME_DRIVERLESS_URL'
 ]
 
 function applyAllowedEnvValue(key, value) {
@@ -104,6 +106,15 @@ function applyAllowedEnvValue(key, value) {
     case 'YT_SEARCH_TIMEOUT_MS': process.env.YT_SEARCH_TIMEOUT_MS = value; return;
     case 'YT_SEARCH_STAGGER_MS': process.env.YT_SEARCH_STAGGER_MS = value; return;
     case 'HOMEPAGE_WIDGET_KEY': process.env.HOMEPAGE_WIDGET_KEY = value; return;
+    case 'HTTP_PROXY': process.env.HTTP_PROXY = value; return;
+    case 'NETEASE_USERNAME': process.env.NETEASE_USERNAME = value; return;
+    case 'NETEASE_PASSWORD': process.env.NETEASE_PASSWORD = value; return;
+    case 'QQ_USERNAME': process.env.QQ_USERNAME = value; return;
+    case 'QQ_PASSWORD': process.env.QQ_PASSWORD = value; return;
+    case 'BILI_USERNAME': process.env.BILI_USERNAME = value; return;
+    case 'BILI_PASSWORD': process.env.BILI_PASSWORD = value; return;
+    case 'BILI_AUTO_AUDIO': process.env.BILI_AUTO_AUDIO = value; return;
+    case 'CHROME_DRIVERLESS_URL': process.env.CHROME_DRIVERLESS_URL = value; return;
     default: return;
   }
 }

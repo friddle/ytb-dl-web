@@ -1,0 +1,3 @@
+[submodule "chrome-driverless"]
+	path = chrome-driverless
+	url = ssh://git.nas.yicoson.cn/inner-service-chrome-driverless

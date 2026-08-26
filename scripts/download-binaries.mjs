@@ -295,7 +295,7 @@ const DEFAULTS = {
       out: 'mkvmerge'
     },
     ytdlp: {
-      url: 'https://github.com/yt-dlp/yt-dlp/releases/download/2026.07.04/yt-dlp_linux',
+      url: 'https://github.com/yt-dlp/yt-dlp/releases/download/2026.08.19/yt-dlp_linux',
       type: 'direct',
       out: 'yt-dlp'
     },
@@ -325,7 +325,7 @@ const DEFAULTS = {
       find: 'mkvmerge.exe'
     },
     ytdlp: {
-      url: 'https://github.com/yt-dlp/yt-dlp/releases/download/2026.07.04/yt-dlp.exe',
+      url: 'https://github.com/yt-dlp/yt-dlp/releases/download/2026.08.19/yt-dlp.exe',
       type: 'direct',
       out: 'yt-dlp.exe'
     },
