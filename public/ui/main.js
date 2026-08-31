@@ -69,6 +69,27 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     jobsPanelManager.initialize();
 
+    const browserBtn = document.getElementById('chromeBrowserOpenBtn');
+    if (browserBtn) {
+      browserBtn.addEventListener('click', async () => {
+        let browserUrl = '';
+        try {
+          const r = await fetch('/api/chromebrowser');
+          const data = await r.json();
+          browserUrl = data?.config?.url || '';
+        } catch {}
+        if (!browserUrl) {
+          modalManager.showAlert({
+            title: '内置浏览器',
+            message: 'CHROME_DRIVERLESS_URL 未设置。请先在设置中配置内置浏览器服务地址。',
+            type: 'warning'
+          });
+          return;
+        }
+        window.open(browserUrl, '_blank', 'noopener,noreferrer');
+      });
+    }
+
     const settingsBtn = document.getElementById('settingsBtn');
     if (settingsBtn) {
         const labelEl = settingsBtn.querySelector('.settings-btn__label');

@@ -22,6 +22,8 @@ services:
       - YTDLP_EXTRA=--force-ipv4
       - GHARMONIZE_WEB_BINARIES_IN_DOCKER=1
       - GHARMONIZE_WEB_CACHE_DIR=/usr/src/app/cache/binaries
+      - CHROME_DRIVERLESS_URL=http://chrome-driverless:9223
+      - CHROME_DRIVERLESS_DATA_DIR=/data/driverless
       - PUID=${PUID:-1000}
       - PGID=${PGID:-1000}
       - DATA_DIR=/usr/src/app
@@ -38,11 +40,34 @@ services:
       - ${MUSIC_DIR:-/opt/gharmonize/local-inputs}:/music
       - /opt/gharmonize/cookies:/usr/src/app/cookies
       - /opt/gharmonize/.env:/usr/src/app/.env
+      - chrome_driver_data:/data/driverless
       - /home:/home:ro
       - /run/media:/run/media:ro
+    depends_on:
+      - chrome-driverless
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:' + (process.env.PORT || 5174) + '/').then((res) => process.exit(res.ok ? 0 : 1)).catch(() => process.exit(1))"]
       interval: 10s
       timeout: 5s
       retries: 5
+
+  chrome-driverless:
+    build:
+      context: ./chrome-driverless
+      dockerfile: Dockerfile
+    container_name: GharmonizeBrowser
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,mode=1777
+    environment:
+      - BROWSER_DATA_DIR=/data/driverless
+      - PROFILE_NAME=debug
+    ports:
+      - "${CHROME_DRIVERLESS_PORT:-9223}:9223"
+    volumes:
+      - chrome_driver_data:/data/driverless
+    restart: unless-stopped
+
+volumes:
+  chrome_driver_data:

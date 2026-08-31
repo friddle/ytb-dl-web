@@ -1,0 +1,3 @@
+[submodule "chrome-driverless"]
+	path = chrome-driverless
+	url = https://github.com/friddle/chrome-driverless

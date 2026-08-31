@@ -14,7 +14,10 @@ const YTDLP_FALLBACK_PLATFORMS = new Set([
   "tiktok",
   "instagram",
   "facebook",
-  "twitter"
+  "twitter",
+  "bilibili",
+  "netease",
+  "qqmusic"
 ]);
 
 // Handles with timeout in core application logic.
@@ -111,6 +114,25 @@ export function detectPlatform(inputUrl) {
       host.endsWith(".x.com")
     ) {
       return "twitter";
+    }
+    if (
+      host === "bilibili.com" || host.endsWith(".bilibili.com") ||
+      host === "b23.tv" || host.endsWith(".b23.tv")
+    ) {
+      return "bilibili";
+    }
+    if (
+      host === "music.163.com" || host.endsWith(".music.163.com") ||
+      host === "163.com" || host.endsWith(".163.com") || host.endsWith(".netease.com")
+    ) {
+      return "netease";
+    }
+    if (
+      host === "y.qq.com" || host.endsWith(".qq.com") ||
+      host === "i.y.qq.com" || host.endsWith(".y.qq.com") ||
+      host === "c6.y.qq.com" || host === "c.y.qq.com"
+    ) {
+      return "qqmusic";
     }
     return null;
   } catch {
@@ -466,6 +488,12 @@ export async function downloadPlatformMedia(
                     ? { Referer: inputUrl, Origin: "https://www.facebook.com" }
                     : platformName === "twitter"
                       ? { Referer: inputUrl, Origin: "https://x.com" }
+                      : platformName === "bilibili"
+                        ? { Referer: "https://www.bilibili.com/", Origin: "https://www.bilibili.com" }
+                        : platformName === "netease"
+                          ? { Referer: "https://music.163.com/", Origin: "https://music.163.com" }
+                          : platformName === "qqmusic"
+                            ? { Referer: "https://y.qq.com/", Origin: "https://y.qq.com" }
                 : { Referer: inputUrl }
         },
         ctrl

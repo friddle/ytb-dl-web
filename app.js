@@ -20,6 +20,7 @@ import { sendError, sanitizeFilename } from './modules/utils.js'
 import { assertSafeRemoteUrl, createTrustedProxyPredicate, decryptSecret } from './modules/security.js'
 import { rateLimit } from './modules/rateLimit.js'
 import discRouter from './routes/disc.js'
+import chromeBrowserRouter from './routes/chromeBrowser.js'
 import { getOwnershipTarget, queueOwnershipFix } from './modules/fsOwnership.js'
 import {
   FFMPEG_BIN,
@@ -474,6 +475,7 @@ app.use(jobsRoute)
 app.use(trackExtractorRoute)
 app.use(retagRoute)
 app.use(discRouter)
+app.use(chromeBrowserRouter)
 app.use(downloadRoute)
 app.use('/api', settingsRoute)
 

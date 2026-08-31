@@ -1,0 +1,20 @@
+FROM ytb-dl-web:all-in-one
+
+WORKDIR /usr/src/app
+
+COPY app.js bootstrap.mjs config.js .env.default package.json package-lock.json ./
+COPY routes/ ./routes/
+COPY modules/ ./modules/
+COPY public/ ./public/
+
+ENV NODE_ENV=production \
+    PORT=5174 \
+    GHARMONIZE_HOST=0.0.0.0 \
+    GHARMONIZE_WEB_BINARIES=1 \
+    GHARMONIZE_WEB_BINARIES_IN_DOCKER=1 \
+    GHARMONIZE_WEB_CACHE_DIR=/opt/gharmonize/cache/binaries \
+    DATA_DIR=/usr/src/app \
+    CHROME_DRIVERLESS_URL=http://chrome-driverless:9223 \
+    CHROME_DRIVERLESS_DATA_DIR=/data/driverless
+
+EXPOSE 5174

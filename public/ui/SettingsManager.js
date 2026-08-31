@@ -510,6 +510,12 @@ export class SettingsManager {
                 </div>
 
                 <div class="form-group">
+                <label for="f_CHROME_DRIVERLESS_URL" class="settings-field-label">CHROME_DRIVERLESS_URL</label>
+                <div class="settings-field-hint muted" data-i18n="settings.chromeDriverlessUrl"></div>
+                <input id="f_CHROME_DRIVERLESS_URL" type="text" placeholder="http://chrome-driverless:9223 (Bilibili / 网易云 / QQ音乐 登录浏览器)" data-i18n-ph="ph.chromeDriverlessUrl">
+                </div>
+
+                <div class="form-group">
                 <label for="f_YTDLP_EXTRA" class="settings-field-label">YTDLP_EXTRA</label>
                 <div class="settings-field-hint muted" data-i18n="settings.ytdlpExtra"></div>
                 <input id="f_YTDLP_EXTRA" name="gharmonize_ytdlp_extra" type="text" placeholder="Ek argümanlar, ör: --http-chunk-size 10M" data-i18n-ph="ph.ytdlpExtra" autocomplete="off" autocapitalize="none" spellcheck="false" data-lpignore="true" data-1p-ignore>
@@ -910,6 +916,7 @@ export class SettingsManager {
             document.getElementById('f_CLEAN_PARENS').value = s.CLEAN_PARENS || 'official,topic';
             document.getElementById('f_YTDLP_COOKIES').value = s.YTDLP_COOKIES || '';
             document.getElementById('f_YTDLP_COOKIES_FROM_BROWSER').value = s.YTDLP_COOKIES_FROM_BROWSER || '';
+            document.getElementById('f_CHROME_DRIVERLESS_URL').value = s.CHROME_DRIVERLESS_URL || '';
             document.getElementById('f_YTDLP_EXTRA').value = s.YTDLP_EXTRA || '';
             document.getElementById('f_YT_STRIP_COOKIES').value = (typeof s.YT_STRIP_COOKIES !== 'undefined' && s.YT_STRIP_COOKIES !== null)
                 ? String(s.YT_STRIP_COOKIES)
@@ -975,6 +982,7 @@ export class SettingsManager {
                 YTDLP_UA: document.getElementById('f_YTDLP_UA').value,
                 YTDLP_COOKIES: document.getElementById('f_YTDLP_COOKIES').value,
                 YTDLP_COOKIES_FROM_BROWSER: document.getElementById('f_YTDLP_COOKIES_FROM_BROWSER').value,
+                CHROME_DRIVERLESS_URL: document.getElementById('f_CHROME_DRIVERLESS_URL').value.trim(),
                 YTDLP_EXTRA: document.getElementById('f_YTDLP_EXTRA').value,
                 YT_STRIP_COOKIES: document.getElementById('f_YT_STRIP_COOKIES').value,
                 YT_DEFAULT_REGION: document.getElementById('f_YT_DEFAULT_REGION').value.trim(),

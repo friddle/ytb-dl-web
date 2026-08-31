@@ -38,6 +38,8 @@ ENV NODE_ENV=production \
     GHARMONIZE_WEB_BINARIES=1 \
     GHARMONIZE_WEB_BINARIES_IN_DOCKER=1 \
     GHARMONIZE_WEB_CACHE_DIR=/opt/gharmonize/cache/binaries \
+    CHROME_DRIVERLESS_URL=http://chrome-driverless:9223 \
+    CHROME_DRIVERLESS_DATA_DIR=/data/driverless \
     DISABLE_QSV_IN_DOCKER=1 \
     DISABLE_VAAPI_IN_DOCKER=1
 

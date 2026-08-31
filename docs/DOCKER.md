@@ -119,6 +119,22 @@ docker compose up -d
 
 ---
 
+## Embedded browser + Chinese platforms (Bilibili / NetEase / QQ Music)
+
+A `chrome-driverless` submodule provides a headed embedded browser (port `9223`) for logging into
+Bilibili, NetEase (music.163.com) and QQ Music. Login state is saved and exported as per-platform
+`*-cookies.txt` files inside the cookies mount, which yt-dlp reuses during downloads.
+
+Open the web UI, click the **🛩️ 内置浏览器** nav button, log in to Bilibili / NetEase / QQ Music
+once, then download. The login status and browser page are also reachable via `/api/chromebrowser`.
+These platforms are detected in `modules/platform.js` and downloaded via yt-dlp with the
+embedded-browser cookies as fallback.
+
+> Because the `ytb-dl-web` image already bundles chrome-driverless inside the same container
+> (listening on `9223`), many deployments expose that port directly instead of running a separate
+> compose service. The compose `chrome-driverless` service is the standalone alternative when a
+> separate browser container is preferred.
+
 ## Alternative Installation Using `docker run`
 
 ### 1. Prepare folders and files

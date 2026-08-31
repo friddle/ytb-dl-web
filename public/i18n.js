@@ -1,6 +1,6 @@
 (function () {
   const DEFAULT_LANG = 'en';
-  const SUPPORTED = ['en', 'tr', 'de', 'fr', 'es'];
+  const SUPPORTED = ['en', 'tr', 'de', 'fr', 'es', 'zh'];
   const COOKIE_NAME = 'lang';
   const COOKIE_DOMAIN = '.grbzhome.com';
 
