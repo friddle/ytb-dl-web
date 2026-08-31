@@ -1,6 +1,6 @@
 services:
   web:
-    image: ggrbz/gharmonize:latest
+    image: ytb-dl-web:0.0.1-alpha
     container_name: Gharmonize
     read_only: true
     tmpfs:
@@ -22,8 +22,9 @@ services:
       - YTDLP_EXTRA=--force-ipv4
       - GHARMONIZE_WEB_BINARIES_IN_DOCKER=1
       - GHARMONIZE_WEB_CACHE_DIR=/usr/src/app/cache/binaries
-      - CHROME_DRIVERLESS_URL=http://chrome-driverless:9223
+      - CHROME_DRIVERLESS_URL=http://127.0.0.1:9223
       - CHROME_DRIVERLESS_DATA_DIR=/data/driverless
+      - BROWSER_DATA_DIR=/data/driverless
       - PUID=${PUID:-1000}
       - PGID=${PGID:-1000}
       - DATA_DIR=/usr/src/app
@@ -31,6 +32,7 @@ services:
       - RETAG_ROOTS=/music
     ports:
       - "${PORT:-5174}:${PORT:-5174}"
+      - "${CHROME_DRIVERLESS_PORT:-9223}:9223"
     volumes:
       - /opt/gharmonize/uploads:/usr/src/app/uploads
       - /opt/gharmonize/outputs:/usr/src/app/outputs
@@ -40,34 +42,16 @@ services:
       - ${MUSIC_DIR:-/opt/gharmonize/local-inputs}:/music
       - /opt/gharmonize/cookies:/usr/src/app/cookies
       - /opt/gharmonize/.env:/usr/src/app/.env
-      - chrome_driver_data:/data/driverless
+      - /opt/gharmonize/data:/data
       - /home:/home:ro
       - /run/media:/run/media:ro
-    depends_on:
-      - chrome-driverless
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:' + (process.env.PORT || 5174) + '/').then((res) => process.exit(res.ok ? 0 : 1)).catch(() => process.exit(1))"]
       interval: 10s
       timeout: 5s
       retries: 5
-
-  chrome-driverless:
-    build:
-      context: ./chrome-driverless
-      dockerfile: Dockerfile
-    container_name: GharmonizeBrowser
-    read_only: true
-    tmpfs:
-      - /tmp:rw,noexec,nosuid,nodev,mode=1777
-    environment:
-      - BROWSER_DATA_DIR=/data/driverless
-      - PROFILE_NAME=debug
-    ports:
-      - "${CHROME_DRIVERLESS_PORT:-9223}:9223"
-    volumes:
-      - chrome_driver_data:/data/driverless
-    restart: unless-stopped
-
-volumes:
-  chrome_driver_data:
+    # chrome-driverless (the built-in browser for Bilibili / NetEase / QQ Music login)
+    # is embedded in the image and listens on 9223. To use it from the host, expose it:
+    # ports:
+    #   - "${CHROME_DRIVERLESS_PORT:-9223}:9223"
