@@ -123,7 +123,16 @@ export class MediaDownloadTab {
       }
       container.querySelectorAll('.media-login-btn').forEach((btn) => {
         btn.addEventListener('click', () => {
-          const url = this.browserUrl || this.browserFallbackUrl();
+          const base = this.browserUrl || this.browserFallbackUrl();
+          // Jump straight to the platform's login page inside the embedded browser.
+          const platformHome = {
+            bilibili: 'https://www.bilibili.com/',
+            netease: 'https://music.163.com/',
+            qqmusic: 'https://y.qq.com/'
+          }[btn.dataset.platform];
+          const url = platformHome
+            ? `${base}${base.includes('?') ? '&' : '?'}url=${encodeURIComponent(platformHome)}`
+            : base;
           window.open(url, '_blank', 'noopener,noreferrer');
         });
       });
