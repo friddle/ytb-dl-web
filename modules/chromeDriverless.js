@@ -23,7 +23,8 @@ const EXPORT_COOKIES_FILE =
 const PLATFORM_DOMAINS = {
   bilibili: [".bilibili.com", "bilibili.com", ".b23.tv", "b23.tv"],
   netease: [".music.163.com", "music.163.com", ".163.com", "163.com"],
-  qqmusic: [".y.qq.com", "y.qq.com", ".qq.com", "qq.com", "i.qq.com"]
+  qqmusic: [".y.qq.com", "y.qq.com", ".qq.com", "qq.com", "i.qq.com"],
+  youtube: [".youtube.com", "youtube.com", ".google.com", "google.com", ".accounts.google.com", "accounts.google.com", ".youtu.be", "youtu.be"]
 };
 
 function baseUrl() {
@@ -183,7 +184,9 @@ export function exportCookiesTxt() {
 const PLATFORM_LOGIN_COOKIES = {
   bilibili: ["SESSDATA"],
   netease: ["MUSIC_U"],
-  qqmusic: ["qqmusic_key", "wxuin", "uin"]
+  qqmusic: ["qqmusic_key", "wxuin", "uin"],
+  // YouTube: Google session cookie SID means a signed-in browser profile.
+  youtube: ["SID"]
 };
 
 export function loginStatus() {
@@ -205,7 +208,7 @@ export function loginStatus() {
 }
 
 // Returns true only when the embedded browser profile holds a real login
-// session for the given platform (bilibili / netease / qqmusic).
+// session for the given platform (bilibili / netease / qqmusic / youtube).
 export function isPlatformLoggedIn(platform) {
   const key = String(platform || "").toLowerCase();
   const required = PLATFORM_LOGIN_COOKIES[key];

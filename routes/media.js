@@ -18,6 +18,25 @@ const COOKIES_FILE =
 const CD_URL = String(process.env.CHROME_DRIVERLESS_URL || "").trim().replace(/\/+$/, "");
 const BROWSER_EXTERNAL_URL = String(process.env.CHROME_DRIVERLESS_EXTERNAL_URL || "").trim();
 
+// User-configurable download folder (saved via Settings → MEDIA_DOWNLOAD_DIR).
+// Falls back to the default <data>/outputs directory.
+const MEDIA_DOWNLOAD_DIR = String(process.env.MEDIA_DOWNLOAD_DIR || "").trim()
+  ? path.resolve(process.env.MEDIA_DOWNLOAD_DIR)
+  : path.join(BASE_DIR, "outputs");
+
+// Deep-link targets: clicking a platform login button opens this page inside
+// the embedded browser. For the China platforms these are the QR-code login
+// pages (Bilibili/NetEase/QQ), YouTube goes straight to the sign-in page.
+const PLATFORM_LOGIN_URLS = {
+  bilibili: "https://passport.bilibili.com/login",
+  bililive: "https://passport.bilibili.com/login",
+  netease: "https://music.163.com/#/login",
+  neteaselive: "https://music.163.com/#/login",
+  qqmusic:
+    "https://graph.qq.com/oauth2.0/show?which=Login&display=pc&client_id=100460100&response_type=code&redirect_uri=https%3A%2F%2Fy.qq.com%2Fportal%2Fplayer.html",
+  youtube: "https://www.youtube.com/signin"
+};
+
 const UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
@@ -128,6 +147,76 @@ async function searchNetease(keyword, limit) {
   })).filter((it) => it.id && it.title);
 }
 
+async function searchBililive(keyword, limit) {
+  // Bilibili live room search (search_type=live_room), also needs login cookies.
+  const currentUrl = String(await cdEvaluate("location.href", 20000) || "");
+  if (!/bilibili\.com/.test(currentUrl)) {
+    await cdCall("pw/navigate", { url: "https://www.bilibili.com/" }, 45000);
+  }
+  const expression = `(async () => {
+    const r = await fetch("https://api.bilibili.com/x/web-interface/search/type?search_type=live_room&keyword=${encodeURIComponent(
+      keyword
+    )}&page=1", { credentials: "include", headers: { "Accept": "application/json" } });
+    const j = await r.json();
+    return j;
+  })()`;
+  const data = await cdEvaluate(expression, 45000);
+  if (!data || data.code !== 0 || !Array.isArray(data?.data?.result)) {
+    const msg = data?.message || `bilibili live search code ${data?.code ?? "?"}`;
+    throw new Error(`Bilibili 直播搜索失败: ${msg}`);
+  }
+  return data.data.result.slice(0, limit).map((v) => {
+    const roomId = v.roomid || v.id;
+    return {
+      id: String(roomId || ""),
+      platform: "bililive",
+      title: stripHtml(v.title || ""),
+      artist: stripHtml(v.uname || v.upName || ""),
+      album: "",
+      durationSec: null,
+      url: roomId ? `https://live.bilibili.com/${roomId}` : ""
+    };
+  }).filter((it) => it.id && it.title && it.url);
+}
+
+async function searchNeteaseLive(keyword, limit) {
+  // NetEase Cloud Music 主播电台 / 直播 (DJ radio) — public search API, type=1009.
+  const data = await curlJson("https://music.163.com/api/search/get", {
+    method: "POST",
+    headers: {
+      "User-Agent": UA,
+      Referer: "https://music.163.com/",
+      Cookie: "os=pc"
+    },
+    data: `s=${encodeURIComponent(keyword)}&type=1009&offset=0&total=true&limit=${limit}`
+  });
+  const radios = data?.result?.djRadios || [];
+  return radios.map((d) => ({
+    id: String(d.id || ""),
+    platform: "neteaselive",
+    title: stripHtml(d.name || ""),
+    artist: stripHtml(d.dj?.nickname || ""),
+    album: d.category ? stripHtml(d.category) : "",
+    durationSec: null,
+    url: d.id ? `https://music.163.com/#/djradio?id=${d.id}` : ""
+  })).filter((it) => it.id && it.title && it.url);
+}
+
+async function searchYoutube(keyword, limit) {
+  // YouTube search via yt-dlp (ytsearchN:<query>); works with the saved cookies.
+  const data = await ytdlpFlatJson(`ytsearch${Math.min(limit, 30)}:${keyword}`);
+  const entries = Array.isArray(data?.entries) ? data.entries : [];
+  return entries.map((e) => ({
+    id: String(e.id || ""),
+    platform: "youtube",
+    title: stripHtml(e.title || ""),
+    artist: stripHtml(e.uploader || e.channel || ""),
+    album: "",
+    durationSec: Number(e.duration) || null,
+    url: e.id ? `https://www.youtube.com/watch?v=${e.id}` : ""
+  })).filter((it) => it.id && it.title && it.url);
+}
+
 async function searchBilibili(keyword, limit) {
   // api.bilibili.com blocks non-browser clients (risk-control HTML page), so
   // the query runs inside the embedded browser context with its real Chrome
@@ -198,11 +287,12 @@ function ytdlpFlatJson(url) {
 // ---------------------------------------------------------------------------
 
 router.get("/api/media/config", rateLimit(60, 60_000), (_req, res) => {
-  const login = loginStatus();
   res.json({
     ok: true,
-    platforms: login.platforms,
-    browserExternalUrl: BROWSER_EXTERNAL_URL || null
+    platforms: loginStatus().platforms,
+    loginUrls: PLATFORM_LOGIN_URLS,
+    browserExternalUrl: BROWSER_EXTERNAL_URL || null,
+    downloadDir: MEDIA_DOWNLOAD_DIR
   });
 });
 
@@ -214,23 +304,32 @@ router.get("/api/media/search", rateLimit(30, 60_000), async (req, res) => {
 
   try {
     let items = [];
+    const loginGate = (label) => {
+      if (isPlatformLoggedIn("bilibili")) return true;
+      return res.status(428).json({
+        error: {
+          code: "PLATFORM_LOGIN_REQUIRED",
+          message: `${label}搜索需要先登录：请点击右上角 🛩️ 打开内置浏览器扫码登录后重试。`
+        }
+      });
+    };
     if (platform === "qqmusic") {
       // QQ Music search works without login (public search API).
       items = await searchQqMusic(keyword, limit);
     } else if (platform === "netease") {
       items = await searchNetease(keyword, limit);
+    } else if (platform === "neteaselive") {
+      items = await searchNeteaseLive(keyword, limit);
+    } else if (platform === "youtube") {
+      items = await searchYoutube(keyword, limit);
     } else if (platform === "bilibili") {
-      if (!isPlatformLoggedIn("bilibili")) {
-        return res.status(428).json({
-          error: {
-            code: "PLATFORM_LOGIN_REQUIRED",
-            message: "Bilibili（哔哩哔哩）搜索需要先登录：请点击右上角 🛩️ 打开内置浏览器登录后重试。"
-          }
-        });
-      }
+      if (!loginGate("Bilibili（哔哩哔哩）")) return;
       items = await searchBilibili(keyword, limit);
+    } else if (platform === "bililive") {
+      if (!loginGate("Bilibili 直播")) return;
+      items = await searchBililive(keyword, limit);
     } else {
-      return res.status(400).json({ error: { code: "UNKNOWN_PLATFORM", message: "platform must be qqmusic | netease | bilibili" } });
+      return res.status(400).json({ error: { code: "UNKNOWN_PLATFORM", message: "platform must be qqmusic | netease | neteaselive | bilibili | bililive | youtube" } });
     }
     res.json({ ok: true, platform, keyword, count: items.length, items });
   } catch (err) {
@@ -240,15 +339,18 @@ router.get("/api/media/search", rateLimit(30, 60_000), async (req, res) => {
 });
 
 router.get("/api/media/resolve", rateLimit(20, 60_000), async (req, res) => {
-  const url = String(req.query.url || "").trim();
+  let url = String(req.query.url || "").trim();
   if (!/^https?:\/\//i.test(url)) {
     return res.status(400).json({ error: { code: "URL_REQUIRED", message: "url is required" } });
   }
   let host = "";
   try { host = new URL(url).hostname.toLowerCase(); } catch { /* fallthrough */ }
-  const isBili = host.endsWith(".bilibili.com") || host.endsWith(".b23.tv");
-  if (!isBili) {
-    return res.status(400).json({ error: { code: "UNSUPPORTED", message: "目前仅支持 Bilibili URL 解析" } });
+  // NetEase Music SPA links (music.163.com/#/playlist?id=x) — the hash part is
+  // never sent server-side; normalize to the plain path yt-dlp understands.
+  const isNetease = host.includes("163.com");
+  if (isNetease) {
+    // "music.163.com/#/playlist|album|song|djradio?id=x" → plain path.
+    url = url.replace(/#\/(playlist|album|song|djradio|radio)\?/i, "$1?");
   }
 
   try {
@@ -258,6 +360,17 @@ router.get("/api/media/resolve", rateLimit(20, 60_000), async (req, res) => {
       const playlistTitle = stripHtml(data.title || "");
       const items = entries.map((e, i) => {
         const pagePart = e.playlist_index || (i + 1);
+        if (isNetease) {
+          // NetEase playlist entries are individual songs.
+          return {
+            id: e.id || String(i + 1),
+            index: pagePart,
+            title: stripHtml(e.title || `Track ${pagePart}`),
+            artist: stripHtml(e.uploader || e.artist || ""),
+            durationSec: Number(e.duration) || null,
+            url: e.id ? `https://music.163.com/song?id=${e.id}` : url
+          };
+        }
         // yt-dlp flat-playlist entries for Bilibili collections often carry an
         // empty title; fall back to "<playlist title> P<n>".
         const rawTitle = stripHtml(e.title || "");

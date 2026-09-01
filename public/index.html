@@ -359,14 +359,14 @@
 
     <div class="card">
       <h2>🔐 平台登录状态</h2>
-      <small class="comment">下载 / 搜索 Bilibili 前需要先在内置浏览器完成登录；QQ音乐、网易云搜索无需登录。</small>
+      <small class="comment">点击平台卡片上的登录按钮会直接打开对应的扫码登录页（内置浏览器）。Bilibili / 直播需要登录才能搜索下载；QQ音乐、网易云、YouTube 搜索无需登录。</small>
       <div id="mediaPlatforms" class="media-platforms" style="display:flex;flex-direction:column;gap:10px;margin-top:10px;"></div>
       <button type="button" class="btn-outline" id="mediaRefreshLoginBtn" style="margin-top:10px;">🔄 刷新登录状态</button>
     </div>
 
     <div class="card-grid">
       <div class="card">
-        <h2>📺 Bilibili 链接解析</h2>
+        <h2>🔗 链接解析（各种平台）</h2>
         <div class="form-group">
           <label for="biliModeSelect">解析模式</label>
           <select id="biliModeSelect" class="form-control">
@@ -377,7 +377,7 @@
         </div>
         <div class="form-group">
           <label for="biliUrlInput">视频 / 合集链接</label>
-          <input type="text" id="biliUrlInput" class="form-control" placeholder="https://www.bilibili.com/video/BV...">
+          <input type="text" id="biliUrlInput" class="form-control" placeholder="B站视频/合集/直播、网易云歌单/电台、YouTube、QQ音乐等所有平台链接">
         </div>
         <div class="btn-row">
           <button type="button" id="biliResolveBtn" class="btn">🔗 解析</button>
@@ -390,8 +390,11 @@
           <span class="form-label">搜索平台</span>
           <div class="checkbox-group" style="display:flex;gap:14px;flex-wrap:wrap;">
             <label style="display:flex;align-items:center;gap:6px;"><input type="checkbox" class="media-search-platform" value="bilibili" checked> Bilibili</label>
+            <label style="display:flex;align-items:center;gap:6px;"><input type="checkbox" class="media-search-platform" value="bililive"> B站直播</label>
             <label style="display:flex;align-items:center;gap:6px;"><input type="checkbox" class="media-search-platform" value="qqmusic" checked> QQ音乐</label>
             <label style="display:flex;align-items:center;gap:6px;"><input type="checkbox" class="media-search-platform" value="netease" checked> 网易云</label>
+            <label style="display:flex;align-items:center;gap:6px;"><input type="checkbox" class="media-search-platform" value="neteaselive"> 网易电台</label>
+            <label style="display:flex;align-items:center;gap:6px;"><input type="checkbox" class="media-search-platform" value="youtube"> YouTube</label>
           </div>
         </div>
         <div class="form-group">
@@ -412,6 +415,14 @@
         <div class="form-group" id="mediaBitrateGroup">
           <label for="mediaBitrateSelect">码率</label>
           <select id="mediaBitrateSelect" class="form-control"></select>
+        </div>
+        <div class="form-group">
+          <label for="mediaDownloadDirInput">下载目录</label>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <input type="text" id="mediaDownloadDirInput" class="form-control" placeholder="留空 = 默认 outputs 输出目录">
+            <button type="button" id="mediaDownloadDirSaveBtn" class="btn-outline" style="white-space:nowrap;">保存</button>
+          </div>
+          <small class="comment">保存到设置 MEDIA_DOWNLOAD_DIR，重启服务后所有下载输出到该目录。</small>
         </div>
         <small class="comment">选择 ORIGINAL = 保留原始音频，不做转换。</small>
       </div>

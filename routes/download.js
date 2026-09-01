@@ -8,7 +8,9 @@ import { rateLimit } from "../modules/rateLimit.js";
 
 const router = express.Router();
 const BASE_DIR = process.env.DATA_DIR || process.cwd();
-const OUTPUT_DIR = path.resolve(BASE_DIR, "outputs");
+const OUTPUT_DIR = String(process.env.MEDIA_DOWNLOAD_DIR || "").trim()
+  ? path.resolve(process.env.MEDIA_DOWNLOAD_DIR)
+  : path.resolve(BASE_DIR, "outputs");
 const OUTPUTS_DISPLAY_DIR_RAW = String(process.env.OUTPUTS_DISPLAY_DIR || "").trim();
 const OUTPUTS_DISPLAY_DIR = OUTPUTS_DISPLAY_DIR_RAW
   ? (path.isAbsolute(OUTPUTS_DISPLAY_DIR_RAW)

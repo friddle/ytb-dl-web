@@ -76,7 +76,11 @@ const LOGIN_REQUIRED_PLATFORMS = {
 };
 
 const BASE_DIR = process.env.DATA_DIR || process.cwd();
-const OUTPUT_DIR = path.resolve(BASE_DIR, "outputs");
+// User-selectable download folder (Settings → MEDIA_DOWNLOAD_DIR) else the
+// default <data>/outputs directory.
+const OUTPUT_DIR = String(process.env.MEDIA_DOWNLOAD_DIR || "").trim()
+  ? path.resolve(process.env.MEDIA_DOWNLOAD_DIR)
+  : path.resolve(BASE_DIR, "outputs");
 const UPLOAD_DIR = path.resolve(BASE_DIR, "uploads");
 const LOCAL_INPUT_DIR = path.resolve(BASE_DIR, process.env.LOCAL_INPUT_DIR || "local-inputs");
 const TEMP_DIR = path.resolve(BASE_DIR, "temp");
