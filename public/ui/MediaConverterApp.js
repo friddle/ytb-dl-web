@@ -1210,7 +1210,33 @@ export class MediaConverterApp {
     // Checks whether mapped music source URL is valid for the browser UI layer.
     isSpotifyUrl(u) {
         const s = String(u || "").trim();
-        return /^(spotify:|deezer:(track|album|playlist|artist):|https?:\/\/(open\.spotify\.com|spotify\.link|spotify\.app\.link|(?:embed\.)?music\.apple\.com|(?:(?:www|link)\.)?deezer\.com|(?:[\w-]+\.)?deezer\.page\.link))/i.test(s);
+        return /^(spotify:|deezer:(track|album|playlist|artist):|https?:\/\/(open\.spotify\.com|spotify\.link|spotify\.app\.link|(?:embed\.)?music\.apple\.com|(?:www|link\.)?deezer\.com|(?:[\w-]+\.)?deezer\.page\.link))/i.test(s);
+    }
+
+    // Detects China platforms that require an embedded-browser login, and
+    // returns a blocking message when that login is missing. Returns null when
+    // the submission may proceed (non-gated platform, logged in, or status
+    // check unavailable — the backend gate stays the source of truth).
+    async checkPlatformLoginGate(u) {
+        const s = String(u || "").trim();
+        let host = '';
+        try { host = new URL(s).hostname.toLowerCase(); } catch { return null; }
+        const isBili = host === 'bilibili.com' || host.endsWith('.bilibili.com') ||
+            host === 'b23.tv' || host.endsWith('.b23.tv');
+        const isNetease = host === '163.com' || host.endsWith('.163.com') || host.endsWith('.netease.com');
+        const isQQ = host.endsWith('.qq.com');
+        if (!isBili && !isNetease && !isQQ) return null;
+        const key = isBili ? 'bilibili' : (isNetease ? 'netease' : 'qqmusic');
+        const label = { bilibili: 'Bilibili（哔哩哔哩）', netease: '网易云音乐', qqmusic: 'QQ 音乐' }[key];
+        try {
+            const r = await fetch('/api/chromebrowser');
+            if (!r.ok) return null;
+            const d = await r.json();
+            if (d?.login?.platforms?.[key]?.loggedIn === false) {
+                return `${label}下载需要先登录：请点击页面右上角 🛩️ 打开内置浏览器，登录成功后（右上角出现头像）回到本页重新提交。`;
+            }
+        } catch { /* unreachable status API → let the backend enforce the gate */ }
+        return null;
     }
 
     // Checks whether youtube playlist data URL is valid for the browser UI layer.
@@ -1366,6 +1392,14 @@ export class MediaConverterApp {
             return;
         }
         await this.spotifyManager.convertMatchedSpotify();
+        return;
+    }
+
+    // Bilibili / NetEase / QQ Music downloads require a completed login in the
+    // embedded browser (🛩️). Block the submission early with guidance.
+    const loginGateMessage = await this.checkPlatformLoginGate(url);
+    if (loginGateMessage) {
+        this.showNotification(loginGateMessage, 'error', 'error');
         return;
     }
 

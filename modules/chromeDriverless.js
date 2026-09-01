@@ -73,17 +73,27 @@ export async function checkHealth() {
 }
 
 // Lists auth.json files found inside the shared browser profile directory.
+// Supports both layouts: <root>/<profile>/auth.json (legacy) and
+// <root>/profiles/<profile>/auth.json (current chrome-driverless).
 export function authFileLocations() {
   if (!CD_DATA_DIR) return [];
   const root = path.resolve(CD_DATA_DIR);
   const out = [];
-  try {
-    for (const ent of fs.readdirSync(root, { withFileTypes: true })) {
-      if (!ent.isDirectory()) continue;
-      const authPath = path.join(root, ent.name, "auth.json");
-      if (fs.existsSync(authPath)) out.push({ profile: ent.name, path: authPath });
-    }
-  } catch {}
+  const seen = new Set();
+  const scanDir = (dir, prefix = "") => {
+    try {
+      for (const ent of fs.readdirSync(dir, { withFileTypes: true })) {
+        if (!ent.isDirectory() || ent.name === "tmp") continue;
+        const authPath = path.join(dir, ent.name, "auth.json");
+        if (fs.existsSync(authPath) && !seen.has(authPath)) {
+          seen.add(authPath);
+          out.push({ profile: prefix + ent.name, path: authPath });
+        }
+      }
+    } catch {}
+  };
+  scanDir(root);
+  scanDir(path.join(root, "profiles"), "profiles/");
   return out;
 }
 
@@ -110,16 +120,19 @@ export function collectCookies() {
 
 // Converts an auth.json cookie object to a Netscape cookies.txt line pair.
 function authToNetscapeLine(c) {
-  const domain = String(c.domain || "").trim();
+  let domain = String(c.domain || "").trim();
   const name = String(c.name || "").trim();
   const value = String(c.value || "").trim();
   if (!domain || !name || !value) return null;
 
-  const includeSub = !c.hostOnly ? "TRUE" : "FALSE";
+  // Python http.cookiejar asserts domain_specified == domain.startsWith(".");
+  // a hostOnly=false cookie stored without a leading dot needs one added.
+  const includeSub = !c.hostOnly;
+  if (includeSub && !domain.startsWith(".")) domain = `.${domain}`;
   const p = String(c.path || "/");
   const secure = c.secure ? "TRUE" : "FALSE";
   const exp = c.session || !c.expirationDate ? "0" : String(Math.round(Number(c.expirationDate) || 0));
-  return [domain, includeSub, p, secure, exp, name, value].join("\t");
+  return [domain, includeSub ? "TRUE" : "FALSE", p, secure, exp, name, value].join("\t");
 }
 
 // Filters cookies by a platform domain whitelist.
@@ -165,19 +178,42 @@ export function exportCookiesTxt() {
 }
 
 // Determines which platforms have login cookies available right now.
+// A real login requires the platform's session cookie (e.g. SESSDATA for
+// Bilibili); anonymous visitor cookies (buvid3, ...) do NOT count.
+const PLATFORM_LOGIN_COOKIES = {
+  bilibili: ["SESSDATA"],
+  netease: ["MUSIC_U"],
+  qqmusic: ["qqmusic_key", "wxuin", "uin"]
+};
+
 export function loginStatus() {
   const all = collectCookies();
   const status = {};
   for (const [platform, domains] of Object.entries(PLATFORM_DOMAINS)) {
-    const has = filterCookiesForDomain(all, domains).length > 0;
+    const platformCookies = filterCookiesForDomain(all, domains);
+    const required = PLATFORM_LOGIN_COOKIES[platform] || [];
+    const hasSession = platformCookies.some((c) => required.includes(c.name));
     const file = path.join(COOKIES_DIR, `${platform}-cookies.txt`);
     status[platform] = {
-      loggedIn: has,
-      cookies: filterCookiesForDomain(all, domains).length,
+      loggedIn: hasSession,
+      hasCookies: platformCookies.length > 0,
+      cookies: platformCookies.length,
       cookieFile: fs.existsSync(file) ? file : null
     };
   }
   return { platforms: status, totalCookies: all.length };
 }
 
-export default { isConfigured, getConfig, checkHealth, authFileLocations, collectCookies, exportCookiesTxt, loginStatus };
+// Returns true only when the embedded browser profile holds a real login
+// session for the given platform (bilibili / netease / qqmusic).
+export function isPlatformLoggedIn(platform) {
+  const key = String(platform || "").toLowerCase();
+  const required = PLATFORM_LOGIN_COOKIES[key];
+  if (!required) return true; // no login requirement for other platforms
+  const domains = PLATFORM_DOMAINS[key];
+  if (!domains) return true;
+  const platformCookies = filterCookiesForDomain(collectCookies(), domains);
+  return platformCookies.some((c) => required.includes(c.name));
+}
+
+export default { isConfigured, getConfig, checkHealth, authFileLocations, collectCookies, exportCookiesTxt, loginStatus, isPlatformLoggedIn };
