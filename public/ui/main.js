@@ -5,6 +5,7 @@ import { initDiscRipperPanel } from './discRipperPanel.js';
 import { modalManager } from './ModalManager.js';
 import { versionManager } from './VersionManager.js';
 import { TrackExtractorManager } from './TrackExtractorManager.js';
+import { MediaDownloadTab } from './MediaDownloadTab.js';
 
 
 if (typeof window !== 'undefined' && window.electronAPI?.updateLanguage) {
@@ -76,7 +77,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         try {
           const r = await fetch('/api/chromebrowser');
           const data = await r.json();
-          browserUrl = data?.config?.url || '';
+          // Prefer the configured external URL; otherwise derive one from the
+          // current page address (same hostname + host-mapped 9203 port).
+          browserUrl = data?.config?.externalUrl
+            || `${location.protocol}//${location.hostname}:9203/`
+            || data?.config?.url
+            || '';
         } catch {}
         if (!browserUrl) {
           modalManager.showAlert({
@@ -131,6 +137,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     const trackExtractorManager = new TrackExtractorManager(app);
     await trackExtractorManager.initialize();
     window.trackExtractorManager = trackExtractorManager;
+    const mediaDownloadTab = new MediaDownloadTab(app);
+    mediaDownloadTab.initialize();
+    window.mediaDownloadTab = mediaDownloadTab;
     setupCollapsibleSections();
     setupTitlePositioning();
     initDiscRipperPanel();

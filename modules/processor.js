@@ -2700,18 +2700,22 @@ export async function processJob(jobId, inputPath, format, bitrate) {
         baseTitle = baseTitle.replace(/\.[^.]*$/, "");
         const safeBase = sanitizeFilename(toNFC(baseTitle)) || "output";
 
-        let targetName = `${safeBase}${desiredExt}`;
         const currentAbs = resolveDownloadPathToAbs(r.outputPath, OUTPUT_DIR);
         if (!currentAbs) {
           throw new Error("Could not resolve current output path");
         }
+        // “不转换”（original）保留下载文件的实际容器扩展名（m4a/opus/webm…）。
+        const effectiveExt = String(format).toLowerCase() === "original"
+          ? (path.extname(currentAbs) || desiredExt)
+          : desiredExt;
+        let targetName = `${safeBase}${effectiveExt}`;
         let targetAbs = path.join(outputDir, targetName);
         const sameAsCurrent =
           path.resolve(targetAbs) === path.resolve(currentAbs);
         if (fs.existsSync(targetAbs) && !sameAsCurrent) {
           let i = 1;
           const stem = safeBase;
-          const ext = desiredExt;
+          const ext = effectiveExt;
           while (
             fs.existsSync(targetAbs) &&
             path.resolve(targetAbs) !== path.resolve(currentAbs) &&

@@ -64,6 +64,16 @@ import {
   extractAutomixPage
 } from "../modules/yt.js";
 import { isSupportedPlatformUrl, detectPlatform } from "../modules/platform.js";
+import { isPlatformLoggedIn } from "../modules/chromeDriverless.js";
+
+// Platforms whose downloads require a real login in the embedded browser.
+// Bilibili by product requirement; qqmusic/netease also enforce upstream
+// login ("only available for registered users"), so gate all three.
+const LOGIN_REQUIRED_PLATFORMS = {
+  bilibili: "Bilibili（哔哩哔哩）",
+  netease: "网易云音乐",
+  qqmusic: "QQ 音乐"
+};
 
 const BASE_DIR = process.env.DATA_DIR || process.cwd();
 const OUTPUT_DIR = path.resolve(BASE_DIR, "outputs");
@@ -1333,7 +1343,7 @@ router.post("/api/jobs", rateLimit(10, 60_000), upload.single("file"), async (re
         ? parsedVideoSettings
         : null;
 
-    const supported = ["mp3","m4r","flac","wav","ogg","mp4","mkv","eac3","ac3","aac","dts"];
+    const supported = ["mp3","m4r","flac","wav","ogg","mp4","mkv","eac3","ac3","aac","dts","original"];
     if (!supported.includes(format)) {
       return sendError(res, ERR.INVALID_FORMAT, "Unsupported format", 400);
     }
@@ -1552,8 +1562,18 @@ router.post("/api/jobs", rateLimit(10, 60_000), upload.single("file"), async (re
       }
     }
     else if (isSupportedPlatformUrl(url)) {
+      const platform = detectPlatform(url);
+      const platformLabel = LOGIN_REQUIRED_PLATFORMS[platform];
+      if (platformLabel && !isPlatformLoggedIn(platform)) {
+        return sendError(
+          res,
+          ERR.PLATFORM_LOGIN_REQUIRED,
+          `${platformLabel}下载需要先登录：请点击页面右上角 🛩️ 打开内置浏览器，登录成功后（右上角出现头像）回到本页重新提交。`,
+          428
+        );
+      }
       metadata.source = "platform";
-      metadata.platform = detectPlatform(url);
+      metadata.platform = platform;
       metadata.url = url;
       metadata.originalUrl = url;
       metadata.isPlaylist = false;

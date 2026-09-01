@@ -2110,6 +2110,10 @@ class YTLiveMusicApp {
       return;
     }
     try {
+      if (this.isChinaMusicItem(item)) {
+        this.notify(this.tt('ytlive.play.unavailable', 'Bu içerik burada oynatılamaz. İndirmek için “İndir” düğmesini kullanın.'), 'info');
+        return;
+      }
       if (this.isMappedMusicItem(item)) {
         await this.playMappedMusicUrl(item);
         return;
@@ -4614,6 +4618,20 @@ class YTLiveMusicApp {
       };
     }
 
+    const chinaSource = this.getChinaMusicSource(url);
+    if (chinaSource) {
+      return {
+        type: 'track',
+        id: null,
+        title: this.getChinaMusicFallbackTitle(chinaSource),
+        uploader: this.getChinaMusicLabel(chinaSource),
+        sourceProvider: chinaSource,
+        chinaSource,
+        webpage_url: url,
+        url
+      };
+    }
+
     if (!url || !this.isYouTubeUrl(url)) return null;
     const playlistId = this.getPlaylistId(url);
     const videoId = this.getVideoId(url);
@@ -4703,6 +4721,52 @@ class YTLiveMusicApp {
     if (kind === 'track') return `${label} ${this.tt('ytlive.type.track', 'Tek parça')}`;
     if (kind === 'album') return `${label} ${this.tt('ytlive.type.album', 'Albüm')}`;
     return `${label} ${this.tt('ytlive.type.playlist', 'Çalma listesi')}`;
+  }
+
+  // Detects Chinese music/video platforms (Bilibili / NetEase / QQ Music) whose downloads
+  // are handled directly via yt-dlp using the embedded-browser cookies.
+  getChinaMusicSource(rawUrl = '') {
+    const host = this.getUrlHost(rawUrl);
+    if (!host) return null;
+    if (host === 'bilibili.com' || host.endsWith('.bilibili.com') || host === 'b23.tv' || host.endsWith('.b23.tv')) {
+      return 'bilibili';
+    }
+    if (host === 'music.163.com' || host.endsWith('.music.163.com') || host === '163.com' || host.endsWith('.163.com')) {
+      return 'netease';
+    }
+    if (host === 'y.qq.com' || host.endsWith('.y.qq.com') || host === 'i.qq.com' || host === 'qq.com' || host.endsWith('.qq.com')) {
+      return 'qqmusic';
+    }
+    return null;
+  }
+
+  getChinaMusicLabel(source = '') {
+    const value = String(source || '').toLowerCase();
+    if (value === 'bilibili') return 'bilibili';
+    if (value === 'netease') return '网易云音乐';
+    if (value === 'qqmusic') return 'QQ音乐';
+    return String(source || '');
+  }
+
+  getChinaMusicFallbackTitle(source = '') {
+    const label = this.getChinaMusicLabel(source);
+    return `${label}`;
+  }
+
+  isChinaMusicUrl(rawUrl = '') {
+    return !!this.getChinaMusicSource(rawUrl);
+  }
+
+  isChinaMusicItem(item = {}) {
+    return !!this.getChinaMusicSource(item?.webpage_url || item?.url || '');
+  }
+
+  getUrlHost(rawUrl = '') {
+    try {
+      return new URL(String(rawUrl || '')).hostname.toLowerCase();
+    } catch {
+      return '';
+    }
   }
 
   getMappedMusicUrlType(rawUrl = '') {

@@ -5,6 +5,12 @@ const router = express.Router();
 router.get("/api/formats", (req,res)=>{
   sendOk(res, { formats: [
     {
+      format: "original",
+      bitrates: ["auto"],
+      defaultBitrate: "auto",
+      type: "audio"
+    },
+    {
       format: "mp3",
       bitrates: ["auto","96k","128k","160k","192k","256k","320k"],
       defaultBitrate: "192k",

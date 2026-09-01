@@ -15,7 +15,10 @@ router.get("/api/chromebrowser", rateLimit(60, 60_000), async (_req, res) => {
   try {
     const [health, status] = await Promise.all([checkHealth(), Promise.resolve(loginStatus())]);
     res.json({
-      config: getConfig(),
+      config: {
+        ...getConfig(),
+        externalUrl: String(process.env.CHROME_DRIVERLESS_EXTERNAL_URL || "").trim() || null
+      },
       health,
       authProfiles: authFileLocations(),
       login: status

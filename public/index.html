@@ -112,6 +112,11 @@
     <span id="jobsBadge" class="jobs-badge" hidden>0</span>
   </button>
   </div>
+    <div class="main-tabs" id="mainTabs" style="display:flex;gap:8px;margin:10px 0 4px;flex-wrap:wrap;">
+      <button type="button" class="btn-outline main-tab" data-tab="convert" id="tabBtnConvert">📥 转换 / 上传</button>
+      <button type="button" class="btn-outline main-tab" data-tab="media" id="tabBtnMedia">📺 媒体下载（B站 / QQ音乐 / 网易云）</button>
+    </div>
+    <div id="tab-pane-convert" class="tab-pane">
     <div class="card-grid">
       <div class="card">
       <h2 data-i18n="section.file">📁 Upload File</h2>
@@ -347,6 +352,89 @@
           </div>
         </div>
       </div>
+
+    </div><!-- /tab-pane-convert -->
+
+    <div id="tab-pane-media" class="tab-pane" style="display:none;">
+
+    <div class="card">
+      <h2>🔐 平台登录状态</h2>
+      <small class="comment">下载 / 搜索 Bilibili 前需要先在内置浏览器完成登录；QQ音乐、网易云搜索无需登录。</small>
+      <div id="mediaPlatforms" class="media-platforms" style="display:flex;flex-direction:column;gap:10px;margin-top:10px;"></div>
+      <button type="button" class="btn-outline" id="mediaRefreshLoginBtn" style="margin-top:10px;">🔄 刷新登录状态</button>
+    </div>
+
+    <div class="card-grid">
+      <div class="card">
+        <h2>📺 Bilibili 链接解析</h2>
+        <div class="form-group">
+          <label for="biliModeSelect">解析模式</label>
+          <select id="biliModeSelect" class="form-control">
+            <option value="auto">自动判断（单视频 / 合集）</option>
+            <option value="single">单视频（仅当前分P）</option>
+            <option value="list">合集 / 列表（展开所有分P）</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="biliUrlInput">视频 / 合集链接</label>
+          <input type="text" id="biliUrlInput" class="form-control" placeholder="https://www.bilibili.com/video/BV...">
+        </div>
+        <div class="btn-row">
+          <button type="button" id="biliResolveBtn" class="btn">🔗 解析</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>🔍 平台搜索</h2>
+        <div class="form-group">
+          <span class="form-label">搜索平台</span>
+          <div class="checkbox-group" style="display:flex;gap:14px;flex-wrap:wrap;">
+            <label style="display:flex;align-items:center;gap:6px;"><input type="checkbox" class="media-search-platform" value="bilibili" checked> Bilibili</label>
+            <label style="display:flex;align-items:center;gap:6px;"><input type="checkbox" class="media-search-platform" value="qqmusic" checked> QQ音乐</label>
+            <label style="display:flex;align-items:center;gap:6px;"><input type="checkbox" class="media-search-platform" value="netease" checked> 网易云</label>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="mediaSearchInput">关键词</label>
+          <input type="text" id="mediaSearchInput" class="form-control" placeholder="歌曲 / 歌手 / 视频名">
+        </div>
+        <div class="btn-row">
+          <button type="button" id="mediaSearchBtn" class="btn">🔍 搜索</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>⚙️ 输出设置</h2>
+        <div class="form-group">
+          <label for="mediaFormatSelect">格式</label>
+          <select id="mediaFormatSelect" class="form-control"></select>
+        </div>
+        <div class="form-group" id="mediaBitrateGroup">
+          <label for="mediaBitrateSelect">码率</label>
+          <select id="mediaBitrateSelect" class="form-control"></select>
+        </div>
+        <small class="comment">选择 ORIGINAL = 保留原始音频，不做转换。</small>
+      </div>
+    </div>
+
+    <div class="card collapsible-section" id="mediaResultsCard" style="display:none;">
+      <div class="collapsible-header" id="mediaResultsHeader">
+        <h2 id="mediaResultsTitle">📋 结果列表</h2>
+        <span class="toggle-arrow">▼</span>
+      </div>
+      <div class="collapsible-content" id="mediaResultsContent">
+        <div class="collapsible-inner">
+          <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:10px;">
+            <label style="display:flex;align-items:center;gap:6px;"><input type="checkbox" id="mediaSelectAll"> 全选</label>
+            <span id="mediaResultsMeta" class="comment"></span>
+            <button type="button" id="mediaDownloadBtn" class="btn">⬇️ 下载选中</button>
+          </div>
+          <div id="mediaResultsList" style="display:flex;flex-direction:column;gap:6px;max-height:420px;overflow:auto;"></div>
+        </div>
+      </div>
+    </div>
+
+    </div><!-- /tab-pane-media -->
 
     <div class="card collapsible-section" id="spotifyPreviewCard" style="display: none;">
       <div class="collapsible-header" id="spotifyPreviewHeader">

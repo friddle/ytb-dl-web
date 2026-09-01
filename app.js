@@ -21,6 +21,7 @@ import { assertSafeRemoteUrl, createTrustedProxyPredicate, decryptSecret } from 
 import { rateLimit } from './modules/rateLimit.js'
 import discRouter from './routes/disc.js'
 import chromeBrowserRouter from './routes/chromeBrowser.js'
+import mediaRoute from './routes/media.js'
 import { getOwnershipTarget, queueOwnershipFix } from './modules/fsOwnership.js'
 import {
   FFMPEG_BIN,
@@ -476,6 +477,7 @@ app.use(trackExtractorRoute)
 app.use(retagRoute)
 app.use(discRouter)
 app.use(chromeBrowserRouter)
+app.use(mediaRoute)
 app.use(downloadRoute)
 app.use('/api', settingsRoute)
 

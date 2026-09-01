@@ -1384,6 +1384,20 @@ function computeWidthForScaling({ scaleMode, targetWidth, srcW }) {
   let effectiveHwMode = "off";
   let result;
 
+  // “不转换”模式:保留下载的原始音频文件,跳过 ffmpeg 与歌词/封面处理。
+  if (String(format).toLowerCase() === "original" && !ringtone && !isVideo) {
+    const srcExt = (path.extname(inputPath) || "").replace(".", "").toLowerCase() || "m4a";
+    const built = buildUniqueOut(basename, srcExt);
+    fs.copyFileSync(inputPath, built.outPath);
+    try { await ensureOwnership(built.outPath); } catch {}
+    console.log(`📦 Original passthrough → ${sanitizeLogValue(path.basename(built.outPath))}`);
+    return {
+      outputPath: toResultDownloadPath(built.outPath),
+      fileSize: fs.statSync(built.outPath).size,
+      ringtone: null
+    };
+  }
+
   try {
     result = await new Promise((resolve, reject) => {
     (async () => {

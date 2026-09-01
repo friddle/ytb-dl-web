@@ -1,0 +1,25 @@
+# Incremental rebuild on top of the local ytb-dl-web:all-in-one base.
+# Only replaces the app code and the chrome-driverless submodule (freshly pulled).
+FROM ytb-dl-web:all-in-one
+
+ARG HTTP_PROXY=
+ARG HTTPS_PROXY=
+
+WORKDIR /usr/src/app
+
+# New chrome-driverless (submodule updated to 3f552c3: +websockets, bigger main.py)
+RUN rm -rf /opt/chrome-driverless
+COPY chrome-driverless /opt/chrome-driverless
+RUN pip install --no-cache-dir ${HTTP_PROXY:+--proxy ${HTTP_PROXY}} -r /opt/chrome-driverless/requirements.txt
+
+# Refreshed Gharmonize app code (includes chromeDriverless.js cookies fix)
+COPY app.js bootstrap.mjs config.js package.json package-lock.json ./
+COPY routes/ ./routes/
+COPY modules/ ./modules/
+COPY public/ ./public/
+
+ENV NODE_ENV=production PORT=5174 GHARMONIZE_HOST=0.0.0.0 \
+    CHROME_DRIVERLESS_URL=http://127.0.0.1:9223 \
+    PROFILE_NAME=default
+
+EXPOSE 5174 9222 9223
