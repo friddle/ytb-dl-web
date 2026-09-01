@@ -3,6 +3,7 @@ import fs from "fs";
 import { spawnSafe } from "./safeProcess.js";
 import { createHash } from "crypto";
 import { registerJobProcess } from "./store.js";
+import { proxyFetch } from "./proxyFetch.js";
 import { getCache, setCache, mergeCacheEntries, PREVIEW_MAX_ENTRIES } from "./cache.js";
 import { findOnPATH, isExecutable, toNFC, addCookieArgs, getJsRuntimeArgs, parseIdFromPath } from "./utils.js";
 import { getYouTubeHeaders, getUserAgent, addGeoArgs, getExtraArgs, getLocaleConfig, FLAGS } from "./config.js";
@@ -1077,7 +1078,7 @@ async function searchYouTubeMusicContent(query, { limit = 12, type = "", lang = 
     }
 
     // Parsed cookie-file values are domain-scoped, sanitized, and sent only to the fixed YTM_ORIGIN.
-    const response = await fetch(`${YTM_ORIGIN}/youtubei/v1/search?prettyPrint=false`, {
+    const response = await proxyFetch(`${YTM_ORIGIN}/youtubei/v1/search?prettyPrint=false`, {
       method: "POST",
       headers,
       signal: controller.signal,
@@ -1662,7 +1663,7 @@ async function fetchYouTubeMusicBrowseDiscover({ browseId, params = "", limit, t
     let response;
     try {
       // Parsed cookie-file values are domain-scoped, sanitized, and sent only to the fixed YTM_ORIGIN.
-      response = await fetch(`${YTM_ORIGIN}/youtubei/v1/browse?prettyPrint=false`, {
+      response = await proxyFetch(`${YTM_ORIGIN}/youtubei/v1/browse?prettyPrint=false`, {
         method: "POST",
         headers,
         signal: controller.signal,
@@ -3011,7 +3012,10 @@ function hasUsableCookieSource() {
   if (cookieFile) {
     try {
       if (fs.existsSync(cookieFile) && fs.statSync(cookieFile).size > 0) {
-        return true;
+        // A cookie file holding only third-party cookies (e.g. bilibili) does
+        // not help YouTube personalization; require YouTube/Google domains.
+        const text = fs.readFileSync(cookieFile, "utf8");
+        return /^[.\w-]*(youtube|google)\.com\t/im.test(text);
       }
     } catch {}
   }
@@ -3459,7 +3463,7 @@ async function fetchYtmBootstrapConfig(cookieHeader, timeoutMs = 6000) {
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
   try {
     // Parsed cookie-file values are domain-scoped, sanitized, and sent only to the fixed YTM_ORIGIN.
-    const response = await fetch(`${YTM_ORIGIN}/`, {
+    const response = await proxyFetch(`${YTM_ORIGIN}/`, {
       headers: {
         "Accept": "text/html,application/xhtml+xml",
         "Accept-Language": DEFAULT_HEADERS["Accept-Language"],
@@ -4110,7 +4114,7 @@ async function fetchYouTubeMusicHomeInnertube({ maxShelves, limitPerShelf, timeo
     let response;
     try {
       // Parsed cookie-file values are domain-scoped, sanitized, and sent only to the fixed YTM_ORIGIN.
-      response = await fetch(`${YTM_ORIGIN}/youtubei/v1/browse?prettyPrint=false`, {
+      response = await proxyFetch(`${YTM_ORIGIN}/youtubei/v1/browse?prettyPrint=false`, {
         method: "POST",
         headers,
         signal: controller.signal,
@@ -4226,8 +4230,10 @@ async function getFallbackYouTubeMusicHomeShelves({ maxShelves, fetchShelves, li
     "commute"
   ];
 
-  for (const preset of presetOrder) {
-    if (mergedShelves.length >= targetShelves) break;
+  // Fetch mood presets in parallel — the serial loop could take up to
+  // 10 x per-preset timeout on flaky networks.
+  const pendingPresets = presetOrder.slice(0, Math.max(targetShelves * 2, 4));
+  const presetResults = await Promise.all(pendingPresets.map(async (preset) => {
     try {
       const items = await getDiscoverItemsForPreset({
         preset,
@@ -4236,24 +4242,29 @@ async function getFallbackYouTubeMusicHomeShelves({ maxShelves, fetchShelves, li
         region: safeRegion,
         timeoutMs: Math.min(timeoutMs || 12000, 10000)
       });
-      const shelfItems = uniqueMusicHomeItems(items, perShelf);
-      if (!shelfItems.length) continue;
-
-      shelfGroups.push([{
-        title: getDiscoverMoodDisplayTitle(preset, safeLang),
-        source: "youtube_music_home_fallback",
-        items: shelfItems
-      }]);
-      mergedShelves = mergeMusicHomeShelves(shelfGroups, {
-        maxShelves: browseShelves,
-        limitPerShelf: perShelf
-      });
+      return { preset, items: uniqueMusicHomeItems(items, perShelf) };
     } catch (error) {
       discoverDebug("home-fallback:preset-error", {
         preset,
         error: error?.message || String(error)
       });
+      return { preset, items: [] };
     }
+  }));
+
+  for (const { preset, items: shelfItems } of presetResults) {
+    if (mergedShelves.length >= targetShelves) break;
+    if (!shelfItems.length) continue;
+
+    shelfGroups.push([{
+      title: getDiscoverMoodDisplayTitle(preset, safeLang),
+      source: "youtube_music_home_fallback",
+      items: shelfItems
+    }]);
+    mergedShelves = mergeMusicHomeShelves(shelfGroups, {
+      maxShelves: browseShelves,
+      limitPerShelf: perShelf
+    });
   }
 
   return {
