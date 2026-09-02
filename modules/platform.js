@@ -442,10 +442,21 @@ export async function resolveQqMusicStreamUrl(inputUrl) {
           req: { module: "vkey.GetVkeyServerBase", method: "CgiGetVkey", param: {
             guid: String(Math.floor(Math.random() * 10000000000)), songmid: [${JSON.stringify(songMid)}],
             songtype: [0], uin: String(uin || 0), loginflag: 1, platform: "20",
-            filename: ["C400${songMid}.mp3", "M500${songMid}.mp3", "M800${songMid}.mp3"] } } })
+            filename: ["C400${songMid}.mp3", "M500${songMid}.mp3", "M800${songMid}.mp3", "F000${songMid}.flac"] } } })
       }).then((r) => r.json()).catch(() => null);
       const info = vkey && vkey.req && vkey.req.data ? vkey.req.data : {};
-      const mid = (info.midurlinfo && info.midurlinfo[0]) || {};
+      // CgiGetVkey returns one entry per requested filename. VIP-only songs
+      // leave the plain-mp3 tiers EMPTY and only issue the F000 flac link to
+      // paid accounts — picking entry [0] blindly breaks them. Prefer the
+      // highest tier that actually has a URL.
+      const order = ["F000", "M800", "M500", "C400"];
+      const entries = (info.midurlinfo || []).filter((m) => m && m.purl);
+      entries.sort((a, b) => {
+        const pa = String(a.filename || "").slice(0, 4);
+        const pb = String(b.filename || "").slice(0, 4);
+        return order.indexOf(pa) - order.indexOf(pb);
+      });
+      const mid = entries[0] || {};
       const purl = mid.purl || "";
       return { purl: purl.startsWith("//") ? "https:" + purl : purl };
     } catch (e) { return { error: String(e).slice(0, 160) }; }
@@ -486,7 +497,12 @@ async function downloadQqMusicViaBrowser(inputUrl, jobId, tempDir, progressCallb
             filename: ["C400${songMid}.mp3", "M500${songMid}.mp3", "M800${songMid}.mp3", "F000${songMid}.flac"] } } })
       }).then((r) => r.json()).catch(() => null);
       const info = vkey && vkey.req && vkey.req.data ? vkey.req.data : {};
-      const mid = (info.midurlinfo && info.midurlinfo[0]) || {};
+      // Best available tier wins: paid accounts get F000 flac (VIP songs have
+      // EMPTY purls on the mp3 tiers), free accounts fall back to C400/M500.
+      const order = ["F000", "M800", "M500", "C400"];
+      const entries = (info.midurlinfo || []).filter((m) => m && m.purl);
+      entries.sort((a, b) => order.indexOf(String(a.filename || "").slice(0, 4)) - order.indexOf(String(b.filename || "").slice(0, 4)));
+      const mid = entries[0] || {};
       const purl = mid.purl || "";
       const singers = (track.singer || []).map((s) => s.name).join(" / ");
       return {

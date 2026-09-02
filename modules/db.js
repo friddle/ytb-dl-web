@@ -9,7 +9,7 @@
 // local dev and on the NAS (DATA_DIR=/data → /data/db/gharmonize.db).
 import fs from "fs";
 import path from "path";
-import Database from "./sqlite.js";
+import Database from "better-sqlite3";
 
 const BASE_DIR = process.env.DATA_DIR || process.cwd();
 const DB_DIR = process.env.GHARMONIZE_DB_DIR || path.join(BASE_DIR, "db");
@@ -139,6 +139,20 @@ function safe(fn, fallback = null) {
   }
 }
 
+// Coerces a bind value into something SQLite accepts (better-sqlite3 rejects
+// booleans, objects, Dates and undefined — coerce instead of throwing).
+function bindable(v) {
+  if (v === undefined || v === null) return null;
+  const t = typeof v;
+  if (t === "boolean") return v ? 1 : 0;
+  if (t === "number") return Number.isFinite(v) ? v : null;
+  if (t === "bigint") return v;
+  if (t === "string") return v;
+  if (v instanceof Date) return v.toISOString();
+  if (Buffer.isBuffer(v)) return v;
+  try { return JSON.stringify(v); } catch { return String(v); }
+}
+
 // ---------------------------------------------------------------------------
 // jobs
 // ---------------------------------------------------------------------------
@@ -147,21 +161,7 @@ export function upsertJob(job) {
   if (!job?.id) return;
   const now = nowIso();
   safe(() => {
-    getDb().prepare(`
-      INSERT INTO jobs (id, url, platform, media_kind, title, artist, album,
-        format, bitrate, sample_rate, status, progress, current_phase, error,
-        result_path, result_size_bytes, is_playlist, selected_indices,
-        client_batch, batch_total, meta_json, created_at, updated_at, finished_at)
-      VALUES (@id, @url, @platform, @media_kind, @title, @artist, @album,
-        @format, @bitrate, @sample_rate, @status, @progress, @current_phase, @error,
-        @result_path, @result_size_bytes, @is_playlist, @selected_indices,
-        @client_batch, @batch_total, @meta_json, @created_at, @updated_at, @finished_at)
-      ON CONFLICT(id) DO UPDATE SET
-        status=excluded.status, progress=excluded.progress,
-        current_phase=excluded.current_phase, error=excluded.error,
-        result_path=excluded.result_path, result_size_bytes=excluded.result_size_bytes,
-        updated_at=excluded.updated_at, finished_at=excluded.finished_at
-    `).run({
+    const p = Object.fromEntries(Object.entries({
       url: job.url || null,
       platform: job.platform || null,
       media_kind: job.mediaKind || (job.isPlaylist ? "playlist" : "song"),
@@ -186,7 +186,22 @@ export function upsertJob(job) {
       updated_at: now,
       finished_at: ["completed", "error", "canceled"].includes(job.status) ? (job.finishedAt || now) : null,
       id: job.id
-    });
+    }).map(([k, v]) => [k, bindable(v)]));
+    getDb().prepare(`
+      INSERT INTO jobs (id, url, platform, media_kind, title, artist, album,
+        format, bitrate, sample_rate, status, progress, current_phase, error,
+        result_path, result_size_bytes, is_playlist, selected_indices,
+        client_batch, batch_total, meta_json, created_at, updated_at, finished_at)
+      VALUES (@id, @url, @platform, @media_kind, @title, @artist, @album,
+        @format, @bitrate, @sample_rate, @status, @progress, @current_phase, @error,
+        @result_path, @result_size_bytes, @is_playlist, @selected_indices,
+        @client_batch, @batch_total, @meta_json, @created_at, @updated_at, @finished_at)
+      ON CONFLICT(id) DO UPDATE SET
+        status=excluded.status, progress=excluded.progress,
+        current_phase=excluded.current_phase, error=excluded.error,
+        result_path=excluded.result_path, result_size_bytes=excluded.result_size_bytes,
+        updated_at=excluded.updated_at, finished_at=excluded.finished_at
+    `).run(p);
   });
 }
 
@@ -197,15 +212,7 @@ export function upsertJob(job) {
 export function insertMusicFile(entry) {
   if (!entry?.filePath) return;
   safe(() => {
-    getDb().prepare(`
-      INSERT INTO music_files (job_id, title, artist, album, platform, source_url,
-        file_path, file_format, size_bytes, duration_sec, meta_json, created_at)
-      VALUES (@job_id, @title, @artist, @album, @platform, @source_url,
-        @file_path, @file_format, @size_bytes, @duration_sec, @meta_json, @created_at)
-      ON CONFLICT(file_path) DO UPDATE SET
-        title=excluded.title, artist=excluded.artist, album=excluded.album,
-        size_bytes=excluded.size_bytes, meta_json=excluded.meta_json
-    `).run({
+    const p = Object.fromEntries(Object.entries({
       job_id: entry.jobId || null,
       title: entry.title || null,
       artist: entry.artist || null,
@@ -218,7 +225,16 @@ export function insertMusicFile(entry) {
       duration_sec: entry.durationSec ?? null,
       meta_json: entry.meta ? JSON.stringify(entry.meta).slice(0, 8000) : null,
       created_at: nowIso()
-    });
+    }).map(([k, v]) => [k, bindable(v)]));
+    getDb().prepare(`
+      INSERT INTO music_files (job_id, title, artist, album, platform, source_url,
+        file_path, file_format, size_bytes, duration_sec, meta_json, created_at)
+      VALUES (@job_id, @title, @artist, @album, @platform, @source_url,
+        @file_path, @file_format, @size_bytes, @duration_sec, @meta_json, @created_at)
+      ON CONFLICT(file_path) DO UPDATE SET
+        title=excluded.title, artist=excluded.artist, album=excluded.album,
+        size_bytes=excluded.size_bytes, meta_json=excluded.meta_json
+    `).run(p);
   });
 }
 
@@ -249,7 +265,7 @@ export function recordSearch({ keyword, platform, searchType, items = [] }) {
       `);
       const tx = getDb().transaction((rows) => {
         for (const it of rows) {
-          ins.run({
+          ins.run(Object.fromEntries(Object.entries({
             search_id: searchId,
             platform: it.platform || platform || null,
             ext_id: it.id ? String(it.id) : null,
@@ -264,7 +280,7 @@ export function recordSearch({ keyword, platform, searchType, items = [] }) {
             cover_url: it.cover || null,
             page_url: it.url || null,
             raw_json: safe(() => JSON.stringify(it).slice(0, 4000), null)
-          });
+          }).map(([k, v]) => [k, bindable(v)])));
         }
       });
       tx(items.slice(0, 60));
@@ -293,7 +309,7 @@ export function upsertPlatformStatus(platform, info) {
         logged_in=excluded.logged_in, vip=excluded.vip, vip_label=excluded.vip_label,
         uname=excluded.uname, source=excluded.source, detail_json=excluded.detail_json,
         checked_at=excluded.checked_at
-    `).run({
+    `).run(Object.fromEntries(Object.entries({
       platform,
       logged_in: info?.loggedIn ? 1 : 0,
       vip: info?.vip ? 1 : 0,
@@ -302,7 +318,7 @@ export function upsertPlatformStatus(platform, info) {
       source: info?.source || null,
       detail_json: safe(() => JSON.stringify(info).slice(0, 2000), null),
       checked_at: nowIso()
-    });
+    }).map(([k, v]) => [k, bindable(v)])));
   });
 }
 
@@ -329,6 +345,36 @@ export function getStats() {
   }, {});
 }
 
+// Called once at boot: every non-terminal row left over from a previous
+// process is dead (the in-memory queue is gone) — mark it so the UI shows a
+// real failure reason instead of a frozen fake progress.
+export function markInterruptedJobs() {
+  return safe(() => getDb().prepare(`
+    UPDATE jobs SET status='error', error='service restarted while the job was running',
+      updated_at=?, finished_at=?
+    WHERE status IN ('queued','processing')
+  `).run(nowIso(), nowIso()).changes, 0);
+}
+
+// Recent jobs for UI queue restore after a page refresh.
+export function listRecentJobs({ limit = 120 } = {}) {
+  return safe(() => getDb().prepare(`
+    SELECT id, url, platform, media_kind, title, artist, album, format, bitrate,
+           status, progress, current_phase, error, is_playlist, created_at, updated_at
+    FROM jobs ORDER BY created_at DESC, id DESC LIMIT ?
+  `).all(Math.max(1, Math.min(300, Number(limit) || 120))), []);
+}
+
+// Clears the whole download history (jobs + produced-file index).
+export function clearAllJobs() {
+  return safe(() => {
+    const d = getDb();
+    d.prepare("DELETE FROM music_files").run();
+    const n = d.prepare("DELETE FROM jobs").run().changes;
+    return { cleared: n };
+  }, { cleared: 0 });
+}
+
 export default {
   getDb,
   upsertJob,
@@ -338,5 +384,8 @@ export default {
   listSearches,
   upsertPlatformStatus,
   getPlatformStatuses,
-  getStats
+  getStats,
+  markInterruptedJobs,
+  listRecentJobs,
+  clearAllJobs
 };

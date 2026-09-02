@@ -390,16 +390,28 @@ export function cleanupCompletedJobsWithoutOutputs() {
 
 loadPersistedJobs();
 
+// Boot hygiene: any non-terminal rows left in SQLite belong to jobs that died
+// with the previous process — mark them so the UI restores a truthful state.
+(async () => {
+  try {
+    const db = await import("./db.js");
+    const n = db.markInterruptedJobs();
+    if (n) console.log(`[store] marked ${n} interrupted job(s) from previous run as error`);
+  } catch { /* DB not critical for boot */ }
+})();
+
 // Durable SQLite sync: mirrors every in-memory job (any status) into the jobs
 // table on the same 5s cadence as the JSON snapshot. Best-effort — a DB
-// problem must never affect downloads.
+// problem must never affect downloads. Rows are written in one transaction
+// (single fsync per tick, cheap even for hundreds of queued jobs).
 let dbSync = null;
 async function syncJobsToDb() {
   try {
     if (!dbSync) dbSync = await import("./db.js");
-    const { upsertJob, insertMusicFile } = dbSync;
+    const { upsertJob, insertMusicFile, getDb } = dbSync;
+    const rows = [];
     for (const job of jobs.values()) {
-      upsertJob({
+      rows.push({
         id: job.id,
         url: job.url || null,
         platform: job.metadata?.platform || job.mediaPlatform || null,
@@ -423,19 +435,26 @@ async function syncJobsToDb() {
         meta: job.metadata,
         createdAt: job.createdAt instanceof Date ? job.createdAt.toISOString() : job.createdAt
       });
-      if (job.status === "completed" && job.resultPath) {
-        insertMusicFile({
-          jobId: job.id,
-          title: job.title || job.metadata?.frozenTitle || null,
-          artist: job.artist || null,
-          platform: job.metadata?.platform || job.mediaPlatform || null,
-          sourceUrl: job.url || null,
-          filePath: job.resultPath,
-          sizeBytes: job.resultSizeBytes,
-          meta: { format: job.format, bitrate: job.bitrate }
-        });
-      }
     }
+    if (!rows.length) return;
+    getDb().transaction(() => {
+      for (const r of rows) {
+        upsertJob(r);
+        if (r.status === "completed" && r.resultPath) {
+          insertMusicFile({
+            jobId: r.id,
+            title: r.title,
+            artist: r.artist,
+            album: r.album,
+            platform: r.platform,
+            sourceUrl: r.url,
+            filePath: r.resultPath,
+            sizeBytes: r.resultSizeBytes,
+            meta: { format: r.format, bitrate: r.bitrate }
+          });
+        }
+      }
+    })();
   } catch (e) {
     console.warn("[store] sqlite sync skipped:", e?.message || e);
   }

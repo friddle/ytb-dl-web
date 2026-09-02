@@ -1,4 +1,5 @@
-FROM node:22-bookworm-slim AS base
+# syntax=docker/dockerfile:1
+FROM node:22-bookworm AS base
 
 WORKDIR /usr/src/app
 
@@ -9,7 +10,6 @@ RUN set -eux; \
     apt-get install -y --no-install-recommends \
         ca-certificates \
         tzdata \
-        curl \
         ffmpeg \
         intel-media-va-driver \
         libva-drm2 \
@@ -30,6 +30,10 @@ RUN set -eux; \
     else \
       npm install --omit=dev; \
     fi; \
+    # ignore-scripts skips lifecycle scripts, so better-sqlite3's native
+    # prebuild is never fetched; rebuild that one package with scripts on.
+    npm rebuild better-sqlite3 --ignore-scripts=false; \
+    node -e "require('better-sqlite3'); console.log('better-sqlite3 native binding OK')"; \
     rm -rf /root/.npm
 
 COPY . .

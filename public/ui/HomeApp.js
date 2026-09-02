@@ -34,10 +34,47 @@ export class HomeApp {
     this.cacheElements();
     this.bindStatic();
     this.loadConfig();
+    this.hydrateQueueFromDb();
     document.addEventListener('i18n:applied', () => this.rerender());
     // Hash routing: deep-linkable tabs + back/forward support.
     window.addEventListener('hashchange', () => this.applyRoute());
     this.applyRoute();
+  }
+
+  // Restores the download queue after a page refresh: the SQLite jobs table
+  // keeps every task's status/progress/error. In-memory rows (fresh submits
+  // from this session) always win over their stale DB twins.
+  async hydrateQueueFromDb() {
+    try {
+      const r = await fetch('/api/media/jobs-recent?limit=120');
+      const d = await r.json();
+      const rows = Array.isArray(d?.jobs) ? d.jobs : [];
+      if (!rows.length) return;
+      const known = new Set((this.queueRows || []).map((x) => x.jobId || x.id));
+      const restored = rows
+        .filter((j) => !known.has(j.id))
+        .reverse() // oldest first so the list reads in submit order
+        .map((j) => ({
+          jobId: j.id,
+          url: j.url || '',
+          platform: j.platform || '',
+          title: j.title || '',
+          artist: j.artist || '',
+          album: j.album || '',
+          status: j.status === 'processing' ? 'processing' : (j.status || 'queued'),
+          progress: Number(j.progress) || 0,
+          currentPhase: j.current_phase || null,
+          error: j.error || null,
+          fromDb: true
+        }));
+      if (!restored.length) return;
+      this.queueRows = [...restored, ...(this.queueRows || [])];
+      this.renderQueue();
+      if (this.downloadQueueEl) this.downloadQueueEl.style.display = '';
+      if (restored.some((x) => !['completed', 'error', 'canceled', 'missing'].includes(x.status))) {
+        this.pollQueueStatuses();
+      }
+    } catch { /* transient */ }
   }
 
   cacheElements() {
