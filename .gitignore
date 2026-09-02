@@ -2,7 +2,6 @@
 .env
 .env.*
 !.env.default
-!env(example)
 *.pem
 *.key
 *.p12
@@ -34,3 +33,4 @@ build/bin/*
 Thumbs.db
 .vscode/
 .idea/
+.playwright-mcp/
