@@ -389,8 +389,11 @@ export class HomeApp {
     const checked = [...(this.resultsList?.querySelectorAll('.media-item-check:checked') || [])];
     if (!checked.length) { this.notify(this.tt('home.selectRequired', '请先勾选要下载的条目'), 'error'); return; }
     const convert = !!this.convertCheckbox?.checked;
-    const format = convert ? (this.formatSelect?.value || 'mp3') : 'original';
-    const bitrate = convert ? (this.bitrateSelect?.value || '320k') : 'auto';
+    const override = this.dlFormatOverrideSelect?.value || 'default';
+    const format = override === 'default' ? (convert ? (this.formatSelect?.value || 'mp3') : 'original')
+      : override === 'original' ? 'original'
+      : override;
+    const bitrate = format === 'original' ? 'auto' : (this.bitrateSelect?.value || '320k');
     const rawSubdir = String(this.dlSubdirInput?.value || '').trim().replace(/^\/+|\/+$/g, '');
     const selected = checked.map((c) => this.results[Number(c.dataset.idx)]).filter(Boolean);
 
@@ -455,6 +458,8 @@ export class HomeApp {
             isPlaylist: false,
             sampleRate: 48000,
             autoCreateZip: false,
+            title: row.title || '',
+            artist: row.artist || '',
             ...(rawSubdir ? { outputSubdir: rawSubdir } : {})
           })
         });
@@ -544,6 +549,8 @@ export class HomeApp {
             isPlaylist: false,
             sampleRate: 48000,
             autoCreateZip: false,
+            title: row.title || '',
+            artist: row.artist || '',
             ...(rawSubdir ? { outputSubdir: rawSubdir } : {})
           })
         });

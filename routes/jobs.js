@@ -1596,6 +1596,15 @@ router.post("/api/jobs", rateLimit(60, 60_000), upload.single("file"), async (re
       metadata.originalUrl = url;
       metadata.isPlaylist = false;
       metadata.isAutomix = false;
+      // Caller-provided display metadata (from search results) drives output
+      // naming so files land as "Song Name.mp3" instead of platform ids.
+      const jobTitle = String(body.title || "").trim();
+      if (jobTitle) {
+        metadata.title = jobTitle;
+        metadata.frozenTitle = jobTitle;
+      }
+      const jobArtist = String(body.artist || "").trim();
+      if (jobArtist) metadata.artist = jobArtist;
     }
 
     else if (isDirectMediaUrl(url)) {
