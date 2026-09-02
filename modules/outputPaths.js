@@ -7,7 +7,13 @@ import {
 } from "./ytMusicMetadata.js";
 
 const BASE_DIR = process.env.DATA_DIR || process.cwd();
-export const OUTPUT_ROOT_DIR = path.resolve(BASE_DIR, "outputs");
+// Must match where jobs actually write (routes/jobs.js OUTPUT_DIR honors
+// MEDIA_DOWNLOAD_DIR, e.g. /volume4/music on the NAS). Otherwise cleanup,
+// persistence and /download links resolve against the wrong root and every
+// finished job looks "missing".
+export const OUTPUT_ROOT_DIR = path.resolve(
+  String(process.env.MEDIA_DOWNLOAD_DIR || "").trim() || path.join(BASE_DIR, "outputs")
+);
 
 const SUPPORTED_LANGS = new Set(["en", "tr", "de", "fr"]);
 const LOCALE_BY_LANG = {
