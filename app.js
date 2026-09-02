@@ -576,6 +576,23 @@ server.on('error', (err) => {
   console.error('❌ [server] listen error:', err)
 })
 
+// Keep the yt-dlp cookie exports in sync with the embedded browser profile:
+// one export shortly after boot, then every 6 hours. Downloads read
+// /data/cookies/cookies.txt, so without this fresh logins stay invisible.
+import('./modules/chromeDriverless.js').then(({ exportCookiesTxt, isConfigured }) => {
+  const runCookieExport = () => {
+    try {
+      if (!isConfigured()) return
+      const result = exportCookiesTxt()
+      if (result?.exported) console.log(`🍪 [cookies] exported ${result.cookies} cookies → ${result.written.length} file(s)`)
+    } catch (err) {
+      console.warn('🍪 [cookies] export failed:', err?.message || err)
+    }
+  }
+  setTimeout(runCookieExport, 20_000)
+  setInterval(runCookieExport, 6 * 60 * 60 * 1000)
+}).catch(() => {})
+
 setImmediate(async () => {
   try {
     const binaryStatus = getDynamicBinariesStatus()

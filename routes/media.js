@@ -4,7 +4,7 @@ import fs from "fs";
 import path from "path";
 import { spawnSafe } from "../modules/safeProcess.js";
 import { rateLimit } from "../modules/rateLimit.js";
-import { loginStatus, isPlatformLoggedIn } from "../modules/chromeDriverless.js";
+import { loginStatus, isPlatformLoggedIn, exportCookiesTxt } from "../modules/chromeDriverless.js";
 import { getJob } from "../modules/store.js";
 import { YTDLP_BIN, getBinaryRuntimeEnv } from "../modules/binaries.js";
 import { getExtraArgs } from "../modules/config.js";
@@ -224,7 +224,8 @@ async function searchNetease(keyword, limit) {
     artist: (s.artists || []).map((a) => a.name).join(" / "),
     album: stripHtml(s.album?.name || s.albumname || ""),
     durationSec: Math.round((Number(s.duration) || 0) / 1000) || null,
-    url: `https://music.163.com/#/song?id=${s.id}`
+    // Plain path (no "/#/") — the hash part never reaches yt-dlp / the server.
+    url: `https://music.163.com/song?id=${s.id}`
   })).filter((it) => it.id && it.title);
 }
 
@@ -466,6 +467,9 @@ function livePlatformStatus({ refresh = false, platform = null } = {}) {
       }
     }
     liveStatusCache = { at: Date.now(), platforms: merged };
+    // Refresh the yt-dlp cookie exports alongside every status probe so fresh
+    // logins in the embedded browser are usable by downloads immediately.
+    try { exportCookiesTxt(); } catch { /* non-fatal */ }
     return merged;
   };
 
