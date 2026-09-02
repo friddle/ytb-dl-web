@@ -1,6 +1,6 @@
 services:
   web:
-    image: ytb-dl-web:0.0.1-alpha
+    image: ghcr.io/friddle/ytb-dl-web:main
     container_name: Gharmonize
     read_only: true
     tmpfs:
@@ -31,11 +31,10 @@ services:
       - OUTPUTS_DISPLAY_DIR=/opt/gharmonize/outputs
       - RETAG_ROOTS=/music
       # 中国平台下载代理（bilibili / 网易云 / QQ音乐），留空则直连
-            # TEMP proxy (proxy.internal) while proxy.internal is down — revert to .8 later.
-      - HTTP_PROXY=${HTTP_PROXY:-http://proxy.internal:7890}
-      - HTTPS_PROXY=${HTTPS_PROXY:-http://proxy.internal:7890}
-      - http_proxy=${HTTP_PROXY:-http://proxy.internal:7890}
-      - https_proxy=${HTTPS_PROXY:-http://proxy.internal:7890}
+      - HTTP_PROXY=${HTTP_PROXY:-http://127.0.0.1:7890}
+      - HTTPS_PROXY=${HTTPS_PROXY:-http://127.0.0.1:7890}
+      - http_proxy=${HTTP_PROXY:-http://127.0.0.1:7890}
+      - https_proxy=${HTTPS_PROXY:-http://127.0.0.1:7890}
       - NO_PROXY=${NO_PROXY:-127.0.0.1,localhost,chrome-driverless}
     ports:
       - "${PORT:-5174}:${PORT:-5174}"
