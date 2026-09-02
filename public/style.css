@@ -68,3 +68,12 @@
 .dq-reason{color:#f14c0c;font-size:11px;max-width:320px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .dq-bar{background:color-mix(in oklab,var(--border) 60%,transparent);border-radius:999px;display:inline-block;height:6px;overflow:hidden;width:110px}
 .dq-bar>span{background:var(--primary);border-radius:999px;display:block;height:100%;transition:width .4s ease}
+
+/* ===================== v2 redesign additions ===================== */
+.theme-icon-btn{align-items:center;background:color-mix(in oklab,var(--bg-elev) 92%,var(--bg-muted) 8%);border:1px solid var(--border);border-radius:999px;color:var(--text);cursor:pointer;display:inline-flex;flex:0 0 auto;font-size:15px;height:34px;justify-content:center;line-height:1;min-width:34px;padding:0;transition:border-color .15s ease,transform .15s ease}.theme-icon-btn:hover{border-color:color-mix(in oklab,var(--primary) 45%,var(--border));transform:translateY(-1px)}
+.view-head{align-items:center;display:flex;flex-wrap:wrap;gap:10px;justify-content:space-between;margin-bottom:6px}
+.view-head h2{margin:0}
+.view-hint-btn{min-height:30px;padding:3px 12px}
+.view-tools{background:color-mix(in oklab,var(--bg-elev) 94%,var(--primary-lighter) 6%);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text-muted);font-size:12px;margin-top:12px;padding:8px 12px}
+.log-box{background:color-mix(in oklab,#000 78%,var(--bg));border:1px solid var(--border);border-radius:var(--radius-sm);color:#d7e0ea;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:11.5px;height:min(60vh,560px);line-height:1.5;margin-top:10px;overflow:auto;padding:12px 14px;white-space:pre-wrap;word-break:break-all}
+.view-section{display:grid;gap:14px;margin:14px 0 0}

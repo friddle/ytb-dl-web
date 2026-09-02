@@ -426,14 +426,14 @@ function buildMediaRequestHeaders(platformName, inputUrl) {
 // browser's web player vkey CGI. WeChat-login cookies (wxuin + qm_keyst) are
 // accepted there, while yt-dlp's extractor only understands QQ-number logins.
 async function downloadQqMusicViaBrowser(inputUrl, jobId, tempDir, progressCallback, opts, ctrl) {
-  const { cdCall, cdEvaluate, cdEnsureOrigin, cdDownloadUrl } = await import("./cdBrowser.js");
+  const { cdEvaluate, cdDownloadUrl, withTaskTab } = await import("./cdBrowser.js");
   const songMidMatch = String(inputUrl || "").match(/songDetail\/([A-Za-z0-9]+)/) ||
     String(inputUrl || "").match(/song\/([A-Za-z0-9]+)\.html/);
   const songMid = songMidMatch ? songMidMatch[1] : null;
   if (!songMid) throw new Error("qqmusic: could not parse song id from URL");
 
-  await cdEnsureOrigin(/y\.qq\.com/, "https://y.qq.com/");
-
+  // vkey resolution runs in its own task tab; the resulting purl stays valid
+  // for the server-side download after the tab is closed.
   const expression = `(async () => {
     try {
       const uin = (document.cookie.match(/(?:^|;\\s*)wxuin=([^;]+)/) || document.cookie.match(/(?:^|;\\s*)uin=([^;]+)/) || [])[1] || "";
@@ -467,7 +467,11 @@ async function downloadQqMusicViaBrowser(inputUrl, jobId, tempDir, progressCallb
     } catch (e) { return { error: String(e).slice(0, 160) }; }
   })()`;
 
-  const info = await cdEvaluate(expression, 45_000);
+  const info = await withTaskTab("https://y.qq.com/", `gharmonize-qq-vkey-${songMid}`, async (index) => {
+    await new Promise((r) => setTimeout(r, 2_000)); // let the page settle so cookies are in place
+    return cdEvaluate(expression, 45_000, index);
+  });
+
   if (!info || info.error) throw new Error(`qqmusic vkey failed: ${(info && info.error) || "no data"}`);
   if (!info.purl) throw new Error("qqmusic: vkey returned no playable URL (song may need a higher VIP tier)");
   if (ctrl?.isCanceled?.()) throw new Error("canceled");

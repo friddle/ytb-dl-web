@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="google" content="notranslate" />
   <script src="/ui/theme-bootstrap.js"></script>
-
   <title>🎵 Gharmonize</title>
   <link rel="stylesheet" href="style.css" />
   <link rel="icon" type="image/x-icon" href="/src/favicon.ico">
@@ -34,43 +33,11 @@
         <p class="subtitle" data-i18n="app.subtitle">From link to audio, one click: Gharmonize.</p>
       </div>
 
-      <div class="theme-toggle" id="themeToggle">
-        <span class="theme-icon">🌙</span>
-        <div class="toggle-switch"></div>
-        <span class="theme-icon">☀️</span>
-      </div>
+      <button type="button" id="themeToggle" class="theme-icon-btn" data-i18n-title="btn.theme" title="Theme">🌙</button>
 
-      <div class="language-switcher">
-        <select id="langSelect" class="language-select" aria-label="Language">
-          <option value="en">English</option>
-          <option value="zh">中文</option>
-          <option value="tr">Türkçe</option>
-          <option value="es">Español</option>
-          <option value="de">Deutsch</option>
-          <option value="fr">Français</option>
-        </select>
-      </div>
+      <button type="button" id="langIconBtn" class="theme-icon-btn" data-i18n-title="btn.lang" title="Language">🌐</button>
 
-      <button
-        id="chromeBrowserOpenBtn"
-        class="btn-outline"
-        data-i18n-title="chromebrowser.buttonTitle"
-        title="内置浏览器"
-        aria-label="内置浏览器"
-        type="button"
-      >
-        🛩️
-      </button>
-
-      <button
-        id="jobsBell"
-        class="jobs-bell"
-        type="button"
-        hidden
-        data-i18n-title="jobsPanel.bellTitle"
-        title="Active jobs"
-        aria-label="Active jobs"
-      >
+      <button id="jobsBell" class="jobs-bell" type="button" hidden data-i18n-title="jobsPanel.bellTitle" title="Active jobs" aria-label="Active jobs">
         <span class="jobs-bell__ring">
           <span class="jobs-bell__icon" aria-hidden="true">🔔</span>
           <span class="jobs-bell__ping" aria-hidden="true"></span>
@@ -80,32 +47,45 @@
     </div>
 
     <!-- ============================================================ -->
-    <!-- Top tabs: 首页 / 设置                                          -->
+    <!-- Top navigation: 10 tabs                                     -->
     <!-- ============================================================ -->
     <nav class="top-tabs" id="topTabs" role="tablist">
       <button type="button" class="top-tab active" data-view="home" role="tab" aria-selected="true"><span data-i18n="home.tabHome">首页</span></button>
+      <button type="button" class="top-tab" data-view="search" role="tab" aria-selected="false"><span data-i18n="nav.search">搜索</span></button>
+      <button type="button" class="top-tab" data-view="parse" role="tab" aria-selected="false"><span data-i18n="nav.parse">解析</span></button>
+      <button type="button" class="top-tab" data-view="download" role="tab" aria-selected="false"><span data-i18n="nav.download">下载</span></button>
       <button type="button" class="top-tab" data-view="upload" role="tab" aria-selected="false"><span data-i18n="nav.upload">上传</span></button>
       <a class="top-tab" href="/ytlive.html" rel="noopener"><span data-i18n="nav.ytlive">YTLive</span></a>
       <button type="button" class="top-tab" data-view="disc" role="tab" aria-selected="false"><span data-i18n="nav.disc">Disc</span></button>
+      <button type="button" class="top-tab" data-view="browser" role="tab" aria-selected="false"><span data-i18n="nav.browser">浏览器</span></button>
       <button type="button" class="top-tab" data-view="settings" role="tab" aria-selected="false"><span data-i18n="home.tabSettings">设置</span></button>
+      <button type="button" class="top-tab" data-view="log" role="tab" aria-selected="false"><span data-i18n="nav.log">日志</span></button>
     </nav>
 
     <!-- ============================================================ -->
-    <!-- Home view: platform status + aggregated search                -->
+    <!-- HOME: platform status only                                   -->
     <!-- ============================================================ -->
     <main class="home-main" id="homeMain">
-
-      <!-- Module 1: 平台状态 -->
       <section class="card home-card" id="moduleStatus">
-        <h2 data-i18n="home.statusTitle">📱 平台状态</h2>
+        <div class="view-head">
+          <h2 data-i18n="home.statusTitle">📱 平台状态</h2>
+          <button type="button" class="btn-outline view-hint-btn" data-open-settings title="默认输出/浏览器在设置页调整">⚙️ <span data-i18n="home.goSettings">去设置调整</span></button>
+        </div>
         <small class="comment" data-i18n="home.statusHint">打开页面会自动检测一次登录状态；每个渠道可单独点击“检测”刷新登录与 VIP 状态（使用内置浏览器的真实登录态）。</small>
         <div class="plat-tabs" id="platTabs" role="tablist"></div>
         <div class="plat-panel" id="platPanel"></div>
       </section>
+    </main>
 
-      <!-- Module 2: 聚合搜索 -->
-      <section class="card home-card" id="moduleSearch">
-        <h2 data-i18n="home.searchTitle">🔎 聚合搜索</h2>
+    <!-- ============================================================ -->
+    <!-- SEARCH: aggregated search only                               -->
+    <!-- ============================================================ -->
+    <section id="searchView" class="view-section" hidden>
+      <section class="card home-card">
+        <div class="view-head">
+          <h2 data-i18n="home.searchTitle">🔎 聚合搜索</h2>
+          <button type="button" class="btn-outline view-hint-btn" data-open-settings title="输出设置/下载设置在设置页">⚙️ <span data-i18n="home.goSettingsSearch">输出设置在设置页</span></button>
+        </div>
         <div class="form-group">
           <span class="form-label" data-i18n="media.searchPlatform">搜索平台</span>
           <div class="checkbox-group" id="searchPlatforms" style="display:flex;gap:14px;flex-wrap:wrap;"></div>
@@ -122,16 +102,6 @@
           <button type="button" id="searchBtn" class="btn" data-i18n="media.search">🔍 搜索</button>
         </div>
 
-        <div class="home-dl-opts" id="dlOptsRow" style="display:none;">
-          <span class="form-label" data-i18n="home.subdirLabel">本次下载目录</span>
-          <div class="home-dl-subdir">
-            <code id="dlBasePath" data-i18n-title="home.dlRoot" title="根目录（在设置中修改）">/</code>
-            <span class="home-dl-sep">/</span>
-            <input type="text" id="dlSubdirInput" class="form-control" data-i18n-ph="home.subdirPlaceholder" placeholder="子目录（可留空）" autocomplete="off">
-          </div>
-          <button type="button" class="btn-outline" id="openDetailedSettingsBtn">⚙️ <span data-i18n="home.detailedSettings">详细设置</span></button>
-        </div>
-
         <div id="searchResultsWrap" style="display:none;">
           <div class="home-results-toolbar">
             <label style="display:flex;align-items:center;gap:6px;"><input type="checkbox" id="searchSelectAll"> <span data-i18n="home.selectAll">全选</span></label>
@@ -139,6 +109,63 @@
             <button type="button" id="downloadSelectedBtn" class="btn">⬇️ <span data-i18n="home.downloadSelected">下载选中</span></button>
           </div>
           <div id="searchResultsList" class="home-results-list"></div>
+        </div>
+      </section>
+    </section>
+
+    <!-- ============================================================ -->
+    <!-- PARSE: link / playlist expansion                              -->
+    <!-- ============================================================ -->
+    <section id="parseView" class="view-section" hidden>
+      <section class="card home-card">
+        <h2 data-i18n="media.resolveTitle">🔗 链接解析（各种平台 / 歌单）</h2>
+        <div class="form-group">
+          <label for="parseModeSelect" data-i18n="media.resolveMode">解析模式</label>
+          <select id="parseModeSelect" class="form-control">
+            <option value="auto" data-i18n="media.modeAuto">自动判断（单视频 / 合集）</option>
+            <option value="single" data-i18n="media.modeSingle">单视频（仅当前分P）</option>
+            <option value="list" data-i18n="media.modeList">合集 / 列表（展开所有分P）</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="parseUrlInput" data-i18n="media.linkLabel">视频 / 歌单链接</label>
+          <input type="text" id="parseUrlInput" class="form-control" data-i18n-ph="media.linkPlaceholder" placeholder="B站合集、网易云歌单、QQ歌单、YouTube等所有平台链接">
+        </div>
+        <div class="btn-row">
+          <button type="button" id="parseBtn" class="btn" data-i18n="media.resolve">🔗 解析</button>
+        </div>
+        <div id="parseResultsWrap" style="display:none;margin-top:12px;">
+          <div class="home-results-toolbar">
+            <span id="parseMeta" class="comment"></span>
+            <button type="button" id="parseDownloadBtn" class="btn">⬇️ <span data-i18n="home.downloadParsed">下载解析结果</span></button>
+          </div>
+          <div id="parseResultsList" class="home-results-list"></div>
+        </div>
+      </section>
+    </section>
+
+    <!-- ============================================================ -->
+    <!-- DOWNLOAD: tasks / progress / batch output overrides            -->
+    <!-- ============================================================ -->
+    <section id="downloadView" class="view-section" hidden>
+      <section class="card home-card">
+        <div class="view-head">
+          <h2 data-i18n="home.progressTitle">📥 下载任务</h2>
+          <button type="button" class="btn-outline view-hint-btn" data-open-settings title="默认输出设置在设置页">⚙️ <span data-i18n="home.goSettingsDl">默认输出设置在设置页</span></button>
+        </div>
+        <small class="comment" data-i18n="nav.downloadHint">每次下载可覆盖输出设置（格式 / 子目录）；默认值来自设置页。</small>
+
+        <div class="home-dl-opts">
+          <span class="form-label" data-i18n="nav.dlOverride">本次下载输出覆盖</span>
+          <select id="dlFormatOverrideSelect" class="form-control" style="max-width:150px;">
+            <option value="default" data-i18n="nav.dlOverrideDefault">跟随设置</option>
+            <option value="original" data-i18n="nav.dlOverrideOriginal">不转换（原样）</option>
+          </select>
+          <div class="home-dl-subdir">
+            <code id="dlBasePath" title="根目录（在设置中修改）">/</code>
+            <span class="home-dl-sep">/</span>
+            <input type="text" id="dlSubdirInput" class="form-control" data-i18n-ph="home.subdirPlaceholder" placeholder="子目录（可留空）" autocomplete="off">
+          </div>
         </div>
 
         <div id="downloadQueue" class="home-dl-queue" style="display:none;">
@@ -149,462 +176,214 @@
           </div>
           <div id="downloadQueueList" class="home-dl-queue__list"></div>
         </div>
+
+        <div class="view-tools" id="dlToolsLine" hidden>
+          <span class="comment" data-i18n="ui.binaryVersionsLabel">使用的工具</span>: <span id="dlToolsText">-</span>
+        </div>
       </section>
-    </main>
+    </section>
 
     <!-- ============================================================ -->
-    <!-- Upload / convert view (restored classic pane)                 -->
+    <!-- UPLOAD / convert (restored classic pane)                     -->
     <!-- ============================================================ -->
-    <section id="uploadView" class="tab-pane" hidden>
-          <span class="form-label" data-i18n="section.source">Source</span>
-          <div class="source-toggle">
-            <label>
-              <input type="radio" name="fileSourceType" value="upload" checked>
-              <span data-i18n="section.file">Upload File</span>
-            </label>
-            <label>
-              <input type="radio" name="fileSourceType" value="local">
-              <span data-i18n="section.serverfile">Server File</span>
-            </label>
-          </div>
-        </div>
-
-        <div id="uploadSourceGroup" class="form-group">
-          <input
-            type="file"
-            id="fileInput"
-            accept="audio/,video/"
-            multiple
-          />
-          <small class="muted" data-i18n="ui.multiUploadHint">
-            Use Ctrl / Shift to select multiple files.
-          </small>
-        </div>
-
-        <div id="localSourceGroup" class="form-group" style="display:none;">
-          <div style="display:flex; gap:8px; align-items:center; margin-bottom:8px;">
-            <span data-i18n="section.serverfile">Server Files</span>
-            <button type="button" id="refreshLocalFilesBtn" class="btn-secondary" title="Refresh">↻</button>
-          </div>
-
-          <div id="localFileCheckboxList" class="local-files-list">
-            <div class="local-files-empty" data-i18n="ui.noAuthLocalFiles">
-              Not logged in
+    <section id="uploadView" class="tab-pane view-section" hidden>
+      <div class="view-tools" id="uploadToolsLine" hidden>
+        <span class="comment" data-i18n="ui.binaryVersionsLabel">使用的工具</span>: <span id="uploadToolsText">-</span>
+      </div>
+      <div class="card-grid">
+        <div class="card">
+        <h2 data-i18n="section.file">📁 Upload File</h2>
+        <form id="fileForm" enctype="multipart/form-data">
+          <div class="form-group">
+            <span class="form-label" data-i18n="section.source">Source</span>
+            <div class="source-toggle">
+              <label>
+                <input type="radio" name="fileSourceType" value="upload" checked>
+                <span data-i18n="section.file">Upload File</span>
+              </label>
+              <label>
+                <input type="radio" name="fileSourceType" value="local">
+                <span data-i18n="section.serverfile">Server File</span>
+              </label>
             </div>
           </div>
-        </div>
-
-        <button type="submit" class="btn-primary" data-i18n="btn.upload">Convert</button>
-      </form>
-    </div>
-    <div class="card">
-        <h2 id="urlSectionTitle" data-i18n="section.url">🔗 Convert from URL</h2>
-        <small id="urlSectionComment" class="comment" data-i18n="ph.urlcomment"></small>
-        <form id="urlForm">
-          <div class="form-group" id="urlInputGroup">
-            <input type="url" id="urlInput" data-i18n-ph="ph.url" placeholder="YouTube URL or direct media link" required />
+          <div id="uploadSourceGroup" class="form-group">
+            <input type="file" id="fileInput" accept="audio/,video/" multiple />
+            <small class="muted" data-i18n="ui.multiUploadHint">Use Ctrl / Shift to select multiple files.</small>
           </div>
-
-          <div class="checkbox-group" id="playlistCheckboxContainer">
-            <input type="checkbox" id="playlistCheckbox" />
-            <label for="playlistCheckbox" data-i18n="label.playlist">This is a YouTube playlist</label>
+          <div id="localSourceGroup" class="form-group" style="display:none;">
+            <div style="display:flex; gap:8px; align-items:center; margin-bottom:8px;">
+              <span data-i18n="section.serverfile">Server Files</span>
+              <button type="button" id="refreshLocalFilesBtn" class="btn-secondary" title="Refresh">↻</button>
+            </div>
+            <div id="localFileCheckboxList" class="local-files-list">
+              <div class="local-files-empty" data-i18n="ui.noAuthLocalFiles">Not logged in</div>
+            </div>
           </div>
-
-          <div class="checkbox-group" id="autoZipCheckboxContainer" style="display:none;">
-            <input type="checkbox" id="autoZipCheckbox" />
-            <label for="autoZipCheckbox" data-i18n="ui.autoCreateZip">Automatically create a ZIP when the job finishes</label>
-          </div>
-
-          <div class="form-group" id="spotifyConcurrencyContainer" style="display:none;">
-            <label for="spotifyConcurrencyInput" data-i18n="label.spotifyConcurrency">
-              Max concurrent download/convert
-            </label>
-            <input
-              type="number"
-              id="spotifyConcurrencyInput"
-              min="1"
-              max="16"
-              step="1"
-              value="4"
-              style="max-width: 120px;"
-            />
-            <small class="muted" data-i18n="ui.spotifyConcurrencyHelp">
-              If enough matches are found, the maximum number of concurrent downloads and conversions. Higher values may increase CPU / disk usage.
-            </small>
-          </div>
-
-          <div class="form-group" id="youtubeConcurrencyContainer" style="display:none;">
-            <label for="youtubeConcurrencyInput" data-i18n="label.spotifyConcurrency">
-              Max concurrent download/convert
-            </label>
-            <input
-              type="number"
-              id="youtubeConcurrencyInput"
-              min="1"
-              max="16"
-              step="1"
-              value="4"
-              style="max-width: 120px;"
-            />
-            <small class="muted" data-i18n="ui.youtubeConcurrencyHelp">
-              Maximum concurrent downloads/conversions for playlist conversions.
-            </small>
-          </div>
-
-          <div class="checkbox-group" id="lyricsCheckboxContainer">
-            <input type="checkbox" id="lyricsCheckbox" />
-            <label for="lyricsCheckbox" data-i18n="label.includeLyrics">Include lyrics</label>
-          </div>
-          <div class="checkbox-group" id="embedLyricsCheckboxContainer">
-            <input type="checkbox" id="embedLyricsCheckbox" />
-            <label for="embedLyricsCheckbox" data-i18n="label.embedLyrics">Embed lyrics into track</label>
-          </div>
-
-          <div class="spotify-actions" id="urlSpotifyActions" style="display: none;">
-            <button id="startIntegratedBtn" class="btn-primary" data-i18n="btn.spotifyIntegrated">Match & Download</button>
-          </div>
-
-          <div class="btn-row" id="normalUrlActions">
-            <button type="submit" id="startConvertBtn" data-i18n="btn.start">
-              <span class="btn-spinner" style="display: none;"></span>
-              <span class="btn-text">Start conversion</span>
-            </button>
-            <button type="button" class="btn-outline" id="previewBtn" data-i18n="btn.preview" data-i18n-title="btn.preview" title="Preview playlist">Preview playlist</button>
-          </div>
+          <button type="submit" class="btn-primary" data-i18n="btn.upload">Convert</button>
         </form>
-      </div>
-
-      <div class="card">
-        <h2 data-i18n="section.output">⚙️ Output Settings</h2>
-        <div class="form-group" id="outputModeGroup">
-          <label for="outputModeSelect" data-i18n="label.outputMode">Output Type:</label>
-          <select id="outputModeSelect">
-            <option value="standard" data-i18n="option.output.normal">Standard file</option>
-            <option value="ringtone" data-i18n="option.output.ringtone">Phone ringtone</option>
-            <option value="retag" data-i18n="option.output.retag">Retag</option>
-          </select>
         </div>
-        <div id="retagSettingsContainer" class="retag-settings" style="display:none;">
-          <div class="form-group">
-            <label data-i18n="label.retagDirectory">Music directory:</label>
-            <button type="button" class="btn-outline" id="retagChooseDirectoryBtn">
-              📁 <span data-i18n="btn.retagChooseDirectory">Select directory</span>
-            </button>
-            <code id="retagSelectedDirectory" class="retag-selected-directory is-empty" data-i18n="ui.retagNoDirectory">No directory selected</code>
-          </div>
-          <small class="muted" data-i18n="ui.retagHint">Rewrites MP3, FLAC, and M4A tags and embedded covers in place without downloading music.</small>
-        </div>
-        <div id="ringtoneSettingsContainer" class="ringtone-settings" style="display:none;">
-          <div class="form-group">
-            <label for="ringtoneTargetSelect" data-i18n="label.ringtoneTarget">Device:</label>
-            <select id="ringtoneTargetSelect">
-              <option value="android" data-i18n="ringtone.target.android">Android</option>
-              <option value="iphone" data-i18n="ringtone.target.iphone">iPhone</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label for="ringtoneModeSelect" data-i18n="label.ringtoneMode">Segment Mode:</label>
-            <select id="ringtoneModeSelect">
-              <option value="auto" data-i18n="ringtone.mode.auto">Automatic best section</option>
-              <option value="manual" data-i18n="ringtone.mode.manual">Manual start point</option>
-            </select>
-          </div>
-          <div class="ringtone-grid">
-            <div class="form-group">
-              <label for="ringtoneDurationInput" data-i18n="label.ringtoneDuration">Duration (sec):</label>
-              <input type="number" id="ringtoneDurationInput" min="5" max="60" step="1" value="30" />
-            </div>
-            <div class="form-group">
-              <label for="ringtoneFadeInSelect" data-i18n="label.ringtoneFadeIn">Fade in:</label>
-              <select id="ringtoneFadeInSelect">
-                <option value="0.5" data-i18n="option.ringtoneFadeOut.0_5">0.5 sec</option>
-                <option value="1" data-i18n="option.ringtoneFadeOut.1_0">1 sec</option>
-                <option value="1.5" data-i18n="option.ringtoneFadeOut.1_5">1.5 sec</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label for="ringtoneFadeOutSelect" data-i18n="label.ringtoneFadeOut">Fade out:</label>
-              <select id="ringtoneFadeOutSelect">
-                <option value="0.5" data-i18n="option.ringtoneFadeOut.0_5">0.5 sec</option>
-                <option value="1" data-i18n="option.ringtoneFadeOut.1_0">1 sec</option>
-                <option value="1.5" data-i18n="option.ringtoneFadeOut.1_5">1.5 sec</option>
-              </select>
-            </div>
-            <div class="form-group" id="ringtoneManualStartGroup">
-              <label for="ringtoneStartInput" data-i18n="label.ringtoneStart">Start second:</label>
-              <input type="number" id="ringtoneStartInput" min="0" step="0.5" value="30" />
-            </div>
-          </div>
-          <small class="muted" id="ringtoneHint" data-i18n="ui.ringtoneHint">
-            Creates a ringtone file for the selected device. Automatic mode chooses the strongest section.
-          </small>
-        </div>
-        <div class="form-group" id="formatGroup">
-          <label for="formatSelect" data-i18n="label.format">Format:</label>
-          <select id="formatSelect"></select>
-        </div>
-        <div class="form-group" id="bitrateGroup">
-          <label for="bitrateSelect" data-i18n="label.audioBitrate">Audio Bitrate:</label>
-          <select id="bitrateSelect"></select>
-        </div>
-        <div class="form-group" id="sampleRateGroup">
-          <label for="sampleRateSelect" data-i18n="label.sampleRate">Sample Rate:</label>
-          <select id="sampleRateSelect">
-            <option value="44100" data-i18n="quality.44100">44.1 kHz (CD Quality)</option>
-            <option value="48000" selected data-i18n="quality.48000">48 kHz (Standard)</option>
-            <option value="96000" data-i18n="quality.96000">96 kHz (High Quality)</option>
-            <option value="192000" data-i18n="quality.192000">192 kHz (Studio Quality)</option>
-          </select>
-        </div>
-        <div class="form-group" id="volumeGainGroup">
-            <label for="volumeGainRange" data-i18n="ui.volumeGainLabel">Volume Gain</label>
-            <div style="display:flex; align-items:center; gap:10px;">
-              <input type="range" id="volumeGainRange" min="1.0" max="5" step="0.1" value="1.0">
-              <span id="volumeGainValue">1.0x</span>
-            </div>
-            <small class="muted" data-i18n="ui.volumeGainHelp">
-              Boosts volume from 1x to 5x. Higher values may cause distortion.
-            </small>
-            <div class="checkbox-group" id="loudnormCheckboxContainer" style="margin-top:12px;">
-              <input type="checkbox" id="loudnormCheckbox" />
-              <label for="loudnormCheckbox" data-i18n="ui.loudnormLabel">Loudness Normalize (loudnorm)</label>
-            </div>
-            <div class="form-group" id="loudnormModeGroup" style="display:none; margin-top:12px;">
-              <label for="loudnormModeSelect" data-i18n="label.loudnormMode">Loudnorm Mode</label>
-              <select id="loudnormModeSelect">
-                <option value="ebu_r128" data-i18n="option.loudnormMode.ebuR128">EBU R128 Standard</option>
-                <option value="two_pass" data-i18n="option.loudnormMode.twoPass">Two-Pass Processing</option>
-                <option value="dynamic" data-i18n="option.loudnormMode.dynamic">Dynamic Range Control</option>
-              </select>
-            </div>
-            <small class="muted" data-i18n="ui.loudnormHelp">
-              Normalizes perceived loudness between different sources with FFmpeg loudnorm.
-            </small>
-            <small class="muted" id="loudnormModeHelp" style="display:none;" data-i18n="ui.loudnormModeHelp">
-              Choose the loudness normalization strategy to use during conversion.
-            </small>
-          </div>
-        </div>
-      </div>
-
-    </div><!-- /tab-pane-convert -->
-
-    <div id="tab-pane-media" class="tab-pane" style="display:none;">
-
-    <div class="card">
-      <h2 data-i18n="media.loginTitle">🔐 平台登录状态</h2>
-      <small class="comment" data-i18n="media.loginHint">点击平台卡片上的登录按钮，会在下方内置浏览器中打开对应的扫码登录页。Bilibili / B 站直播需要登录才能搜索下载；QQ音乐、网易云、YouTube 搜索无需登录。</small>
-      <div id="mediaPlatforms" class="media-platforms" style="display:flex;flex-direction:column;gap:10px;margin-top:10px;"></div>
-      <button type="button" class="btn-outline" id="mediaRefreshLoginBtn" style="margin-top:10px;" data-i18n="media.refreshLogin">🔄 刷新登录状态</button>
-    </div>
-
-    <div class="card-grid">
-      <div class="card">
-
-            <span class="chip"><span data-i18n="chip.progress">Progress:</span> <strong id="spotifyProgress">0%</strong></span>
-          </div>
-          <div class="spotify-actions" id="spotifyActions">
-            <button id="convertMatchedBtn" class="btn-primary" style="display: none;" data-i18n="btn.convertMatched">Convert matched</button>
-          </div>
-          <div id="spotifyStatus" class="spotify-job-status" style="display: none; margin-top: 10px;">
-            <span id="spotifyStatusText" data-i18n="status.ready">Ready</span>
-          </div>
-          <div class="logs-container">
-            <h3 data-i18n="section.logs">📝 Real-time Logs</h3>
-            <div id="spotifyLogs" class="logs-content"></div>
-          </div>
-          <div class="preview-list-container">
-            <h3 data-i18n="section.matchedTracks">🎶 Matched Tracks</h3>
-            <div class="preview-list" id="spotifyPreviewList"></div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="card collapsible-section" id="playlistPreviewCard" style="display: none;">
-      <div class="collapsible-header" id="playlistPreviewHeader">
-        <h2 data-i18n="section.preview">🧾 Playlist Preview & Selection</h2>
-        <span class="toggle-arrow">▼</span>
-      </div>
-      <div class="collapsible-content" id="playlistPreviewContent">
-        <div class="collapsible-inner">
-          <div class="preview-meta">
-            <span class="chip"><span data-i18n="chip.title">Title:</span> <strong id="plTitle">-</strong></span>
-            <span class="chip"><span data-i18n="chip.total">Total:</span> <strong id="plCount">0</strong></span>
-            <span class="chip"><span data-i18n="chip.selected">Selected:</span> <strong id="plSelected">0</strong></span>
-          </div>
-          <div class="preview-actions">
-            <label class="select-all"><input type="checkbox" id="selectAllChk" /> <span data-i18n="label.selectAll">Select all</span></label>
-            <label class="switch">
-              <input type="checkbox" id="sequentialChk" />
-              <span class="muted" data-i18n="label.sequential">Download one by one</span>
-            </label>
-            <button id="convertSelectedBtn" data-i18n="btn.convertSelected">Convert selected</button>
-            <button class="btn-outline" id="convertAllBtn" data-i18n="btn.convertAll">Convert all</button>
-          </div>
-          <div id="plStreamLog" class="muted" style="margin:6px 0 0 0; font-size:12px; display:none;"></div>
-          <div class="pager">
-            <button id="prevPageBtn" class="btn-outline" data-i18n="pager.prev">← Previous</button>
-            <button id="nextPageBtn" class="btn-outline" data-i18n="pager.next">Next →</button>
-            <span class="muted"><span data-i18n="pager.page">Page:</span> <strong id="pageNo">1</strong> • <span data-i18n="pager.size">Page size:</span> </span>
-            <select id="pageSizeSel" class="inline">
-              <option>10</option>
-              <option>25</option>
-              <option selected>50</option>
-              <option>100</option>
-            </select>
-          </div>
-          <div class="preview-list" id="previewList"></div>
-        </div>
-      </div>
-    </div>
-
-    <div class="card collapsible-section">
-      <div class="collapsible-header" id="jobsHeader">
-        <h2 data-i18n="section.jobs">📊 Active Jobs</h2>
-        <span class="toggle-arrow">▼</span>
-      </div>
-      <div class="collapsible-content" id="jobsContent">
-        <div class="collapsible-inner">
-          <div id="jobList">
-            <div class="job-item" id="job-empty">
-              <div class="jobs-empty-state">
-
-                <h3 class="jobs-empty-title" data-i18n="jobsPanel.emptyActive"></h3>
-                <p class="jobs-empty-subtitle" data-i18n="jobs.emptySubtitle"></p>
-                <div class="jobs-empty-actions">
-                  <button id="jobsEmptyUrlAction" class="jobs-empty-action" data-i18n="jobs.startWithUrl">Start with URL</button>
-                  <button id="jobsEmptyFileAction" class="jobs-empty-action jobs-empty-action--outline" data-i18n="section.file">Upload File</button>
-                </div>
+        <div class="card">
+          <h2 id="urlSectionTitle" data-i18n="section.url">🔗 Convert from URL</h2>
+          <small id="urlSectionComment" class="comment" data-i18n="ph.urlcomment"></small>
+          <form id="urlForm">
+            <div class="form-group" id="urlInputGroup">
+              <div class="music-url-input-row">
+                <input type="url" id="urlInput" data-i18n-ph="ph.url" placeholder="YouTube URL or direct media link" required />
+                <button type="button" id="musicUrlQueueAddBtn" class="music-url-queue-add" style="display:none;" aria-label="Add to URL list" title="Add to URL list">
+                  <span class="music-url-queue-plus">+</span>
+                  <span id="musicUrlQueueCount" class="music-url-queue-count" style="display:none;">0</span>
+                </button>
               </div>
             </div>
+            <div class="checkbox-group" id="playlistCheckboxContainer">
+              <input type="checkbox" id="playlistCheckbox" />
+              <label for="playlistCheckbox" data-i18n="label.playlist">This is a YouTube playlist</label>
+            </div>
+            <div class="checkbox-group" id="autoZipCheckboxContainer" style="display:none;">
+              <input type="checkbox" id="autoZipCheckbox" />
+              <label for="autoZipCheckbox" data-i18n="ui.autoCreateZip">Automatically create a ZIP when the job finishes</label>
+            </div>
+            <div class="form-group" id="spotifyConcurrencyContainer" style="display:none;">
+              <label for="spotifyConcurrencyInput" data-i18n="label.spotifyConcurrency">Max concurrent download/convert</label>
+              <input type="number" id="spotifyConcurrencyInput" min="1" max="16" step="1" value="4" style="max-width: 120px;" />
+            </div>
+            <div class="form-group" id="youtubeConcurrencyContainer" style="display:none;">
+              <label for="youtubeConcurrencyInput" data-i18n="label.spotifyConcurrency">Max concurrent download/convert</label>
+              <input type="number" id="youtubeConcurrencyInput" min="1" max="16" step="1" value="4" style="max-width: 120px;" />
+            </div>
+            <div class="checkbox-group" id="lyricsCheckboxContainer">
+              <input type="checkbox" id="lyricsCheckbox" />
+              <label for="lyricsCheckbox" data-i18n="label.includeLyrics">Include lyrics</label>
+            </div>
+            <div class="checkbox-group" id="embedLyricsCheckboxContainer">
+              <input type="checkbox" id="embedLyricsCheckbox" />
+              <label for="embedLyricsCheckbox" data-i18n="label.embedLyrics">Embed lyrics into track</label>
+            </div>
+            <div class="spotify-actions" id="urlSpotifyActions" style="display: none;">
+              <button type="button" id="startIntegratedBtn" class="btn-primary" data-i18n="btn.spotifyIntegrated">Match &amp; Download</button>
+            </div>
+            <div class="btn-row" id="normalUrlActions">
+              <button type="submit" id="startConvertBtn" data-i18n="btn.start">Start conversion</button>
+              <button type="button" class="btn-outline" id="previewBtn" data-i18n="btn.preview" data-i18n-title="btn.preview" title="Preview playlist">Preview playlist</button>
+            </div>
+          </form>
+        </div>
+        <div class="card">
+          <h2 data-i18n="section.output">⚙️ Output Settings</h2>
+          <div class="form-group" id="outputModeGroup">
+            <label for="outputModeSelect" data-i18n="label.outputMode">Output Type:</label>
+            <select id="outputModeSelect">
+              <option value="standard" data-i18n="option.output.normal">Standard file</option>
+              <option value="ringtone" data-i18n="option.output.ringtone">Phone ringtone</option>
+              <option value="retag" data-i18n="option.output.retag">Retag</option>
+            </select>
+          </div>
+          <div id="retagSettingsContainer" class="retag-settings" style="display:none;">
+            <div class="form-group">
+              <label data-i18n="label.retagDirectory">Music directory:</label>
+              <button type="button" class="btn-outline" id="retagChooseDirectoryBtn">📁 <span data-i18n="btn.retagChooseDirectory">Select directory</span></button>
+              <code id="retagSelectedDirectory" class="retag-selected-directory is-empty" data-i18n="ui.retagNoDirectory">No directory selected</code>
+            </div>
+            <small class="muted" data-i18n="ui.retagHint">Rewrites MP3, FLAC, and M4A tags and embedded covers in place without downloading music.</small>
+          </div>
+          <div class="form-group" id="formatGroup">
+            <label for="formatSelect" data-i18n="label.format">Format:</label>
+            <select id="formatSelect"></select>
+          </div>
+          <div class="form-group" id="bitrateGroup">
+            <label for="bitrateSelect" data-i18n="label.audioBitrate">Audio Bitrate:</label>
+            <select id="bitrateSelect"></select>
+          </div>
+          <div class="form-group" id="sampleRateGroup">
+            <label for="sampleRateSelect" data-i18n="label.sampleRate">Sample Rate:</label>
+            <select id="sampleRateSelect">
+              <option value="44100" data-i18n="quality.44100">44.1 kHz (CD Quality)</option>
+              <option value="48000" selected data-i18n="quality.48000">48 kHz (Standard)</option>
+              <option value="96000" data-i18n="quality.96000">96 kHz (High Quality)</option>
+              <option value="192000" data-i18n="quality.192000">192 kHz (Studio Quality)</option>
+            </select>
           </div>
         </div>
       </div>
-    </div>
-
-    <footer id="binaryFooter" class="binary-footer collapsed">
-      <button
-        id="binaryFooterToggle"
-        class="binary-footer-toggle"
-        type="button"
-      >
-        <span class="binary-footer-toggle-label" data-i18n="ui.binaryVersionsLabel">
-          Used tools
-        </span>
-        <span class="binary-footer-toggle-arrow">▲</span>
     </section>
 
     <!-- ============================================================ -->
-    <!-- Disc ripper view (restored classic panel)                     -->
+    <!-- DISC ripper view                                             -->
     <!-- ============================================================ -->
-    <section id="discView" hidden>
-          />
+    <section id="discView" class="view-section" hidden>
+      <div class="card home-card">
+        <div class="form-group">
+          <label for="discSourcePath" data-i18n="disc.source.label">Disc source</label>
+          <input type="text" id="discSourcePath" class="input-field" data-i18n-ph="disc.source.placeholder" placeholder="/home/user/DVD" />
           <div class="btn-row">
-            <button type="button" class="btn-outline" id="discBrowseSourceBtn">
-              📁 <span data-i18n="disc.btn.browseSource">Select folder</span>
-            </button>
+            <button type="button" class="btn-outline" id="discBrowseSourceBtn">📁 <span data-i18n="disc.btn.browseSource">Select folder</span></button>
           </div>
         </div>
-
         <div class="btn-row">
-          <button type="button" class="btn-primary" id="discScanBtn">
-            🔍 <span data-i18n="disc.btn.scan">Scan disc</span>
-          </button>
-          <button type="button" class="btn-outline" id="discCancelScanBtn" style="display:none;">
-            🛑 <span data-i18n="disc.btn.cancelScan">Cancel scan</span>
-          </button>
+          <button type="button" class="btn-primary" id="discScanBtn">🔍 <span data-i18n="disc.btn.scan">Scan disc</span></button>
+          <button type="button" class="btn-outline" id="discCancelScanBtn" style="display:none;">🛑 <span data-i18n="disc.btn.cancelScan">Cancel scan</span></button>
         </div>
-      </div>
-
-      <div class="form-group" id="discProgressSection">
-        <span
-          id="discProgressLabel"
-          class="form-label"
-          data-i18n="disc.progress.label"
-        >
-          Progress
-        </span>
-        <div
-          class="progress-container"
-          role="group"
-          aria-labelledby="discProgressLabel"
-        >
-          <div class="progress-bar">
-            <div class="progress-fill" id="discProgressFill" style="width:0%"></div>
-            <div class="progress-overlay" id="discProgressOverlay">0%</div>
-          </div>
-          <div
-            class="progress-text"
-            id="discProgressText"
-            data-i18n="disc.progress.ready"
-          >
-            Ready
+        <div class="form-group" id="discProgressSection">
+          <span id="discProgressLabel" class="form-label" data-i18n="disc.progress.label">Progress</span>
+          <div class="progress-container" role="group" aria-labelledby="discProgressLabel">
+            <div class="progress-bar">
+              <div class="progress-fill" id="discProgressFill" style="width:0%"></div>
+              <div class="progress-overlay" id="discProgressOverlay">0%</div>
+            </div>
+            <div class="progress-text" id="discProgressText" data-i18n="disc.progress.ready">Ready</div>
           </div>
         </div>
-      </div>
-
-      <div id="discTitlesSection" class="collapsible-section" style="display:none;">
-        <div class="collapsible-header">
-          <div class="section-title">
-            <span data-i18n="disc.titles.label">Titles</span>
-            <span class="section-badge" id="discTitlesCount">0</span>
+        <div id="discTitlesSection" class="collapsible-section" style="display:none;">
+          <div class="collapsible-header">
+            <div class="section-title"><span data-i18n="disc.titles.label">Titles</span><span class="section-badge" id="discTitlesCount">0</span></div>
+            <span class="toggle-arrow">▼</span>
           </div>
-          <span class="toggle-arrow">▼</span>
+          <div class="collapsible-content"><div id="discTitlesList" class="titles-container"></div></div>
         </div>
-        <div class="collapsible-content">
-          <div id="discTitlesList" class="titles-container"></div>
+        <div class="form-group" id="discOutputSection" style="display:none;">
+          <label for="discOutputPath" data-i18n="disc.output.label">Output folder</label>
+          <input type="text" id="discOutputPath" class="input-field" data-i18n-ph="disc.output.placeholder" placeholder="/home/user/outputs" />
+        </div>
+        <div class="btn-row" id="discActionsSection" style="display:none;">
+          <button type="button" class="btn-primary" id="discRipBtn" disabled>💾 <span data-i18n="disc.btn.ripSelected">Convert selected to MKV</span></button>
+          <button type="button" class="btn-outline" id="discCancelRipBtn" style="display:none;">🛑 <span data-i18n="disc.btn.cancelRip">Cancel conversion</span></button>
+        </div>
+        <div class="form-group" id="discLogSection">
+          <span id="discLogLabel" class="form-label" data-i18n="disc.log.label">Log</span>
+          <div class="log-container" id="discLog" role="log" aria-labelledby="discLogLabel"></div>
         </div>
       </div>
-
-      <div class="form-group" id="discOutputSection" style="display:none;">
-        <label for="discOutputPath" data-i18n="disc.output.label">Output folder</label>
-        <input
-          type="text"
-          id="discOutputPath"
-          class="input-field"
-          data-i18n-ph="disc.output.placeholder"
-          placeholder="/home/user/outputs"
-        />
-      </div>
-
-      <div class="btn-row" id="discActionsSection" style="display:none;">
-        <button type="button" class="btn-primary" id="discRipBtn" disabled>
-          💾 <span data-i18n="disc.btn.ripSelected">Convert selected to MKV</span>
-        </button>
-        <button type="button" class="btn-outline" id="discCancelRipBtn" style="display:none;">
-          🛑 <span data-i18n="disc.btn.cancelRip">Cancel conversion</span>
-        </button>
-      </div>
-
-      <div class="form-group" id="discLogSection">
-        <span
-          id="discLogLabel"
-          class="form-label"
-          data-i18n="disc.log.label"
-        >
-          Log
-        </span>
-        <div
-          class="log-container"
-          id="discLog"
-          role="log"
-          aria-labelledby="discLogLabel"
-        ></div>
-      </div>
-    </div>
-  </div>
-</body>
-</html>
     </section>
 
     <!-- ============================================================ -->
-    <!-- Settings page (full page, hidden by default)                  -->
+    <!-- SETTINGS page (full page)                                    -->
     <!-- ============================================================ -->
     <section id="settingsPage" class="settings-page" hidden>
       <div class="settings-page__header">
         <button type="button" id="settingsBackBtn" class="btn-outline">← <span data-i18n="settings.back">返回</span></button>
         <h2 data-i18n="settings.pageTitle">⚙️ 设置</h2>
+      </div>
+
+      <div class="card settings-card">
+        <h3 data-i18n="home.dlTitle">⬇️ 下载设置（默认输出）</h3>
+        <div class="checkbox-group">
+          <input type="checkbox" id="convertAfterCheckbox" checked>
+          <label for="convertAfterCheckbox" data-i18n="home.convertAfter">下载后转换格式</label>
+        </div>
+        <div class="form-group" id="dlFormatGroup">
+          <label for="dlFormatSelect" data-i18n="media.format">格式</label>
+          <select id="dlFormatSelect" class="form-control"></select>
+        </div>
+        <div class="form-group" id="dlBitrateGroup">
+          <label for="dlBitrateSelect" data-i18n="media.bitrate">码率</label>
+          <select id="dlBitrateSelect" class="form-control"></select>
+        </div>
+        <div class="form-group">
+          <label for="settingsDownloadDirInput" data-i18n="settings.downloadDir">默认下载路径</label>
+          <input type="text" id="settingsDownloadDirInput" class="form-control" data-i18n-ph="settings.downloadDirPlaceholder" placeholder="留空 = 默认 outputs 目录" autocomplete="off">
+          <small class="comment" data-i18n="settings.downloadDirHint">保存后重启服务生效，所有下载输出到该目录；下载任务页可再指定子目录。</small>
+        </div>
       </div>
 
       <div class="card settings-card">
@@ -629,31 +408,6 @@
       </div>
 
       <div class="card settings-card">
-        <h3 data-i18n="home.dlTitle">⬇️ 下载设置</h3>
-        <div class="checkbox-group">
-          <input type="checkbox" id="convertAfterCheckbox" checked>
-          <label for="convertAfterCheckbox" data-i18n="home.convertAfter">下载后转换格式</label>
-        </div>
-        <div class="form-group" id="dlFormatGroup">
-          <label for="dlFormatSelect" data-i18n="media.format">格式</label>
-          <select id="dlFormatSelect" class="form-control"></select>
-        </div>
-        <div class="form-group" id="dlBitrateGroup">
-          <label for="dlBitrateSelect" data-i18n="media.bitrate">码率</label>
-          <select id="dlBitrateSelect" class="form-control"></select>
-        </div>
-      </div>
-
-      <div class="card settings-card">
-        <h3 data-i18n="settings.downloadSection">📁 下载</h3>
-        <div class="form-group">
-          <label for="settingsDownloadDirInput" data-i18n="settings.downloadDir">默认下载路径</label>
-          <input type="text" id="settingsDownloadDirInput" class="form-control" data-i18n-ph="settings.downloadDirPlaceholder" placeholder="留空 = 默认 outputs 目录" autocomplete="off">
-          <small class="comment" data-i18n="settings.downloadDirHint">保存后重启服务生效，所有下载输出到该目录。</small>
-        </div>
-      </div>
-
-      <div class="card settings-card">
         <h3 data-i18n="settings.aboutSection">ℹ️ 关于</h3>
         <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
           <span id="settingsVersionText" class="comment"></span>
@@ -666,15 +420,18 @@
       </div>
     </section>
 
-    <footer id="binaryFooter" class="binary-footer collapsed">
-      <button id="binaryFooterToggle" class="binary-footer-toggle" type="button">
-        <span class="binary-footer-toggle-label" data-i18n="ui.binaryVersionsLabel">Used tools</span>
-        <span class="binary-footer-toggle-arrow">▲</span>
-      </button>
-      <div class="binary-footer-body" id="binaryFooterBody">
-        <span id="binaryVersionsText">ffmpeg: - • ffprobe: - • mkvmerge: - • yt-dlp: - • deno: -</span>
-      </div>
-    </footer>
+    <!-- ============================================================ -->
+    <!-- LOG tab                                                      -->
+    <!-- ============================================================ -->
+    <section id="logView" class="view-section" hidden>
+      <section class="card home-card">
+        <div class="view-head">
+          <h2 data-i18n="nav.log">📄 日志</h2>
+          <button type="button" id="logRefreshBtn" class="btn-outline">🔄 <span data-i18n="nav.logRefresh">刷新</span></button>
+        </div>
+        <div id="logLinesBox" class="log-box" role="log"></div>
+      </section>
+    </section>
   </div>
 
   <aside id="jobsPanel" class="jobs-panel" aria-hidden="true">

@@ -22,6 +22,7 @@ import { rateLimit } from './modules/rateLimit.js'
 import discRouter from './routes/disc.js'
 import chromeBrowserRouter from './routes/chromeBrowser.js'
 import mediaRoute from './routes/media.js'
+import logsRoute from './routes/logs.js'
 import { getOwnershipTarget, queueOwnershipFix } from './modules/fsOwnership.js'
 import {
   FFMPEG_BIN,
@@ -502,6 +503,7 @@ app.use(discRouter)
 app.use(chromeBrowserRouter)
 app.use(mediaRoute)
 app.use(downloadRoute)
+app.use(logsRoute)
 app.use('/api', settingsRoute)
 
 // Custom Gharmonize rateLimit middleware is applied on this route.

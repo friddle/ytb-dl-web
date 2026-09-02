@@ -1,6 +1,7 @@
 // Shared helpers for driving the embedded chrome-driverless browser via its
-// MCP endpoint. Used by the QQ Music direct-download path (the web player's
-// vkey CGI is only reachable with the browser's live cookies).
+// MCP endpoint. All task operations run in their OWN tab (opened + tagged +
+// closed), never touching the user's active tab, and are serialized through a
+// single queue so concurrent tasks can't race each other.
 import path from "path";
 
 const CD_URL = () => String(process.env.CHROME_DRIVERLESS_URL || "").trim().replace(/\/+$/, "");
@@ -19,18 +20,36 @@ export async function cdCall(method, params = {}, timeoutMs = 45000) {
   return data?.result;
 }
 
-export async function cdEvaluate(expression, timeoutMs = 45000) {
-  const result = await cdCall("pw/evaluate", { expression }, timeoutMs);
+export async function cdEvaluate(expression, timeoutMs = 45000, index = null) {
+  const params = { expression };
+  if (index !== null && Number.isInteger(index)) params.index = index;
+  const result = await cdCall("pw/evaluate", params, timeoutMs);
   return result?.value;
 }
 
-// Ensures the active browser page is on the given origin (same-origin fetches).
-export async function cdEnsureOrigin(originPattern, url, timeoutMs = 45000) {
-  try {
-    const current = String(await cdEvaluate("location.href", 20000) || "");
-    if (originPattern.test(current)) return;
-  } catch { /* fall through to navigate */ }
-  await cdCall("pw/navigate", { url }, timeoutMs);
+// Global serialization: every browser task tab runs one at a time.
+let browserOpQueue = Promise.resolve();
+
+// Runs `fn(index)` inside a dedicated task tab for `url` (opened, tagged and
+// always closed again — the user's own tabs are never touched).
+export function withTaskTab(url, tag, fn, { timeoutMs = 60000 } = {}) {
+  const run = async () => {
+    let index = null;
+    try {
+      const opened = await cdCall("pw/new_tab", { url }, timeoutMs);
+      index = opened?.index ?? null;
+      if (index === null) throw new Error("could not open task tab");
+      try { await cdCall("pw/tab_tag", { index, tag }, 10000); } catch { /* tag optional */ }
+      return await fn(index);
+    } finally {
+      if (index !== null) {
+        try { await cdCall("pw/tab_close", { index }, 15000); } catch { /* best effort */ }
+      }
+    }
+  };
+  const job = browserOpQueue.then(run, run);
+  browserOpQueue = job.catch(() => {});
+  return job;
 }
 
 // Downloads a (possibly IP/cookie-bound) direct media URL with progress.

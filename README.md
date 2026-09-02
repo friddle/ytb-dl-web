@@ -1,149 +1,70 @@
-<div align="center">
+# Gharmonize (ytb-dl-web fork)
 
-[![CI](https://github.com/G-grbz/Gharmonize/actions/workflows/ci.yml/badge.svg)](https://github.com/G-grbz/Gharmonize/actions/workflows/ci.yml) [![CodeQL](https://github.com/G-grbz/Gharmonize/actions/workflows/codeql.yml/badge.svg)](https://github.com/G-grbz/Gharmonize/actions/workflows/codeql.yml)
+自托管音乐/媒体下载 Web 应用 —— 搜索、歌单解析、平台登录与 VIP 状态检测、一键下载与转换。前端围绕 **10 个标签页** 组织，支持 6 种语言（中/英/土/西/德/法）。
 
-<p align="center">
-  <img src="https://github.com/user-attachments/assets/adf9d2f8-a99b-43c8-9c37-d4a47f5b1e3f" alt="logo" width="200" style="background: transparent; display: inline-block;" />
-</p>
+## 标签页
 
-https://github.com/user-attachments/assets/4083729e-3db9-4936-ac01-28c0f318aebe
+| Tab | 内容 |
+|-----|------|
+| 🎵 首页 | 平台状态：Bilibili / QQ音乐 / 网易云 / YouTube / Spotify 登录 + VIP 检测（每个渠道独立「检测」按钮；页面打开时自动检测一次） |
+| 🔎 搜索 | 聚合搜索：多平台勾选 + 类型（歌曲 / 歌单），无需分别登录即可搜索；结果可多选下载 |
+| 🔗 解析 | 链接解析：任意平台链接 / 歌单 / 合集展开为逐条项目，可下载 |
+| ⬇️ 下载 | 下载任务与进度：逐条进度、失败原因、重试失败；每次下载可覆盖输出（格式 / 子目录） |
+| ⬆️ 上传 | 上传文件 / URL 转换（经典面板） |
+| ✨ YTLive | YTLive 音乐界面（独立页） |
+| 📀 Disc | Disc Ripper（DVD 抓轨） |
+| 🛩️ 浏览器 | 打开内置浏览器（chrome-driverless），用于扫码登录各平台 |
+| ⚙️ 设置 | 完整设置页：默认下载设置（转换格式 / 码率 / 下载路径）、内置浏览器模式（镜像打包自动锁定）、浏览器地址 |
+| 📄 日志 | 服务端实时日志（轮询刷新） |
 
-### Download • Convert • Rip • Tag — with a Web UI + Desktop builds (AppImage/EXE)
+顶部：主题切换小图标、语言切换小图标（🌐 点击轮换）、任务铃铛。
 
-Next-generation media processing, powered by **yt-dlp**, **FFmpeg** and **deno**.
+## 平台登录原理
 
-Seamlessly download content from YouTube, YouTube Music, and major platforms like X, Facebook, Instagram, Vimeo, Dailymotion, and TikTok. Leverage Spotify, Apple Music, and Deezer for intelligent metadata matching and track discovery — then fetch high-quality media via yt-dlp. Includes DRM-free disc ripping, iPhone / Android ringtone output, and blazing-fast GPU-accelerated transcoding, all powered by a robust and reliable processing engine.
+登录在**内置浏览器**（chrome-driverless，镜像内或远程）中完成：
 
-> **Spotify note:** Spotify is used for **metadata + matching** (track/playlist/album info). Gharmonize does **not** claim DRM bypass.
+- 每个平台卡片点击「扫码登录」→ 新窗口打开浏览器并直达登录/扫码页（B站 passport、QQ OAuth、网易云登录、YouTube sign-in、Spotify 登录）。
+- 「检测」通过浏览器内 JS 探测该平台**真实登录态与 VIP**（B站 nav API、QQ musicu、网易 nuser/account、YouTube/Spotify cookie），并同步导出 cookies.txt 供 yt-dlp 下载使用（探测自动 + 启动 + 每 6 小时导出）。
+- 微信登录 QQ 时自动合成 `uin` cookie，供 yt-dlp / vkey 鉴权。
 
-<img width="1666" height="899" alt="Gharmonize Screenshot" src="https://github.com/user-attachments/assets/449c5f67-4240-4ca0-8da4-b2ca97a3b5bb" />
+## 下载
 
-</div>
+- **QQ音乐**：浏览器内 vkey 直链（支持微信登录、VIP 音源），yt-dlp 兜底。
+- **网易云 / B站 / YouTube**：yt-dlp（携带导出 cookies，`YTDLP_COOKIES=/data/cookies/cookies.txt`）。
+- 播放列表自动展开为逐条任务；每条任务独立进度（下载 / 转换）、失败原因可读；失败可一键重试。
+- 输出目录：默认在设置页配置（`MEDIA_DOWNLOAD_DIR`）；每次下载可指定额外**子目录**（根目录只读，仅可编辑子路径）。
+- 下载后转换：设置页默认格式/码率；下载标签页可按批次覆盖（跟随设置 / 不转换 / 指定格式）。
 
----
+## 配置
 
-## Quick Start
+| 环境变量 | 说明 |
+|----------|------|
+| `CHROME_DRIVERLESS_URL` | 浏览器 MCP 服务地址（内置镜像为 `http://127.0.0.1:9223`） |
+| `CHROME_DRIVERLESS_EXTERNAL_URL` | 浏览器外部访问域名（如 `https://browser.tailnas.friddle.me/`） |
+| `CHROME_DRIVERLESS_INTERNAL_URL` | 浏览器内部接口域名（如 `https://browser.naslan.friddle.me/`） |
+| `CHROME_DRIVERLESS_BUNDLED` | `1` = 镜像已打包 chrome-driverless（设置页锁定浏览器配置） |
+| `MEDIA_DOWNLOAD_DIR` | 默认下载目录（如 `/volume4/music`） |
+| `YTDLP_COOKIES` | 下载用的 cookies.txt（默认 `/data/cookies/cookies.txt`） |
+| `GHARMONIZE_ALLOWED_ORIGINS` | 允许的跨站 Origin 主机白名单（反代改 Host 时使用，逗号分隔） |
 
-> **Prebuilt desktop builds:** Official Gharmonize **Windows EXE** and **Linux AppImage** releases already include the Node.js runtime required by the application through Electron. You **do not need to install Node.js separately** to use these packaged builds. Some third-party download sites may incorrectly list Node.js as an additional prerequisite; that notice can be ignored for official prebuilt Gharmonize binaries. Node.js is only required when running or building Gharmonize from source.
+实时设置（设置页保存）通过 `POST /api/settings` 写入并在内存生效。
 
-**Local / Desktop (from source)**
+## 部署（Docker）
 
 ```bash
-git clone https://github.com/G-grbz/Gharmonize
-cd Gharmonize
-
-BUILD_ELECTRON=1 npm i
-npm start
-```
-
-Then open **http://localhost:5174**
-
-Gharmonize checks runtime binaries (ffmpeg, ffprobe, mkvmerge, yt-dlp, deno) at startup and downloads or refreshes them automatically when needed.
-
-For packaged AppImage/EXE builds and full installation details, see [docs/INSTALLATION.md](docs/INSTALLATION.md).
-
-### Docker
-
-Gharmonize can run from the published Docker image or be built locally from source. The default/local Compose configuration does **not** request the NVIDIA runtime.
-
-**Published image**
-
-```bash
-docker compose pull
 docker compose up -d
+# 然后访问 http://<host>:5174/
 ```
 
-**Local source build**
+镜像由 GitHub Actions 构建并推送到 GHCR：`ghcr.io/friddle/ytb-dl-web`（tags: `latest` / `main` / commit sha）。镜像类型有常规版与**打包 chrome-driverless 版**（后者设置页自动勾选并锁定「使用内置浏览器」）。
+
+## 开发
 
 ```bash
-docker compose -f docker-compose.local.yml up -d --build
+npm install
+npm test          # 语法 + 安全回归测试
+node app.js       # 本地启动，默认 5174
 ```
 
-**Local source build with NVIDIA / NVENC**
-
-```bash
-docker compose \
-  -f docker-compose.local.yml \
-  -f docker-compose-local-nvidia.yml \
-  up -d --build
-```
-
-> **Important:** `docker-compose-local-nvidia.yml` is an **override**, not a standalone Compose stack. Always load it **after** `docker-compose.local.yml`. It adds the NVIDIA-specific settings (`gpus: all`, NVIDIA runtime/environment, root user, and privileged mode) to the base `web` service. Do **not** run the NVIDIA override by itself. Without the override, the local Compose stack does not request NVIDIA devices or the NVIDIA container runtime.
-
-Docker runtime binaries (FFmpeg, FFprobe, MKVToolNix, yt-dlp, and Deno) are checked at startup and cached under `/opt/gharmonize/cache`; missing or outdated managed binaries can be refreshed automatically. On a new Docker installation, the generated initial admin password is stored at `/opt/gharmonize/cache/INITIAL_ADMIN_PASSWORD.txt`.
-
-Full Docker setup, bind mounts, permissions, `MUSIC_DIR`, NVIDIA Container Toolkit requirements, and `docker run` examples are documented in [docs/DOCKER.md](docs/DOCKER.md).
-
----
-
-## What You Get
-
-- **YouTube / YouTube Music** downloads for single items, playlists, and mixes
-- **YTLive** — a dedicated music-first UI for YouTube discovery, playback, and queueing
-- **X (Twitter) / Facebook / Instagram / Vimeo / Dailymotion / TikTok** download and conversion flows
-- **Spotify, Apple Music, and Deezer** mapping for track / playlist / album workflows, including personalized Deezer `inspired-by-*` smart tracklists
-- **Phone ringtone output** for iPhone (`.m4r`) and Android (`.mp3`)
-- **Audio and video conversion** powered by FFmpeg, with FPS/A-V sync presets for AC3 / EAC3 / AAC
-- **GPU acceleration** for local transcoding — NVENC, VAAPI, Intel QSV
-- **DRM-free disc ripping** with stream selection in the Web UI
-- **Runtime binary management** for ffmpeg, ffprobe, mkvmerge, yt-dlp, and deno
-- **Job engine** for batch processing, progress tracking, and reliability
-
-Full details in [docs/FEATURES.md](docs/FEATURES.md).
-
----
-
-## Documentation
-
-| Guide | Description |
-| --- | --- |
-| [docs/INSTALLATION.md](docs/INSTALLATION.md) | Requirements, local/desktop setup, build commands |
-| [docs/DOCKER.md](docs/DOCKER.md) | Docker Compose, Docker run, NVIDIA/NVENC |
-| [docs/FEATURES.md](docs/FEATURES.md) | Full feature list and supported sources |
-| [docs/YTLIVE.md](docs/YTLIVE.md) | YTLive music UI guide |
-| [docs/CONFIGURATION.md](docs/CONFIGURATION.md) | Full `.env` variable reference |
-| [docs/BINARY_MANAGEMENT.md](docs/BINARY_MANAGEMENT.md) | ffmpeg / yt-dlp / deno binary handling |
-| [docs/COOKIES.md](docs/COOKIES.md) | Cookies, age-restricted content, environment comparison |
-| [docs/HOMEPAGE_WIDGET.md](docs/HOMEPAGE_WIDGET.md) | Homepage dashboard widget setup |
-| [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) | Common issues & fixes |
-| [LICENSE](LICENSE) | License & redistribution rules |
-| [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md) | Bundled third-party tool licenses |
-
----
-
-## Companion Tool: G-TMCE
-
-For users who want a more advanced MKV finishing workflow after ripping or extracting DRM-free media, check out **G-TMCE**:
-
-🔗 https://github.com/G-grbz/G-TMCE
-
-G-TMCE is a cross-platform MKV creation and extraction GUI for Linux and Windows. It focuses on professional remux workflows with TMDB metadata, automatic `tags.xml` generation, artwork downloads, chapter generation, language-aware audio/subtitle handling, forced/SDH subtitle detection, and MKVToolNix automation.
-
-Gharmonize is designed for downloading, conversion, ripping, tagging, and batch processing. G-TMCE can be used as a companion tool when you want to prepare polished MKV outputs for media libraries and home media servers.
-
----
-
-## Disclaimer
-
-This software is provided "as is", without warranty of any kind. Use it at your own risk.
-
----
-
-## License
-
-Gharmonize is licensed under the **GPL-3.0 license**.
-
-- Full terms and redistribution rules: [LICENSE.md](LICENSE.md)
-- Licenses for bundled third-party tools (FFmpeg, MKVToolNix, yt-dlp, deno): [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md)
-
-
-## Security and release verification
-
-Gharmonize uses scrypt admin password hashing, AES-256-GCM encryption for supported sensitive settings, loopback-by-default native serving, trusted-proxy CIDR validation, SSRF/path hardening, Electron sandbox/IPC restrictions, and runtime-binary origin/digest checks. See [SECURITY.md](SECURITY.md) for the reporting policy and deployment notes.
-
-Official tagged releases are built by GitHub Actions for Windows and Linux and publish Windows NSIS/portable artifacts, a Linux AppImage, a source archive, CycloneDX SBOM, `SHA256SUMS`, and GitHub artifact attestations.
-
-```bash
-sha256sum -c SHA256SUMS
-gh attestation verify <artifact> --repo G-grbz/Gharmonize
-```
+- 安全：CSP（frame-src 动态允许已配置浏览器域名）、跨站请求校验（Host / X-Forwarded-Host / 白名单）、cookie 导出路径受限。
+- 国际化：`public/i18n.js` + `public/lang/{zh,en,tr,es,de,fr}.json`，语言切换派发 `i18n:applied` 事件供动态 UI 重渲染。

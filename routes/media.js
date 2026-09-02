@@ -83,24 +83,8 @@ function curlJson(url, { headers = {}, method = "GET", data = null, timeoutMs = 
   });
 }
 
-// Calls the embedded chrome-driverless MCP endpoint (same container, no proxy needed).
-async function cdCall(method, params = {}, timeoutMs = 45000) {
-  if (!cdUrl()) throw new Error("CHROME_DRIVERLESS_URL not configured");
-  const resp = await fetch(`${cdUrl()}/mcp`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ method, params }),
-    signal: AbortSignal.timeout(timeoutMs)
-  });
-  const data = await resp.json().catch(() => ({}));
-  if (data?.error) throw new Error(data.error.message || "chrome-driverless call failed");
-  return data?.result;
-}
-
-async function cdEvaluate(expression, timeoutMs = 45000) {
-  const result = await cdCall("pw/evaluate", { expression }, timeoutMs);
-  return result?.value;
-}
+// Browser MCP helpers (task-tab based, serialized, always close their tab).
+import { cdCall, cdEvaluate, withTaskTab } from "../modules/cdBrowser.js";
 
 function stripHtml(text) {
   return String(text || "")
@@ -174,50 +158,49 @@ async function searchNeteasePlaylists(keyword, limit) {
 // Playlist (歌单) search — QQ Music desktop search CGI runs inside the embedded
 // browser (its cookies satisfy the login-gated CGI); search_type 3 = playlist.
 async function searchQqMusicPlaylists(keyword, limit) {
-  // The fetch must run on a y.qq.com page (same-origin + cookies).
-  const currentUrl = String(await cdEvaluate("location.href", 20000) || "");
-  if (!/y\.qq\.com/.test(currentUrl)) {
-    await cdCall("pw/navigate", { url: "https://y.qq.com/" }, 45000);
+  // The fetch must run on a y.qq.com page (same-origin + cookies), inside
+  // its own task tab.
+  return withTaskTab("https://y.qq.com/", "gharmonize-qq-playlist-search", async (index) => {
     await sleep(2_000);
-  }
-  const expression = `(async () => {
-    try {
-      const r = await fetch("https://u.y.qq.com/cgi-bin/musicu.fcg", {
-        method: "POST", credentials: "include", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          comm: { ct: 19, cv: 1873 },
-          req: { module: "music.search.SearchCgiService", method: "DoSearchForQQMusicDesktop",
-                 param: { search_type: 3, query: ${JSON.stringify(keyword)}, page_num: 1, num_per_page: ${limit} } }
-        })
-      });
-      const j = await r.json();
-      const body = (j && j.req && j.req.data && j.req.data.body) || {};
-      const list = (body.songlist && body.songlist.list) || (body.playlist && body.playlist.list) || [];
-      return { ok: true, list: list.map((p) => ({
-        dissid: p.dissid ?? p.disstid ?? p.mid ?? p.id ?? "",
-        title: p.dissname || p.title || p.name || "",
-        nick: (p.creator && (p.creator.nick || p.creator.name)) || p.nickname || "",
-        cnt: p.song_count ?? p.song_cnt ?? p.songnum ?? null
-      })) };
-    } catch (e) { return { ok: false, error: String(e).slice(0, 140) }; }
-  })()`;
-  const data = await cdEvaluate(expression, 45_000);
-  if (!data || data.ok !== true) {
-    throw new Error(`QQ音乐歌单搜索失败: ${(data && data.error) || "no data"}`);
-  }
-  return (data.list || []).map((p) => {
-    const pid = String(p.dissid ?? "");
-    return {
-      id: pid,
-      platform: "qqmusic",
-      type: "playlist",
-      title: stripHtml(p.title || ""),
-      artist: stripHtml(p.nick || ""),
-      trackCount: Number(p.cnt) || null,
-      durationSec: null,
-      url: pid ? `https://y.qq.com/n/ryqq/playlist/${pid}` : ""
-    };
-  }).filter((it) => it.id && it.title && it.url);
+    const expression = `(async () => {
+      try {
+        const r = await fetch("https://u.y.qq.com/cgi-bin/musicu.fcg", {
+          method: "POST", credentials: "include", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            comm: { ct: 19, cv: 1873 },
+            req: { module: "music.search.SearchCgiService", method: "DoSearchForQQMusicDesktop",
+                   param: { search_type: 3, query: ${JSON.stringify(keyword)}, page_num: 1, num_per_page: ${limit} } }
+          })
+        });
+        const j = await r.json();
+        const body = (j && j.req && j.req.data && j.req.data.body) || {};
+        const list = (body.songlist && body.songlist.list) || (body.playlist && body.playlist.list) || [];
+        return { ok: true, list: list.map((p) => ({
+          dissid: p.dissid ?? p.disstid ?? p.mid ?? p.id ?? "",
+          title: p.dissname || p.title || p.name || "",
+          nick: (p.creator && (p.creator.nick || p.creator.name)) || p.nickname || "",
+          cnt: p.song_count ?? p.song_cnt ?? p.songnum ?? null
+        })) };
+      } catch (e) { return { ok: false, error: String(e).slice(0, 140) }; }
+    })()`;
+    const data = await cdEvaluate(expression, 45_000, index);
+    if (!data || data.ok !== true) {
+      throw new Error(`QQ音乐歌单搜索失败: ${(data && data.error) || "no data"}`);
+    }
+    return (data.list || []).map((p) => {
+      const pid = String(p.dissid ?? "");
+      return {
+        id: pid,
+        platform: "qqmusic",
+        type: "playlist",
+        title: stripHtml(p.title || ""),
+        artist: stripHtml(p.nick || ""),
+        trackCount: Number(p.cnt) || null,
+        durationSec: null,
+        url: pid ? `https://y.qq.com/n/ryqq/playlist/${pid}` : ""
+      };
+    }).filter((it) => it.id && it.title && it.url);
+  });
 }
 
 async function searchNetease(keyword, limit) {
@@ -263,33 +246,32 @@ async function searchYoutube(keyword, limit) {
 async function searchBilibili(keyword, limit) {
   // api.bilibili.com blocks non-browser clients (risk-control HTML page), so
   // the query runs inside the embedded browser context with its real Chrome
-  // fingerprint and login cookies.
-  const currentUrl = String(await cdEvaluate("location.href", 20000) || "");
-  if (!/bilibili\.com/.test(currentUrl)) {
-    await cdCall("pw/navigate", { url: "https://www.bilibili.com/" }, 45000);
-  }
-  const expression = `(async () => {
-    const r = await fetch("https://api.bilibili.com/x/web-interface/search/type?search_type=video&keyword=${encodeURIComponent(
-      keyword
-    )}&page=1", { credentials: "include", headers: { "Accept": "application/json" } });
-    const j = await r.json();
-    return j;
-  })()`;
-  const data = await cdEvaluate(expression, 45000);
-  if (!data || data.code !== 0 || !Array.isArray(data?.data?.result)) {
-    const msg = data?.message || `bilibili search code ${data?.code ?? "?"}`;
-    throw new Error(`Bilibili 搜索失败: ${msg}`);
-  }
-  return data.data.result.slice(0, limit).map((v) => ({
-    id: v.bvid,
-    platform: "bilibili",
-    type: "song",
-    title: stripHtml(v.title),
-    artist: stripHtml(v.author || ""),
-    album: "",
-    durationSec: parseDurationToSec(v.duration),
-    url: `https://www.bilibili.com/video/${v.bvid}/`
-  })).filter((it) => it.id && it.title);
+  // fingerprint and login cookies — in a dedicated task tab.
+  return withTaskTab("https://www.bilibili.com/", "gharmonize-bili-search", async (index) => {
+    await sleep(2_000); // let the SPA boot / risk-control cookie settle
+    const expression = `(async () => {
+      const r = await fetch("https://api.bilibili.com/x/web-interface/search/type?search_type=video&keyword=${encodeURIComponent(
+        keyword
+      )}&page=1", { credentials: "include", headers: { "Accept": "application/json" } });
+      const j = await r.json();
+      return j;
+    })()`;
+    const data = await cdEvaluate(expression, 45000, index);
+    if (!data || data.code !== 0 || !Array.isArray(data?.data?.result)) {
+      const msg = data?.message || `bilibili search code ${data?.code ?? "?"}`;
+      throw new Error(`Bilibili 搜索失败: ${msg}`);
+    }
+    return data.data.result.slice(0, limit).map((v) => ({
+      id: v.bvid,
+      platform: "bilibili",
+      type: "song",
+      title: stripHtml(v.title),
+      artist: stripHtml(v.author || ""),
+      album: "",
+      durationSec: parseDurationToSec(v.duration),
+      url: `https://www.bilibili.com/video/${v.bvid}/`
+    })).filter((it) => it.id && it.title);
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -428,25 +410,12 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // Opens one background tab for the probe and always closes it afterwards.
 async function probePlatform(key, spec) {
-  await cdCall("pw/new_tab", { url: spec.url }, 30_000);
-  try {
+  return withTaskTab(spec.url, `gharmonize-probe-${key}`, async (index) => {
     await sleep(2_000); // let the SPA boot / cookie context settle
-    const value = await cdEvaluate(spec.js, 20_000);
+    const value = await cdEvaluate(spec.js, 20_000, index);
     if (!value || typeof value !== "object") throw new Error("probe returned no object");
     return value;
-  } finally {
-    try {
-      const tabs = await cdCall("pw/tabs", {}, 10_000);
-      const list = Array.isArray(tabs?.tabs) ? tabs.tabs : [];
-      // Close the tab we opened (match by URL prefix, fall back to the last one).
-      let idx = -1;
-      for (let i = list.length - 1; i >= 0; i--) {
-        if (String(list[i]?.url || "").startsWith(spec.url.split("/").slice(0, 3).join("/"))) { idx = i; break; }
-      }
-      if (idx < 0 && list.length > 1) idx = list.length - 1;
-      if (idx >= 0 && list.length > 1) await cdCall("pw/tab_close", { index: idx }, 10_000);
-    } catch {}
-  }
+  });
 }
 
 // Merges live probes over the cookie-file based status; falls back cleanly.

@@ -59,6 +59,33 @@ export class HomeApp {
     this.bitrateGroup = document.getElementById('dlBitrateGroup');
     // Top tabs / views
     this.topTabsEl = document.getElementById('topTabs');
+    // Language icon button (cycles languages)
+    this.langIconBtn = document.getElementById('langIconBtn');
+    // Search view
+    this.searchViewEl = document.getElementById('searchView');
+    // Parse view
+    this.parseViewEl = document.getElementById('parseView');
+    this.parseModeSelect = document.getElementById('parseModeSelect');
+    this.parseUrlInput = document.getElementById('parseUrlInput');
+    this.parseBtn = document.getElementById('parseBtn');
+    this.parseResultsWrap = document.getElementById('parseResultsWrap');
+    this.parseMeta = document.getElementById('parseMeta');
+    this.parseResultsList = document.getElementById('parseResultsList');
+    this.parseDownloadBtn = document.getElementById('parseDownloadBtn');
+    this.parsedItems = [];
+    // Download view
+    this.downloadViewEl = document.getElementById('downloadView');
+    this.dlFormatOverrideSelect = document.getElementById('dlFormatOverrideSelect');
+    this.dlToolsLine = document.getElementById('dlToolsLine');
+    this.dlToolsText = document.getElementById('dlToolsText');
+    // Upload view tools
+    this.uploadToolsLine = document.getElementById('uploadToolsLine');
+    this.uploadToolsText = document.getElementById('uploadToolsText');
+    // Log view
+    this.logViewEl = document.getElementById('logView');
+    this.logLinesBox = document.getElementById('logLinesBox');
+    this.logRefreshBtn = document.getElementById('logRefreshBtn');
+    this._logTimer = null;
     // Settings page
     this.settingsPage = document.getElementById('settingsPage');
     this.settingsBundledCheckbox = document.getElementById('settingsBundledCheckbox');
@@ -86,11 +113,30 @@ export class HomeApp {
 
     // Top tabs: 首页 / 上传 / Disc / 设置 (YTLive is a plain link)
     this.topTabsEl?.querySelectorAll('.top-tab[data-view]').forEach((tab) => {
-      tab.addEventListener('click', () => this.showView(tab.dataset.view));
+      tab.addEventListener('click', () => {
+        if (tab.dataset.view === 'browser') { this.openBrowserTab(); return; }
+        this.showView(tab.dataset.view);
+      });
+    });
+    // "去设置调整" hint buttons on HOME / SEARCH / DOWNLOAD
+    document.querySelectorAll('[data-open-settings]').forEach((btn) => btn.addEventListener('click', () => this.showView('settings')));
+    // Language icon cycles languages
+    this.langIconBtn?.addEventListener('click', () => {
+      const order = ['zh', 'en', 'tr', 'es', 'de', 'fr'];
+      const current = window.i18n?.lang || 'zh';
+      const next = order[(order.indexOf(current) + 1) % order.length] || 'zh';
+      window.i18n?.setLang?.(next);
     });
     document.getElementById('settingsBackBtn')?.addEventListener('click', () => this.showView('home'));
     document.getElementById('settingsSaveBtn')?.addEventListener('click', () => this.saveSettings());
     this.settingsBundledCheckbox?.addEventListener('change', () => this.syncSettingsLockUi());
+
+    // PARSE view
+    this.parseBtn?.addEventListener('click', () => this.resolveParse());
+    this.parseUrlInput?.addEventListener('keydown', (e) => { if (e.key === 'Enter') this.resolveParse(); });
+    this.parseDownloadBtn?.addEventListener('click', () => this.downloadParsed());
+    // LOG view
+    this.logRefreshBtn?.addEventListener('click', () => this.loadLogs());
 
     document.getElementById('chromeBrowserOpenBtn')?.addEventListener('click', () => {
       window.open(this.browserBase(), '_blank', 'noopener,noreferrer');
@@ -482,6 +528,68 @@ export class HomeApp {
     this.submitting = false;
     this.downloadBtn?.removeAttribute('disabled');
     this.pollQueueStatuses();
+    // Jump to the DOWNLOAD tab so tasks/progress are immediately visible.
+    this.showView('download');
+  }
+
+  // ------------------------------------------------------------------
+  // PARSE view: expand any platform link / playlist into items
+  // ------------------------------------------------------------------
+
+  async resolveParse() {
+    const url = String(this.parseUrlInput?.value || '').trim();
+    if (!/^https?:\/\//i.test(url)) {
+      this.notify(this.tt('home.parseUrlRequired', '请输入有效的链接'), 'error');
+      return;
+    }
+    this.parseBtn?.setAttribute('disabled', '1');
+    try {
+      const r = await fetch(`/api/media/resolve?url=${encodeURIComponent(url)}`);
+      const d = await r.json();
+      if (!r.ok || !d.ok) throw new Error(d?.error?.message || `HTTP ${r.status}`);
+      const items = Array.isArray(d.items) ? d.items : [];
+      this.parsedItems = items.map((it) => ({ ...it, platform: it.platform || 'unknown' }));
+      if (this.parseResultsWrap) this.parseResultsWrap.style.display = '';
+      if (this.parseMeta) {
+        this.parseMeta.textContent = `${d.title || ''}（${d.totalCount ?? items.length} 项）`;
+      }
+      this.renderParseResults();
+      this.parseResultsWrap?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    } catch (err) {
+      this.notify(`${this.tt('home.parseFailed', '解析失败')}: ${err.message}`, 'error');
+    } finally {
+      this.parseBtn?.removeAttribute('disabled');
+    }
+  }
+
+  renderParseResults() {
+    if (!this.parseResultsList) return;
+    this.parseResultsList.innerHTML = '';
+    this.parsedItems.forEach((item, idx) => {
+      const row = document.createElement('label');
+      row.style.cssText = 'display:flex;align-items:center;gap:10px;padding:6px 10px;border:1px solid rgba(128,128,128,.2);border-radius:6px;cursor:pointer;';
+      const duration = item.durationSec ? this.fmtDuration(item.durationSec) : '';
+      row.innerHTML = `
+        <input type="checkbox" class="media-item-check" data-idx="${idx}" checked>
+        <span class="media-item-platform" style="font-size:.8em;opacity:.75;min-width:70px;">${this.platTag(item.platform)}</span>
+        <span class="media-item-title" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
+        <span class="media-item-artist" style="font-size:.82em;opacity:.75;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
+        ${duration ? `<span style="font-size:.8em;opacity:.6;">${duration}</span>` : ''}`;
+      row.querySelector('.media-item-title').textContent = item.title || '';
+      row.querySelector('.media-item-artist').textContent = item.artist || '';
+      this.parseResultsList.appendChild(row);
+    });
+  }
+
+  // Downloads the checked PARSE results (reuses the DOWNLOAD queue pipeline).
+  async downloadParsed() {
+    const checked = [...(this.parseResultsList?.querySelectorAll('.media-item-check:checked') || [])].map((c) => this.parsedItems[Number(c.dataset.idx)]).filter(Boolean);
+    if (!checked.length) {
+      this.notify(this.tt('home.selectRequired', '请先勾选要下载的条目'), 'error');
+      return;
+    }
+    this.results = checked;
+    this.downloadSelected();
   }
 
   // Polls the batched jobs-status endpoint until every row reaches a terminal state.
@@ -715,7 +823,10 @@ export class HomeApp {
   // ------------------------------------------------------------------
 
   showView(view) {
-    const views = { home: 'homeMain', upload: 'uploadView', disc: 'discView', settings: 'settingsPage' };
+    const views = {
+      home: 'homeMain', search: 'searchView', parse: 'parseView', download: 'downloadView',
+      upload: 'uploadView', disc: 'discView', settings: 'settingsPage', log: 'logView'
+    };
     for (const [name, id] of Object.entries(views)) {
       const el = document.getElementById(id);
       if (el) el.hidden = name !== view;
@@ -726,7 +837,48 @@ export class HomeApp {
       tab.setAttribute('aria-selected', active ? 'true' : 'false');
     });
     if (view === 'settings') this.fillSettings();
+    if (view === 'log') {
+      this.loadLogs();
+      if (this._logTimer) clearInterval(this._logTimer);
+      this._logTimer = setInterval(() => this.loadLogs(), 4000);
+    } else if (this._logTimer) {
+      clearInterval(this._logTimer);
+      this._logTimer = null;
+    }
+    if (view === 'download' || view === 'upload') this.loadToolsLine(view === 'download' ? this.dlToolsText : this.uploadToolsText);
     window.scrollTo({ top: 0 });
+  }
+
+  openBrowserTab() {
+    window.open(this.browserBase(), '_blank', 'noopener,noreferrer');
+  }
+
+  async loadLogs() {
+    if (!this.logLinesBox) return;
+    try {
+      const r = await fetch('/api/logs?limit=400');
+      const d = await r.json();
+      const lines = (d?.lines || []).map((l) => l.text).join('\n');
+      this.logLinesBox.textContent = lines;
+      this.logLinesBox.scrollTop = this.logLinesBox.scrollHeight;
+    } catch { /* transient */ }
+  }
+
+  async loadToolsLine(targetEl) {
+    if (!targetEl) return;
+    try {
+      const r = await fetch('/api/binaries/status');
+      const d = await r.json();
+      const names = ['yt-dlp', 'ffmpeg', 'ffprobe', 'mkvmerge', 'mkvpropedit', 'deno'];
+      const parts = names.map((n) => {
+        const info = d?.tools?.[n] || d?.[n];
+        const ok = info ? (info.ok ?? info.available ?? info.version) : false;
+        return `${n}: ${ok ? '✅' : '❌'}`;
+      });
+      targetEl.textContent = parts.join(' • ');
+    } catch {
+      targetEl.textContent = 'yt-dlp: ❓';
+    }
   }
 
   fillSettings() {
