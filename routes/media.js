@@ -177,24 +177,31 @@ async function resolveQqPlaylistDetail(url) {
   if (!disstid) throw new Error("QQ音乐歌单链接无法解析 id");
   return withTaskTab("https://y.qq.com/", "gharmonize-qq-playlist-detail", async (index) => {
     await sleep(2_000);
+    // Legacy QQ CGI is the one that reliably returns the full songlist
+    // (music.playlist.PlaylistInfo answers 500003). g_tk must be computed
+    // from the login cookies or some playlists come back empty.
     const expression = `(async () => {
       try {
-        const r = await fetch("https://u.y.qq.com/cgi-bin/musicu.fcg", {
-          method: "POST", credentials: "include", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            comm: { ct: 19, cv: 1873 },
-            req: { module: "music.playlist.PlaylistInfo", method: "run", param: { disstid: Number(${JSON.stringify(disstid)}) || ${JSON.stringify(disstid)}, onlysonglist: 1, songnum: 100 } }
-          })
-        });
-        const j = await r.json();
-        const data = (j && j.req && j.req.data) || {};
-        const list = data.songlist || [];
+        const gtk = () => {
+          const m = document.cookie.match(/(?:^|;\\s*)p_skey=([^;]+)/) || document.cookie.match(/(?:^|;\\s*)skey=([^;]+)/);
+          const s = m ? m[1] : '';
+          let h = 5381;
+          for (let i = 0; i < s.length; i++) h += (h << 5) + s.charCodeAt(i);
+          return h & 0x7fffffff;
+        };
+        const u = "https://c.y.qq.com/qzone/fcg-bin/fcg_ucc_getcdinfo_byids_cp.fcg?type=1&json=1&utf8=1&onlysong=0&disstid=" + ${JSON.stringify(disstid)} + "&format=json&g_tk=" + gtk() + "&loginUin=0&hostUin=0&inCharset=utf8&outCharset=utf-8&notice=0&platform=yqq.json&needNewCode=0";
+        const r = await fetch(u, { credentials: "include", headers: { "Referer": "https://y.qq.com/" } });
+        const t = await r.text();
+        let j;
+        try { j = JSON.parse(t.replace(/^\\w+\\(|\\);?$/g, "") || t); } catch { return { ok: false, error: "bad json" }; }
+        const cd = (j.cdlist || [])[0] || {};
+        const songlist = cd.songlist || [];
         return {
           ok: true,
-          title: (data.dirinfo && data.dirinfo.title) || data.dissname || data.title || "",
-          list: list.map((s) => ({
-            mid: s.mid || s.songmid || "",
-            name: s.name || s.songname || "",
+          title: cd.dissname || cd.disstitle || "",
+          list: songlist.map((s) => ({
+            mid: s.songmid || s.mid || "",
+            name: s.songname || s.name || "",
             singers: (s.singer || []).map((x) => x && x.name).filter(Boolean).join(" / "),
             interval: s.interval || null,
             album: (s.album && s.album.name) || "",
