@@ -1,5 +1,4 @@
-# syntax=docker/dockerfile:1
-FROM node:22-bookworm AS base
+FROM node:22-bookworm-slim AS base
 
 WORKDIR /usr/src/app
 
@@ -10,6 +9,7 @@ RUN set -eux; \
     apt-get install -y --no-install-recommends \
         ca-certificates \
         tzdata \
+        curl \
         ffmpeg \
         intel-media-va-driver \
         libva-drm2 \
