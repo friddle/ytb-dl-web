@@ -1378,5 +1378,6 @@
   "home.expandFailed": "Error al resolver la playlist",
   "nav.upload": "⬆️ Subir",
   "nav.ytlive": "✨ YTLive",
-  "nav.disc": "📀 Disc"
+  "nav.disc": "📀 Disc",
+  "home.retryFailed": "🔁 Reintentar fallidos"
 }

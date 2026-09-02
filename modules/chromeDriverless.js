@@ -171,6 +171,13 @@ export function exportCookiesTxt() {
   // Write the combined file too (single YTDLP_COOKIES path).
   const combinedLines = all.map(authToNetscapeLine).filter(Boolean);
   if (combinedLines.length) {
+    // WeChat-login QQ sessions carry wxuin but no uin cookie; yt-dlp's
+    // QQMusic extractor authenticates with uin + qqmusic_key, so synthesize it.
+    const hasUin = combinedLines.some((l) => /\tuin\t/.test(l));
+    const wxuin = all.find((c) => c.name === "wxuin" && c.value);
+    if (!hasUin && wxuin) {
+      combinedLines.push([".qq.com", "TRUE", "/", "FALSE", "0", "uin", String(wxuin.value)].join("\t"));
+    }
     fs.mkdirSync(path.dirname(EXPORT_COOKIES_FILE), { recursive: true });
     fs.writeFileSync(EXPORT_COOKIES_FILE, header + combinedLines.join("\n") + "\n", "utf8");
     written.push(EXPORT_COOKIES_FILE);

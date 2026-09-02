@@ -17,6 +17,7 @@ services:
       - NODE_ENV=production
       - PORT=${PORT:-5174}
       - GHARMONIZE_HOST=0.0.0.0
+      - YTDLP_COOKIES=/data/cookies/cookies.txt
       - GHARMONIZE_MASTER_KEY_FILE=/usr/src/app/cache/.gharmonize-key
       - GHARMONIZE_INITIAL_ADMIN_PASSWORD_FILE=/usr/src/app/cache/INITIAL_ADMIN_PASSWORD.txt
       - YTDLP_EXTRA=--force-ipv4

@@ -1378,5 +1378,6 @@
   "home.expandFailed": "Échec de résolution de la playlist",
   "nav.upload": "⬆️ Téléverser",
   "nav.ytlive": "✨ YTLive",
-  "nav.disc": "📀 Disc"
+  "nav.disc": "📀 Disc",
+  "home.retryFailed": "🔁 Réessayer les échecs"
 }

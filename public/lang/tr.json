@@ -1379,5 +1379,6 @@
   "home.expandFailed": "Çalma listesi çözümleme hatası",
   "nav.upload": "⬆️ Yükle",
   "nav.ytlive": "✨ YTLive",
-  "nav.disc": "📀 Disc"
+  "nav.disc": "📀 Disc",
+  "home.retryFailed": "🔁 Başarısızları yeniden dene"
 }

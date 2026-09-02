@@ -1350,5 +1350,6 @@
   "home.expandFailed": "Playlist-Auflösung fehlgeschlagen",
   "nav.upload": "⬆️ Hochladen",
   "nav.ytlive": "✨ YTLive",
-  "nav.disc": "📀 Disc"
+  "nav.disc": "📀 Disc",
+  "home.retryFailed": "🔁 Fehlgeschlagene wiederholen"
 }

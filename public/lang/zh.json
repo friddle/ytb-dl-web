@@ -1351,5 +1351,6 @@
   "home.expandFailed": "歌单解析失败",
   "nav.upload": "⬆️ 上传",
   "nav.ytlive": "✨ YTLive",
-  "nav.disc": "📀 Disc"
+  "nav.disc": "📀 Disc",
+  "home.retryFailed": "🔁 重试失败"
 }

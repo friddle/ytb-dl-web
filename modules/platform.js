@@ -422,6 +422,81 @@ function buildMediaRequestHeaders(platformName, inputUrl) {
   ];
 }
 
+// Resolves the real audio URL for a QQ Music song through the embedded
+// browser's web player vkey CGI. WeChat-login cookies (wxuin + qm_keyst) are
+// accepted there, while yt-dlp's extractor only understands QQ-number logins.
+async function downloadQqMusicViaBrowser(inputUrl, jobId, tempDir, progressCallback, opts, ctrl) {
+  const { cdCall, cdEvaluate, cdEnsureOrigin, cdDownloadUrl } = await import("./cdBrowser.js");
+  const songMidMatch = String(inputUrl || "").match(/songDetail\/([A-Za-z0-9]+)/) ||
+    String(inputUrl || "").match(/song\/([A-Za-z0-9]+)\.html/);
+  const songMid = songMidMatch ? songMidMatch[1] : null;
+  if (!songMid) throw new Error("qqmusic: could not parse song id from URL");
+
+  await cdEnsureOrigin(/y\.qq\.com/, "https://y.qq.com/");
+
+  const expression = `(async () => {
+    try {
+      const uin = (document.cookie.match(/(?:^|;\\s*)wxuin=([^;]+)/) || document.cookie.match(/(?:^|;\\s*)uin=([^;]+)/) || [])[1] || "";
+      const detail = await fetch("https://u.y.qq.com/cgi-bin/musicu.fcg", {
+        method: "POST", credentials: "include", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ comm: { ct: 19, cv: 1873, uin: Number(uin) || 0 },
+          req: { module: "music.pf_song_detail_svr", method: "get_song_detail_yqq", param: { song_mid: ${JSON.stringify(songMid)} } } })
+      }).then((r) => r.json()).catch(() => null);
+      const track = detail && detail.req && detail.req.data && detail.req.data.track_info ? detail.req.data.track_info : {};
+      const vkey = await fetch("https://u.y.qq.com/cgi-bin/musicu.fcg", {
+        method: "POST", credentials: "include", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ comm: { uin: Number(uin) || 0, format: "json", ct: 24, cv: 0 },
+          req: { module: "vkey.GetVkeyServerBase", method: "CgiGetVkey", param: {
+            guid: String(Math.floor(Math.random() * 10000000000)), songmid: [${JSON.stringify(songMid)}],
+            songtype: [0], uin: String(uin || 0), loginflag: 1, platform: "20",
+            filename: ["C400${songMid}.mp3", "M500${songMid}.mp3", "M800${songMid}.mp3", "F000${songMid}.flac"] } } })
+      }).then((r) => r.json()).catch(() => null);
+      const info = vkey && vkey.req && vkey.req.data ? vkey.req.data : {};
+      const mid = (info.midurlinfo && info.midurlinfo[0]) || {};
+      const purl = mid.purl || "";
+      const singers = (track.singer || []).map((s) => s.name).join(" / ");
+      return {
+        purl: purl.startsWith("//") ? "https:" + purl : purl,
+        title: track.name || "",
+        album: (track.album && track.album.name) || "",
+        artist: singers,
+        duration: typeof track.interval === "number" ? track.interval : null,
+        filesize: Number(mid.filesize) || 0,
+        prefix: (mid.filename || "").split(songMid)[0] || ""
+      };
+    } catch (e) { return { error: String(e).slice(0, 160) }; }
+  })()`;
+
+  const info = await cdEvaluate(expression, 45_000);
+  if (!info || info.error) throw new Error(`qqmusic vkey failed: ${(info && info.error) || "no data"}`);
+  if (!info.purl) throw new Error("qqmusic: vkey returned no playable URL (song may need a higher VIP tier)");
+  if (ctrl?.isCanceled?.()) throw new Error("canceled");
+
+  const ext = String(info.prefix || "").startsWith("F000") ? "flac" : "mp3";
+  const safeTitle = String(info.title || songMid).replace(/[<>:"|?*\\/]+/g, " ").replace(/\s+/g, " ").trim() || songMid;
+  const targetPath = path.join(tempDir, `${jobId}.qq.${safeTitle.slice(0, 60)}.${ext}`);
+
+  const { filePath } = await cdDownloadUrl(info.purl, targetPath, {
+    headers: { Referer: "https://y.qq.com/", "User-Agent": DEFAULT_UA },
+    progressCallback,
+    isCanceled: ctrl?.isCanceled
+  });
+
+  return {
+    filePath,
+    platform: "qqmusic",
+    metadata: {
+      title: safeTitle,
+      uploader: info.artist || "",
+      artist: info.artist || "",
+      album: info.album || "",
+      webpage_url: inputUrl,
+      thumbnail: "",
+      duration: info.duration
+    }
+  };
+}
+
 // Resolves platform media for core application logic.
 export async function resolvePlatformMedia(inputUrl) {
   const platform = detectPlatform(inputUrl);
@@ -452,6 +527,21 @@ export async function downloadPlatformMedia(
 ) {
   fs.mkdirSync(tempDir, { recursive: true });
   const platform = detectPlatform(inputUrl);
+
+  // QQ Music: resolve the real audio URL through the embedded browser's web
+  // player vkey CGI (live cookies incl. WeChat sessions), then stream it.
+  // yt-dlp's QQMusic extractor cannot authenticate WeChat logins.
+  if (platform === "qqmusic") {
+    try {
+      return await downloadQqMusicViaBrowser(inputUrl, jobId, tempDir, progressCallback, opts, ctrl);
+    } catch (qqErr) {
+      if (YTDLP_FALLBACK_PLATFORMS.has(platform)) {
+        return fallbackViaYtDlp(platform, null, qqErr);
+      }
+      throw qqErr;
+    }
+  }
+
   const fallbackViaYtDlp = async (
     platformName,
     baseMetadata = null,

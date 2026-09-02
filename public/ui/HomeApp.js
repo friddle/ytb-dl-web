@@ -74,6 +74,7 @@ export class HomeApp {
     this.searchBtn?.addEventListener('click', () => this.runSearch());
     this.searchInput?.addEventListener('keydown', (e) => { if (e.key === 'Enter') this.runSearch(); });
     document.getElementById('openDetailedSettingsBtn')?.addEventListener('click', () => this.showView('settings'));
+    document.getElementById('retryFailedBtn')?.addEventListener('click', () => this.retryFailed());
     this.selectAll?.addEventListener('change', () => {
       this.resultsList?.querySelectorAll('.media-item-check').forEach((c) => { c.checked = this.selectAll.checked; });
       this.updateSelectedCount();
@@ -437,8 +438,11 @@ export class HomeApp {
     this.downloadQueueEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 
     let ok = 0;
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     for (const row of this.queueRows) {
       if (row.status === 'failed') continue;
+      // Pace submissions: POST /api/jobs is rate limited (60/min) server-side.
+      if (ok > 0) await sleep(1_100);
       try {
         const resp = await fetch('/api/jobs', {
           method: 'POST',
@@ -458,6 +462,7 @@ export class HomeApp {
         if (resp.ok && (data.id || data.ok || data.data?.id)) {
           row.jobId = data.id || data.data?.id;
           row.status = 'queued';
+          row.error = null;
           ok += 1;
         } else {
           row.status = 'failed';
@@ -477,15 +482,24 @@ export class HomeApp {
   // Polls the batched jobs-status endpoint until every row reaches a terminal state.
   async pollQueueStatuses() {
     if (this._queuePollTimer) clearInterval(this._queuePollTimer);
+    const retryBtn = document.getElementById('retryFailedBtn');
     const tick = async () => {
-      const ids = (this.queueRows || []).map((r) => r.jobId).filter(Boolean);
-      if (!ids.length) { clearInterval(this._queuePollTimer); this._queuePollTimer = null; return; }
+      const rows = this.queueRows || [];
+      const failed = rows.filter((r) => r.status === 'failed').length;
+      if (retryBtn) retryBtn.style.display = failed ? '' : 'none';
+      const ids = rows.map((r) => r.jobId).filter(Boolean);
+      if (!ids.length) {
+        if (retryBtn && failed) return; // keep the retry button visible
+        clearInterval(this._queuePollTimer);
+        this._queuePollTimer = null;
+        return;
+      }
       try {
         const r = await fetch(`/api/media/jobs-status?ids=${encodeURIComponent(ids.join(','))}`);
         const d = await r.json();
         const byId = new Map((d?.jobs || []).map((j) => [j.id, j]));
         let active = 0;
-        for (const row of this.queueRows || []) {
+        for (const row of rows) {
           if (!row.jobId) { if (row.status !== 'failed') active += 1; continue; }
           const j = byId.get(row.jobId);
           if (!j) continue;
@@ -502,6 +516,54 @@ export class HomeApp {
     };
     await tick();
     this._queuePollTimer = setInterval(tick, 2500);
+  }
+
+  // Re-submits only the rows that failed during the original submission.
+  async retryFailed() {
+    const rows = (this.queueRows || []).filter((r) => r.status === 'failed');
+    if (!rows.length) return;
+    const convert = !!this.convertCheckbox?.checked;
+    const format = convert ? (this.formatSelect?.value || 'mp3') : 'original';
+    const bitrate = convert ? (this.bitrateSelect?.value || '320k') : 'auto';
+    const rawSubdir = String(this.dlSubdirInput?.value || '').trim().replace(/^\/+|\/+$/g, '');
+    const retryBtn = document.getElementById('retryFailedBtn');
+    if (retryBtn) retryBtn.setAttribute('disabled', '1');
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    let ok = 0;
+    for (const row of rows) {
+      if (ok > 0) await sleep(1_100);
+      try {
+        const resp = await fetch('/api/jobs', {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            url: row.url,
+            format,
+            bitrate,
+            isPlaylist: false,
+            sampleRate: 48000,
+            autoCreateZip: false,
+            ...(rawSubdir ? { outputSubdir: rawSubdir } : {})
+          })
+        });
+        const data = await resp.json().catch(() => ({}));
+        if (resp.ok && (data.id || data.ok || data.data?.id)) {
+          row.jobId = data.id || data.data?.id;
+          row.status = 'queued';
+          row.progress = 0;
+          row.error = null;
+          ok += 1;
+        } else {
+          row.error = data?.error?.message || `HTTP ${resp.status}`;
+        }
+      } catch (err) {
+        row.error = err.message;
+      }
+      this.renderQueue();
+    }
+    if (retryBtn) retryBtn.removeAttribute('disabled');
+    if (ok > 0) this.pollQueueStatuses();
   }
 
   queueStatusBadge(row) {

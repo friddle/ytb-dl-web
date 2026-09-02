@@ -1379,5 +1379,6 @@
   "home.expandFailed": "Playlist resolve failed",
   "nav.upload": "⬆️ Upload",
   "nav.ytlive": "✨ YTLive",
-  "nav.disc": "📀 Disc"
+  "nav.disc": "📀 Disc",
+  "home.retryFailed": "🔁 Retry failed"
 }
