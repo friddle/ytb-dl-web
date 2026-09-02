@@ -425,6 +425,40 @@ function buildMediaRequestHeaders(platformName, inputUrl) {
 // Resolves the real audio URL for a QQ Music song through the embedded
 // browser's web player vkey CGI. WeChat-login cookies (wxuin + qm_keyst) are
 // accepted there, while yt-dlp's extractor only understands QQ-number logins.
+// Lightweight preview: resolves a playable stream URL for a QQ Music song
+// (browser vkey path). Returns { purl, title, artist } or throws.
+export async function resolveQqMusicStreamUrl(inputUrl) {
+  const songMidMatch = String(inputUrl || "").match(/songDetail\/([A-Za-z0-9]+)/) ||
+    String(inputUrl || "").match(/song\/([A-Za-z0-9]+)\.html/);
+  const songMid = songMidMatch ? songMidMatch[1] : null;
+  if (!songMid) throw new Error("qqmusic: could not parse song id from URL");
+  const { cdEvaluate, withTaskTab } = await import("./cdBrowser.js");
+  const expression = `(async () => {
+    try {
+      const uin = (document.cookie.match(/(?:^|;\\s*)wxuin=([^;]+)/) || document.cookie.match(/(?:^|;\\s*)uin=([^;]+)/) || [])[1] || "";
+      const vkey = await fetch("https://u.y.qq.com/cgi-bin/musicu.fcg", {
+        method: "POST", credentials: "include", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ comm: { uin: Number(uin) || 0, format: "json", ct: 24, cv: 0 },
+          req: { module: "vkey.GetVkeyServerBase", method: "CgiGetVkey", param: {
+            guid: String(Math.floor(Math.random() * 10000000000)), songmid: [${JSON.stringify(songMid)}],
+            songtype: [0], uin: String(uin || 0), loginflag: 1, platform: "20",
+            filename: ["C400${songMid}.mp3", "M500${songMid}.mp3", "M800${songMid}.mp3"] } } })
+      }).then((r) => r.json()).catch(() => null);
+      const info = vkey && vkey.req && vkey.req.data ? vkey.req.data : {};
+      const mid = (info.midurlinfo && info.midurlinfo[0]) || {};
+      const purl = mid.purl || "";
+      return { purl: purl.startsWith("//") ? "https:" + purl : purl };
+    } catch (e) { return { error: String(e).slice(0, 160) }; }
+  })()`;
+  const info = await withTaskTab("https://y.qq.com/", `gharmonize-qq-preview-${songMid}`, async (index) => {
+    await new Promise((r) => setTimeout(r, 2_000));
+    return cdEvaluate(expression, 45_000, index);
+  });
+  if (!info || info.error) throw new Error(`qqmusic preview failed: ${(info && info.error) || "no data"}`);
+  if (!info.purl) throw new Error("qqmusic: no playable URL (song may need a higher VIP tier)");
+  return info;
+}
+
 async function downloadQqMusicViaBrowser(inputUrl, jobId, tempDir, progressCallback, opts, ctrl) {
   const { cdEvaluate, cdDownloadUrl, withTaskTab } = await import("./cdBrowser.js");
   const songMidMatch = String(inputUrl || "").match(/songDetail\/([A-Za-z0-9]+)/) ||

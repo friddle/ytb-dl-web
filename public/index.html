@@ -215,6 +215,7 @@
             </div>
             <div id="downloadQueueList" class="home-dl-queue__list"></div>
           </div>
+          <small class="comment" data-i18n="home.libraryHint">提示：下载完成后可直接用 Infuse / Jellyfin / Navidrome 等播放器扫描媒体库。</small>
         </div>
 
         <!-- config pane: song-scope and playlist-scope download settings -->
@@ -484,6 +485,15 @@
     </div>
   </aside>
   <div id="jobsOverlay" class="jobs-overlay" hidden></div>
+
+  <!-- Mini preview player (search 试听) -->
+  <div id="miniPlayer" class="mini-player" hidden>
+    <div class="mini-player__head">
+      <span class="mini-player__title"></span>
+      <button type="button" class="icon-btn mini-player__close" aria-label="Close">✕</button>
+    </div>
+    <div class="mini-player__body"></div>
+  </div>
 
   <script src="/i18n.js"></script>
   <script type="module" src="./ui/main.js" defer></script>

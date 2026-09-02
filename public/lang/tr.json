@@ -1420,5 +1420,8 @@
   "home.album": "Albüm",
   "home.tagNoLogin": "Giriş yapılmadı",
   "home.tagVip": "VIP gerekli",
-  "home.vipTip": "Hesap VIP değil; indirme başarısız olabilir"
+  "home.vipTip": "Hesap VIP değil; indirme başarısız olabilir",
+  "home.preview": "Ön izleme",
+  "home.previewUnavailable": "Bu platformda ön izleme desteklenmiyor",
+  "home.libraryHint": "İpucu: İndirdikten sonra kütüphaneyi Infuse / Jellyfin / Navidrome gibi oynatıcılarla tarayın."
 }

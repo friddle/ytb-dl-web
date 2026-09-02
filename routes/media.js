@@ -1,5 +1,6 @@
 import express from "express";
 import { execFile } from "child_process";
+import { Readable } from "node:stream";
 import fs from "fs";
 import path from "path";
 import { spawnSafe } from "../modules/safeProcess.js";
@@ -11,6 +12,7 @@ import { recordSearch, listSearches, listMusicFiles, getStats, upsertPlatformSta
 import { getJob } from "../modules/store.js";
 import { YTDLP_BIN, getBinaryRuntimeEnv } from "../modules/binaries.js";
 import { getExtraArgs } from "../modules/config.js";
+import { resolveQqMusicStreamUrl } from "../modules/platform.js";
 
 const router = express.Router();
 
@@ -681,6 +683,40 @@ router.get("/api/media/search", rateLimit(30, 60_000), async (req, res) => {
   } catch (err) {
     console.warn(`[media] search ${platform} failed:`, err?.message || err);
     res.status(502).json({ error: { code: "SEARCH_FAILED", message: err?.message || "search failed" } });
+  }
+});
+
+// Preview streaming: proxies the actual audio bytes to the browser's <audio>
+// element (redirects would lose the Referer some CDNs require, and NetEase's
+// outer URL returns an HTML upsell page for VIP songs).
+router.get("/api/media/stream", rateLimit(30, 60_000), async (req, res) => {
+  const platform = String(req.query.platform || "").trim();
+  const id = String(req.query.id || "").trim();
+  if (!platform || !id) {
+    return res.status(400).json({ error: { code: "BAD_REQUEST", message: "platform and id are required" } });
+  }
+  const notFound = (message) => res.status(404).json({ error: { code: "PREVIEW_FAILED", message } });
+  try {
+    let upstream;
+    if (platform === "netease") {
+      upstream = await fetch(`https://music.163.com/song/media/outer/url?id=${encodeURIComponent(id)}.mp3`, { redirect: "follow" });
+    } else if (platform === "qqmusic") {
+      const info = await resolveQqMusicStreamUrl(`https://y.qq.com/n/ryqq/songDetail/${encodeURIComponent(id)}`);
+      upstream = await fetch(info.purl, { redirect: "follow", headers: { Referer: "https://y.qq.com/", "User-Agent": UA } });
+    } else {
+      return notFound("no preview stream for this platform");
+    }
+    const ct = String(upstream.headers.get("content-type") || "");
+    if (!upstream.ok || (!ct.includes("audio") && !ct.includes("octet-stream") && !ct.includes("video"))) {
+      return notFound("preview unavailable for this song");
+    }
+    res.setHeader("Content-Type", ct);
+    if (upstream.headers.get("content-length")) res.setHeader("Content-Length", upstream.headers.get("content-length"));
+    res.setHeader("Cache-Control", "no-store");
+    Readable.fromWeb(upstream.body).pipe(res);
+  } catch (err) {
+    console.warn(`[media] stream ${platform}/${id} failed:`, err?.message || err);
+    return notFound(err?.message || "preview unavailable");
   }
 });
 

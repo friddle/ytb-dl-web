@@ -1391,5 +1391,8 @@
   "home.album": "Album",
   "home.tagNoLogin": "Nicht angemeldet",
   "home.tagVip": "Nur VIP",
-  "home.vipTip": "Konto ohne VIP; Download kann fehlschlagen"
+  "home.vipTip": "Konto ohne VIP; Download kann fehlschlagen",
+  "home.preview": "Vorschau",
+  "home.previewUnavailable": "Vorschau für diese Plattform nicht unterstützt",
+  "home.libraryHint": "Tipp: Nach dem Download die Mediathek direkt mit Infuse / Jellyfin / Navidrome u. ä. scannen."
 }

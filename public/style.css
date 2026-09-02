@@ -125,6 +125,16 @@
 /* account-aware warnings (orange): not logged in / VIP-only without VIP */
 .media-warn{background:rgba(241,76,12,.16);border-radius:999px;color:#f14c0c;cursor:help;font-size:11px;font-weight:800;padding:1px 8px;white-space:nowrap}
 .qtag{background:color-mix(in oklab,var(--bg-muted) 45%,var(--bg-elev));border-radius:999px;color:var(--text-muted);font-size:11px;font-weight:700;padding:1px 8px;white-space:nowrap}
+/* preview play button + mini player */
+.media-play{align-items:center;background:color-mix(in oklab,var(--primary) 12%,var(--bg-elev));border:1px solid color-mix(in oklab,var(--primary) 40%,var(--border));border-radius:999px;color:var(--primary);cursor:pointer;display:inline-flex;flex:0 0 30px;font-size:12px;height:30px;justify-content:center;padding:0;transition:transform .15s ease,background .15s ease}
+.media-play:hover{background:var(--primary);color:var(--primary-contrast,#fff);transform:scale(1.08)}
+.mini-player{backdrop-filter:blur(10px);background:color-mix(in oklab,var(--bg-elev) 88%,transparent);border:1px solid var(--border);border-radius:var(--radius-md);bottom:18px;box-shadow:0 8px 30px rgba(0,0,0,.25);left:18px;max-width:min(420px,90vw);position:fixed;width:360px;z-index:1200}
+.mini-player__head{align-items:center;display:flex;gap:8px;padding:8px 10px 4px}
+.mini-player__title{color:var(--text);flex:1;font-size:12.5px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mini-player__close{background:none;border:0;color:var(--text-muted);cursor:pointer;font-size:14px}
+.mini-player__body{padding:4px 10px 10px}
+.mini-player__audio{width:100%}
+.mini-player__frame{aspect-ratio:16/9;border:0;border-radius:8px;display:block;width:100%}
 /* ===================== v2 redesign additions ===================== */
 .app-title{align-items:center;display:flex;flex-wrap:wrap;gap:12px;margin:0}
 .app-title .app-logo-large{height:44px;width:auto}

@@ -1392,5 +1392,8 @@
   "home.album": "专辑",
   "home.tagNoLogin": "未登录",
   "home.tagVip": "需VIP",
-  "home.vipTip": "当前账号非会员，可能无法下载"
+  "home.vipTip": "当前账号非会员，可能无法下载",
+  "home.preview": "试听",
+  "home.previewUnavailable": "该平台暂不支持试听",
+  "home.libraryHint": "提示：下载完成后可直接用 Infuse / Jellyfin / Navidrome 等播放器扫描媒体库。"
 }

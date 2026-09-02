@@ -170,6 +170,8 @@ export class HomeApp {
     this.parseDownloadBtn?.addEventListener('click', () => this.downloadParsed());
     // LOG view
     this.logRefreshBtn?.addEventListener('click', () => this.loadLogs());
+    // Mini preview player close button
+    document.querySelector('.mini-player__close')?.addEventListener('click', () => this.closePreview());
 
     document.getElementById('chromeBrowserOpenBtn')?.addEventListener('click', () => {
       window.open(this.browserBase(), '_blank', 'noopener,noreferrer');
@@ -464,7 +466,8 @@ export class HomeApp {
         </span>
         ${chips.length ? `<span class="media-row-meta">${chips.join('')}</span>` : ''}
         ${item.description ? '<span class="media-row-desc"></span>' : ''}
-      </span>`;
+      </span>
+      ${!isPlaylist ? `<button type="button" class="media-play" data-idx="${idx}" title="${this.tt('home.preview', '试听')}">▶</button>` : ''}`;
     row.querySelector('.media-item-title').textContent = (item.title || '') + count;
     // Fill text content for creator/album/description chips (XSS-safe).
     const chipsEls = row.querySelectorAll('.media-chip.creator, .media-chip.album');
@@ -478,7 +481,46 @@ export class HomeApp {
     const descEl = row.querySelector('.media-row-desc');
     if (descEl) descEl.textContent = item.description || '';
     row.querySelector('.media-item-check').addEventListener('change', () => this.updateSelectedCount());
+    // Preview button: the row is a <label>, so stop the default checkbox toggle.
+    row.querySelector('.media-play')?.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      this.playPreview(item);
+    });
     return row;
+  }
+
+  // ------------------------------------------------------------------
+  // Mini preview player: audio streams for QQ/NetEase, iframe embeds for
+  // YouTube/Bilibili. One singleton bar at the bottom of the page.
+  // ------------------------------------------------------------------
+
+  playPreview(item) {
+    if (!item || item.type === 'playlist') return;
+    this.closePreview();
+    const bar = document.getElementById('miniPlayer');
+    if (!bar) return;
+    const body = bar.querySelector('.mini-player__body');
+    const title = `${item.title || ''}${item.artist ? ' — ' + item.artist : ''}`;
+    if (item.platform === 'youtube') {
+      body.innerHTML = `<iframe class="mini-player__frame" src="https://www.youtube-nocookie.com/embed/${encodeURIComponent(item.id)}?autoplay=1" allow="autoplay; encrypted-media" allowfullscreen></iframe>`;
+    } else if (item.platform === 'bilibili') {
+      body.innerHTML = `<iframe class="mini-player__frame" src="https://player.bilibili.com/player.html?bvid=${encodeURIComponent(item.id)}&autoplay=1&high_quality=0&danmaku=0" allow="autoplay; encrypted-media" allowfullscreen></iframe>`;
+    } else if (item.platform === 'netease' || item.platform === 'qqmusic') {
+      body.innerHTML = `<audio class="mini-player__audio" controls autoplay src="/api/media/stream?platform=${encodeURIComponent(item.platform)}&id=${encodeURIComponent(item.id)}"></audio>`;
+    } else {
+      this.notify(this.tt('home.previewUnavailable', '该平台暂不支持试听'), 'info');
+      return;
+    }
+    bar.querySelector('.mini-player__title').textContent = title;
+    bar.hidden = false;
+  }
+
+  closePreview() {
+    const bar = document.getElementById('miniPlayer');
+    if (!bar) return;
+    bar.hidden = true;
+    bar.querySelector('.mini-player__body').innerHTML = ''; // stops audio + removes iframes
   }
 
   renderResults() {
