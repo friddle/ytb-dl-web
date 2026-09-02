@@ -166,6 +166,8 @@ function setupCollapsibleSections() {
     setupCollapsible('playlistPreviewHeader', 'playlistPreviewContent');
     setupCollapsible('jobsHeader', 'jobsContent');
     setupCollapsible('discRipperHeader', 'discRipperContent');
+    setupCollapsible('mediaBrowserHeader', 'mediaBrowserContent');
+    setupCollapsible('mediaResultsHeader', 'mediaResultsContent');
     const jobsHeader = document.getElementById('jobsHeader');
     const jobsContent = document.getElementById('jobsContent');
     if (jobsHeader && jobsContent) {

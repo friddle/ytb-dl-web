@@ -358,73 +358,88 @@
     <div id="tab-pane-media" class="tab-pane" style="display:none;">
 
     <div class="card">
-      <h2>🔐 平台登录状态</h2>
-      <small class="comment">点击平台卡片上的登录按钮会直接打开对应的扫码登录页（内置浏览器）。Bilibili / 直播需要登录才能搜索下载；QQ音乐、网易云、YouTube 搜索无需登录。</small>
+      <h2 data-i18n="media.loginTitle">🔐 平台登录状态</h2>
+      <small class="comment" data-i18n="media.loginHint">点击平台卡片上的登录按钮，会在下方内置浏览器中打开对应的扫码登录页。Bilibili / B 站直播需要登录才能搜索下载；QQ音乐、网易云、YouTube 搜索无需登录。</small>
       <div id="mediaPlatforms" class="media-platforms" style="display:flex;flex-direction:column;gap:10px;margin-top:10px;"></div>
-      <button type="button" class="btn-outline" id="mediaRefreshLoginBtn" style="margin-top:10px;">🔄 刷新登录状态</button>
+      <button type="button" class="btn-outline" id="mediaRefreshLoginBtn" style="margin-top:10px;" data-i18n="media.refreshLogin">🔄 刷新登录状态</button>
     </div>
 
     <div class="card-grid">
       <div class="card">
-        <h2>🔗 链接解析（各种平台）</h2>
+        <h2 data-i18n="media.resolveTitle">🔗 链接解析（各种平台）</h2>
         <div class="form-group">
-          <label for="biliModeSelect">解析模式</label>
+          <label for="biliModeSelect" data-i18n="media.resolveMode">解析模式</label>
           <select id="biliModeSelect" class="form-control">
-            <option value="auto">自动判断（单视频 / 合集）</option>
-            <option value="single">单视频（仅当前分P）</option>
-            <option value="list">合集 / 列表（展开所有分P）</option>
+            <option value="auto" data-i18n="media.modeAuto">自动判断（单视频 / 合集）</option>
+            <option value="single" data-i18n="media.modeSingle">单视频（仅当前分P）</option>
+            <option value="list" data-i18n="media.modeList">合集 / 列表（展开所有分P）</option>
           </select>
         </div>
         <div class="form-group">
-          <label for="biliUrlInput">视频 / 合集链接</label>
-          <input type="text" id="biliUrlInput" class="form-control" placeholder="B站视频/合集/直播、网易云歌单/电台、YouTube、QQ音乐等所有平台链接">
+          <label for="biliUrlInput" data-i18n="media.linkLabel">视频 / 合集链接</label>
+          <input type="text" id="biliUrlInput" class="form-control" data-i18n-ph="media.linkPlaceholder" placeholder="B站视频/合集/直播、网易云歌单、YouTube、QQ音乐等所有平台链接">
         </div>
         <div class="btn-row">
-          <button type="button" id="biliResolveBtn" class="btn">🔗 解析</button>
+          <button type="button" id="biliResolveBtn" class="btn" data-i18n="media.resolve">🔗 解析</button>
         </div>
       </div>
 
       <div class="card">
-        <h2>🔍 平台搜索</h2>
+        <h2 data-i18n="media.searchTitle">🔍 平台搜索</h2>
         <div class="form-group">
-          <span class="form-label">搜索平台</span>
+          <span class="form-label" data-i18n="media.searchPlatform">搜索平台</span>
           <div class="checkbox-group" style="display:flex;gap:14px;flex-wrap:wrap;">
-            <label style="display:flex;align-items:center;gap:6px;"><input type="checkbox" class="media-search-platform" value="bilibili" checked> Bilibili</label>
-            <label style="display:flex;align-items:center;gap:6px;"><input type="checkbox" class="media-search-platform" value="bililive"> B站直播</label>
-            <label style="display:flex;align-items:center;gap:6px;"><input type="checkbox" class="media-search-platform" value="qqmusic" checked> QQ音乐</label>
-            <label style="display:flex;align-items:center;gap:6px;"><input type="checkbox" class="media-search-platform" value="netease" checked> 网易云</label>
-            <label style="display:flex;align-items:center;gap:6px;"><input type="checkbox" class="media-search-platform" value="neteaselive"> 网易电台</label>
-            <label style="display:flex;align-items:center;gap:6px;"><input type="checkbox" class="media-search-platform" value="youtube"> YouTube</label>
+            <label style="display:flex;align-items:center;gap:6px;"><input type="checkbox" class="media-search-platform" value="bilibili" checked> <span data-i18n="media.platBilibili">Bilibili</span></label>
+            <label style="display:flex;align-items:center;gap:6px;"><input type="checkbox" class="media-search-platform" value="bililive"> <span data-i18n="media.platBililive">B站直播</span></label>
+            <label style="display:flex;align-items:center;gap:6px;"><input type="checkbox" class="media-search-platform" value="qqmusic" checked> <span data-i18n="media.platQqmusic">QQ音乐</span></label>
+            <label style="display:flex;align-items:center;gap:6px;"><input type="checkbox" class="media-search-platform" value="netease" checked> <span data-i18n="media.platNetease">网易云</span></label>
+            <label style="display:flex;align-items:center;gap:6px;"><input type="checkbox" class="media-search-platform" value="youtube"> <span data-i18n="media.platYoutube">YouTube</span></label>
           </div>
         </div>
         <div class="form-group">
-          <label for="mediaSearchInput">关键词</label>
-          <input type="text" id="mediaSearchInput" class="form-control" placeholder="歌曲 / 歌手 / 视频名">
+          <label for="mediaSearchInput" data-i18n="media.keyword">关键词</label>
+          <input type="text" id="mediaSearchInput" class="form-control" data-i18n-ph="media.keywordPlaceholder" placeholder="歌曲 / 歌手 / 视频名">
         </div>
         <div class="btn-row">
-          <button type="button" id="mediaSearchBtn" class="btn">🔍 搜索</button>
+          <button type="button" id="mediaSearchBtn" class="btn" data-i18n="media.search">🔍 搜索</button>
         </div>
       </div>
 
       <div class="card">
-        <h2>⚙️ 输出设置</h2>
+        <h2 data-i18n="media.outputTitle">⚙️ 输出设置</h2>
         <div class="form-group">
-          <label for="mediaFormatSelect">格式</label>
+          <label for="mediaFormatSelect" data-i18n="media.format">格式</label>
           <select id="mediaFormatSelect" class="form-control"></select>
         </div>
         <div class="form-group" id="mediaBitrateGroup">
-          <label for="mediaBitrateSelect">码率</label>
+          <label for="mediaBitrateSelect" data-i18n="media.bitrate">码率</label>
           <select id="mediaBitrateSelect" class="form-control"></select>
         </div>
         <div class="form-group">
-          <label for="mediaDownloadDirInput">下载目录</label>
+          <label for="mediaDownloadDirInput" data-i18n="media.downloadDir">下载目录</label>
           <div style="display:flex;gap:8px;align-items:center;">
-            <input type="text" id="mediaDownloadDirInput" class="form-control" placeholder="留空 = 默认 outputs 输出目录">
-            <button type="button" id="mediaDownloadDirSaveBtn" class="btn-outline" style="white-space:nowrap;">保存</button>
+            <input type="text" id="mediaDownloadDirInput" class="form-control" data-i18n-ph="media.downloadDirPlaceholder" placeholder="留空 = 默认 outputs 输出目录">
+            <button type="button" id="mediaDownloadDirSaveBtn" class="btn-outline" style="white-space:nowrap;" data-i18n="media.save">保存</button>
           </div>
-          <small class="comment">保存到设置 MEDIA_DOWNLOAD_DIR，重启服务后所有下载输出到该目录。</small>
+          <small class="comment" data-i18n="media.downloadDirHint">保存到设置 MEDIA_DOWNLOAD_DIR，重启服务后所有下载输出到该目录。</small>
         </div>
-        <small class="comment">选择 ORIGINAL = 保留原始音频，不做转换。</small>
+        <small class="comment" data-i18n="media.originalHint">选择 ORIGINAL = 保留原始音频，不做转换。</small>
+      </div>
+    </div>
+
+    <div class="card collapsible-section" id="mediaBrowserCard" style="display:none;">
+      <div class="collapsible-header" id="mediaBrowserHeader">
+        <h2 data-i18n="media.browserTitle">🖥️ 内置浏览器（扫码登录）</h2>
+        <span class="toggle-arrow">▼</span>
+      </div>
+      <div class="collapsible-content" id="mediaBrowserContent">
+        <div class="collapsible-inner">
+          <iframe id="mediaBrowserFrame" style="width:100%;height:640px;border:1px solid rgba(128,128,128,.25);border-radius:8px;background:#fff;"
+            sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-modals allow-downloads allow-pointer-lock"></iframe>
+          <div style="margin-top:8px;text-align:right;">
+            <button type="button" class="btn-outline" id="mediaBrowserOpenBtn" data-i18n="media.browserOpenNew">🖥️ 在新窗口打开</button>
+          </div>
+        </div>
       </div>
     </div>
 

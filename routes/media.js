@@ -16,6 +16,11 @@ const COOKIES_FILE =
   path.join(BASE_DIR, "cookies", "cookies.txt");
 
 const CD_URL = String(process.env.CHROME_DRIVERLESS_URL || "").trim().replace(/\/+$/, "");
+// Internal (interface) address, e.g. https://browser.internal.example/ — used
+// by the media tab to reach the built-in browser panel from the same network.
+const BROWSER_INTERNAL_URL = String(process.env.CHROME_DRIVERLESS_INTERNAL_URL || "").trim();
+// External (public) address, e.g. https://browser.public.example/ — what
+// logins / the embedded browser panel resolve to for end users.
 const BROWSER_EXTERNAL_URL = String(process.env.CHROME_DRIVERLESS_EXTERNAL_URL || "").trim();
 
 // User-configurable download folder (saved via Settings → MEDIA_DOWNLOAD_DIR).
@@ -30,8 +35,6 @@ const MEDIA_DOWNLOAD_DIR = String(process.env.MEDIA_DOWNLOAD_DIR || "").trim()
 const PLATFORM_LOGIN_URLS = {
   bilibili: "https://passport.bilibili.com/login",
   bililive: "https://passport.bilibili.com/login",
-  netease: "https://music.163.com/#/login",
-  neteaselive: "https://music.163.com/#/login",
   qqmusic:
     "https://graph.qq.com/oauth2.0/show?which=Login&display=pc&client_id=100460100&response_type=code&redirect_uri=https%3A%2F%2Fy.qq.com%2Fportal%2Fplayer.html",
   youtube: "https://www.youtube.com/signin"
@@ -179,29 +182,6 @@ async function searchBililive(keyword, limit) {
   }).filter((it) => it.id && it.title && it.url);
 }
 
-async function searchNeteaseLive(keyword, limit) {
-  // NetEase Cloud Music 主播电台 / 直播 (DJ radio) — public search API, type=1009.
-  const data = await curlJson("https://music.163.com/api/search/get", {
-    method: "POST",
-    headers: {
-      "User-Agent": UA,
-      Referer: "https://music.163.com/",
-      Cookie: "os=pc"
-    },
-    data: `s=${encodeURIComponent(keyword)}&type=1009&offset=0&total=true&limit=${limit}`
-  });
-  const radios = data?.result?.djRadios || [];
-  return radios.map((d) => ({
-    id: String(d.id || ""),
-    platform: "neteaselive",
-    title: stripHtml(d.name || ""),
-    artist: stripHtml(d.dj?.nickname || ""),
-    album: d.category ? stripHtml(d.category) : "",
-    durationSec: null,
-    url: d.id ? `https://music.163.com/#/djradio?id=${d.id}` : ""
-  })).filter((it) => it.id && it.title && it.url);
-}
-
 async function searchYoutube(keyword, limit) {
   // YouTube search via yt-dlp (ytsearchN:<query>); works with the saved cookies.
   const data = await ytdlpFlatJson(`ytsearch${Math.min(limit, 30)}:${keyword}`);
@@ -292,6 +272,7 @@ router.get("/api/media/config", rateLimit(60, 60_000), (_req, res) => {
     platforms: loginStatus().platforms,
     loginUrls: PLATFORM_LOGIN_URLS,
     browserExternalUrl: BROWSER_EXTERNAL_URL || null,
+    browserInternalUrl: BROWSER_INTERNAL_URL || null,
     downloadDir: MEDIA_DOWNLOAD_DIR
   });
 });
@@ -318,8 +299,6 @@ router.get("/api/media/search", rateLimit(30, 60_000), async (req, res) => {
       items = await searchQqMusic(keyword, limit);
     } else if (platform === "netease") {
       items = await searchNetease(keyword, limit);
-    } else if (platform === "neteaselive") {
-      items = await searchNeteaseLive(keyword, limit);
     } else if (platform === "youtube") {
       items = await searchYoutube(keyword, limit);
     } else if (platform === "bilibili") {
@@ -329,7 +308,7 @@ router.get("/api/media/search", rateLimit(30, 60_000), async (req, res) => {
       if (!loginGate("Bilibili 直播")) return;
       items = await searchBililive(keyword, limit);
     } else {
-      return res.status(400).json({ error: { code: "UNKNOWN_PLATFORM", message: "platform must be qqmusic | netease | neteaselive | bilibili | bililive | youtube" } });
+      return res.status(400).json({ error: { code: "UNKNOWN_PLATFORM", message: "platform must be qqmusic | netease | bilibili | bililive | youtube" } });
     }
     res.json({ ok: true, platform, keyword, count: items.length, items });
   } catch (err) {

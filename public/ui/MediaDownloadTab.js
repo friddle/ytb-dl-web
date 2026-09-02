@@ -5,6 +5,7 @@ export class MediaDownloadTab {
     this.app = app;
     this.results = [];
     this.browserUrl = null;
+    this.browserInternalUrl = null;
     this.submitting = false;
   }
 
@@ -39,6 +40,10 @@ export class MediaDownloadTab {
     this.downloadDirInput = document.getElementById('mediaDownloadDirInput');
     this.downloadDirSaveBtn = document.getElementById('mediaDownloadDirSaveBtn');
 
+    this.browserCard = document.getElementById('mediaBrowserCard');
+    this.browserFrame = document.getElementById('mediaBrowserFrame');
+    this.browserOpenBtn = document.getElementById('mediaBrowserOpenBtn');
+
     this.resultsCard = document.getElementById('mediaResultsCard');
     this.resultsTitle = document.getElementById('mediaResultsTitle');
     this.resultsMeta = document.getElementById('mediaResultsMeta');
@@ -62,6 +67,7 @@ export class MediaDownloadTab {
     });
     this.formatSelect?.addEventListener('change', () => this.syncBitrateOptions());
     this.downloadDirSaveBtn?.addEventListener('click', () => this.saveDownloadDir());
+    this.browserOpenBtn?.addEventListener('click', () => this.openBrowserWindow());
     this.selectAll?.addEventListener('change', () => {
       const checked = this.selectAll.checked;
       this.resultsList?.querySelectorAll('.media-item-check').forEach((c) => { c.checked = checked; });
@@ -94,14 +100,13 @@ export class MediaDownloadTab {
   }
 
   async loadPlatformStatus() {
-    // One card per platform; bililive/neteaselive reuse the Bilibili/NetEase
+    // One card per platform; bililive reuses the Bilibili session.
     // session (same cookie domain), youtube has its own Google sign-in.
     const labels = {
       bilibili: 'Bilibili 哔哩哔哩',
       bililive: 'Bilibili 直播',
       qqmusic: 'QQ 音乐',
       netease: '网易云音乐',
-      neteaselive: '网易云电台 / 直播',
       youtube: 'YouTube'
     };
     const hints = {
@@ -109,16 +114,16 @@ export class MediaDownloadTab {
       bililive: '直播搜索需 B 站登录',
       qqmusic: '搜索无需登录，下载建议登录',
       netease: '搜索无需登录，下载建议登录',
-      neteaselive: '电台搜索无需登录',
       youtube: '登录后解锁高音质 / 年龄限制'
     };
-    const order = ['bilibili', 'bililive', 'qqmusic', 'netease', 'neteaselive', 'youtube'];
-    // bililive & neteaselive share the bilibili / netease cookie session.
-    const loginSourceOf = { bililive: 'bilibili', neteaselive: 'netease' };
+    const order = ['bilibili', 'bililive', 'qqmusic', 'netease', 'youtube'];
+    // bililive shares the bilibili cookie session.
+    const loginSourceOf = { bililive: 'bilibili' };
     try {
       const r = await fetch('/api/media/config');
       const d = await r.json();
       if (d?.browserExternalUrl) this.browserUrl = d.browserExternalUrl;
+      if (d?.browserInternalUrl) this.browserInternalUrl = d.browserInternalUrl;
       const platforms = d?.platforms || {};
       const loginUrls = d?.loginUrls || {};
       if (this.downloadDirInput) {
@@ -151,25 +156,53 @@ export class MediaDownloadTab {
       container.querySelectorAll('.media-login-btn').forEach((btn) => {
         btn.addEventListener('click', () => {
           const key = btn.dataset.platform;
-          const base = this.browserUrl || this.browserFallbackUrl();
           // Deep-link straight to the QR/sign-in page inside the embedded browser.
           const targetUrl = loginUrls[key] || {
             bilibili: 'https://passport.bilibili.com/login',
             bililive: 'https://passport.bilibili.com/login',
             qqmusic: 'https://graph.qq.com/oauth2.0/show?which=Login&display=pc&client_id=100460100&response_type=code&redirect_uri=https%3A%2F%2Fy.qq.com%2Fportal%2Fplayer.html',
             netease: 'https://music.163.com/#/login',
-            neteaselive: 'https://music.163.com/#/login',
             youtube: 'https://www.youtube.com/signin'
           }[key];
-          const url = targetUrl
-            ? `${base}${base.includes('?') ? '&' : '?'}url=${encodeURIComponent(targetUrl)}`
-            : base;
-          window.open(url, '_blank', 'noopener,noreferrer');
+          this.openBrowser(targetUrl);
         });
       });
     } catch (err) {
       console.warn('[media-tab] loadPlatformStatus failed:', err);
     }
+  }
+
+  // Returns the translated string; falls back to the given default.
+  tt(key, fallback) {
+    const v = window.i18n && typeof window.i18n.t === 'function' ? window.i18n.t(key) : null;
+    return v && v !== key ? v : (fallback ?? '');
+  }
+
+  // Preferred browser URL: external (public) → internal (interface) → derived.
+  preferredBrowserUrl() {
+    return this.browserUrl || this.browserInternalUrl || this.browserFallbackUrl();
+  }
+
+  // Opens the built-in browser panel inside the iframe when available (forwards
+  // the deep-link there), otherwise in a new window.
+  openBrowser(targetUrl) {
+    const base = this.preferredBrowserUrl();
+    const url = targetUrl
+      ? `${base}${base.includes('?') ? '&' : '?'}url=${encodeURIComponent(targetUrl)}`
+      : base;
+    if (this.browserFrame && this.browserCard) {
+      this.browserCard.style.display = '';
+      this.browserFrame.src = url;
+      this.browserCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      return url;
+    }
+    window.open(url, '_blank', 'noopener,noreferrer');
+    return url;
+  }
+
+  openBrowserWindow() {
+    const current = this.browserFrame?.src || this.preferredBrowserUrl();
+    window.open(current, '_blank', 'noopener,noreferrer');
   }
 
   // Persists the download directory to Settings (MEDIA_DOWNLOAD_DIR).
@@ -280,7 +313,7 @@ export class MediaDownloadTab {
   platformTag(platform) {
     return {
       bilibili: '📺 B站', bililive: '🔴 直播', qqmusic: '🐧 QQ', netease: '🎵 网易',
-      neteaselive: '📻 电台', youtube: '▶️ YouTube', netease_redirect: '🎵 网易'
+      youtube: '▶️ YouTube', netease_redirect: '🎵 网易'
     }[platform] || platform;
   }
 
