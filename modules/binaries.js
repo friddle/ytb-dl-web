@@ -6,6 +6,7 @@ import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import { execFileSafe } from "./safeProcess.js";
 import { assertPathWithinAny } from "./security.js";
+import { proxyFetch } from "./proxyFetch.js";
 import { promisify } from "node:util";
 import { fileURLToPath } from "node:url";
 
@@ -405,16 +406,18 @@ async function writeJsonFile(filePath, value) {
   await fs.promises.writeFile(target, JSON.stringify(value, null, 2), { encoding: "utf8", mode: 0o600 });
 }
 
-// Creates fetch timeout wrapper for web binary cache.
+// Creates fetch timeout wrapper for web binary cache. Uses proxyFetch so the
+// http(s)_proxy env is honored (Node's global fetch ignores it) — required on
+// networks that only reach GitHub releases through a local proxy.
 async function fetchWithTimeout(url, init = {}, timeoutMs = WEB_TIMEOUT_MS) {
-  if (typeof fetch !== "function") {
+  if (typeof fetch !== "function" && typeof proxyFetch !== "function") {
     throw new Error("fetch API is not available in this Node.js runtime");
   }
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    return await fetch(url, {
+    return await proxyFetch(url, {
       ...init,
       signal: controller.signal
     });
