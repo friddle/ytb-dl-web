@@ -171,34 +171,43 @@ async function searchNeteasePlaylists(keyword, limit) {
   })).filter((it) => it.id && it.title && it.url);
 }
 
-// Playlist (歌单) search — QQ Music desktop search CGI, search_type 2 = playlist.
+// Playlist (歌单) search — QQ Music desktop search CGI runs inside the embedded
+// browser (its cookies satisfy the login-gated CGI); search_type 3 = playlist.
 async function searchQqMusicPlaylists(keyword, limit) {
-  const data = await curlJson("https://u.y.qq.com/cgi-bin/musicu.fcg", {
-    method: "POST",
-    headers: {
-      "User-Agent": UA,
-      Referer: "https://y.qq.com/",
-      "Content-Type": "application/json"
-    },
-    data: JSON.stringify({
-      comm: { ct: 19, cv: 1873 },
-      req: {
-        module: "music.search.SearchCgiService",
-        method: "DoSearchForQQMusicDesktop",
-        param: { search_type: 2, query: keyword, page_num: 1, num_per_page: limit }
-      }
-    })
-  });
-  const list = data?.req?.data?.body?.playlist?.list || [];
-  return list.map((p) => {
-    const pid = String(p.mid || p.disstid || p.id || "");
+  const expression = `(async () => {
+    try {
+      const r = await fetch("https://u.y.qq.com/cgi-bin/musicu.fcg", {
+        method: "POST", credentials: "include", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          comm: { ct: 19, cv: 1873 },
+          req: { module: "music.search.SearchCgiService", method: "DoSearchForQQMusicDesktop",
+                 param: { search_type: 3, query: ${JSON.stringify(keyword)}, page_num: 1, num_per_page: ${limit} } }
+        })
+      });
+      const j = await r.json();
+      const body = (j && j.req && j.req.data && j.req.data.body) || {};
+      const list = (body.songlist && body.songlist.list) || (body.playlist && body.playlist.list) || [];
+      return { ok: true, list: list.map((p) => ({
+        dissid: p.dissid ?? p.disstid ?? p.mid ?? p.id ?? "",
+        title: p.dissname || p.title || p.name || "",
+        nick: (p.creator && (p.creator.nick || p.creator.name)) || p.nickname || "",
+        cnt: p.song_count ?? p.song_cnt ?? p.songnum ?? null
+      })) };
+    } catch (e) { return { ok: false, error: String(e).slice(0, 140) }; }
+  })()`;
+  const data = await cdEvaluate(expression, 45_000);
+  if (!data || data.ok !== true) {
+    throw new Error(`QQ音乐歌单搜索失败: ${(data && data.error) || "no data"}`);
+  }
+  return (data.list || []).map((p) => {
+    const pid = String(p.dissid ?? "");
     return {
       id: pid,
       platform: "qqmusic",
       type: "playlist",
-      title: stripHtml(p.title || p.dissname || p.name || ""),
-      artist: stripHtml(p.creator?.nick || p.nickname || ""),
-      trackCount: Number(p.song_cnt ?? p.songcnt ?? p.songnum) || null,
+      title: stripHtml(p.title || ""),
+      artist: stripHtml(p.nick || ""),
+      trackCount: Number(p.cnt) || null,
       durationSec: null,
       url: pid ? `https://y.qq.com/n/ryqq/playlist/${pid}` : ""
     };
