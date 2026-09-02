@@ -9,7 +9,7 @@
 // local dev and on the NAS (DATA_DIR=/data → /data/db/gharmonize.db).
 import fs from "fs";
 import path from "path";
-import Database from "better-sqlite3";
+import Database from "./sqlite.js";
 
 const BASE_DIR = process.env.DATA_DIR || process.cwd();
 const DB_DIR = process.env.GHARMONIZE_DB_DIR || path.join(BASE_DIR, "db");
