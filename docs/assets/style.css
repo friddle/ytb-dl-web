@@ -74,3 +74,10 @@ figure.shot figcaption{margin-top:10px;color:var(--muted);font-size:13.5px;text-
 .legend li{list-style:none}
 .legend b{color:var(--accent);margin-right:6px}
 @media(max-width:640px){.callout{width:20px;height:20px;font-size:11px}}
+/* key differentiator highlight */
+.highlight{background:linear-gradient(135deg,rgba(45,212,167,.12),rgba(76,194,255,.08));border:1px solid rgba(45,212,167,.45);border-radius:var(--radius);padding:30px 34px;max-width:860px;margin:0 auto;text-align:center}
+.highlight h3{font-size:21px;margin-bottom:10px}
+.highlight p{color:var(--muted);font-size:15.5px;text-align:left}
+.highlight p b{color:var(--text)}
+.highlight .keys{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:16px;font-size:13px}
+.highlight .keys span{border:1px solid rgba(45,212,167,.4);border-radius:99px;padding:3px 13px;color:var(--accent)}

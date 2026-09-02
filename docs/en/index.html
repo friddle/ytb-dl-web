@@ -25,6 +25,7 @@
 </script>
 <script type="application/ld+json">
 {"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
+{"@type":"Question","name":"How is this different from other downloaders?","acceptedAnswer":{"@type":"Answer","text":"The biggest difference is that you sign in with your own account: no third-party parsing APIs, no shared account pools. You log in inside the built-in browser, VIP privileges are your account's own, and sessions stay local. Everything else is normal logic."}},
 {"@type":"Question","name":"Do I need to sign in to download music?","acceptedAnswer":{"@type":"Answer","text":"Chinese platforms (QQ Music / NetEase / Bilibili) can be searched without signing in; VIP sources require signing in to the corresponding platform. YouTube and Spotify require sign-in."}},
 {"@type":"Question","name":"Can I download VIP songs?","acceptedAnswer":{"@type":"Answer","text":"Yes. Sign in with your VIP membership (VIP / Premium / Black Vinyl) in the built-in browser; once VIP status is detected the corresponding sources become downloadable."}},
 {"@type":"Question","name":"How do I install it?","acceptedAnswer":{"@type":"Answer","text":"Install Docker and run docker compose up -d. The image is hosted on ghcr.io with the browser bundled; default port is 5174."}},
@@ -55,8 +56,18 @@
     <a class="btn primary" href="#install">🚀 Get started</a>
     <a class="btn ghost" href="https://github.com/friddle/ytb-dl-web" target="_blank" rel="noopener">⭐ Source on GitHub</a>
   </div>
-  <div class="badges"><span>5 platforms</span><span>QR login + VIP detection</span><span>One-command Docker deploy</span><span>6 UI languages</span><span>100% local data</span></div>
+  <div class="badges"><span>5 platforms</span><span>QR login + VIP detection</span><span>Your own account · no third-party APIs</span><span>One-command Docker deploy</span><span>6 UI languages</span><span>100% local data</span></div>
 </header>
+
+<section id="why" style="padding-top:10px">
+  <div class="container">
+    <div class="highlight">
+      <h3>🔑 The biggest difference from other tools: you sign in with YOUR own account</h3>
+      <p>Most tools out there rely on <b>third-party parsing APIs</b> or <b>shared account pools</b> — they break without notice, get banned overnight, and your requests route through someone else's server. Gharmonize has no backend accounts at all: in the built-in browser you <b>sign in with your own account</b> by QR or password, so the VIP privileges you see are exactly your account's privileges, and the session stays in <b>your local</b> browser profile. Beyond that, everything else — search, parsing, batch download, transcoding — is just ordinary, normal logic.</p>
+      <div class="keys"><span>✅ Sign in yourself</span><span>✅ No third-party parsing APIs</span><span>✅ No shared account pools</span><span>✅ Sessions never leave your machine</span></div>
+    </div>
+  </div>
+</section>
 
 <section id="features" class="alt">
   <div class="container">
@@ -192,7 +203,7 @@
 <section id="login">
   <div class="container">
     <h2 class="sec">Sign in to platforms</h2>
-    <p class="sec-sub">All sign-ins happen in the built-in browser — credentials never touch a third party.</p>
+    <p class="sec-sub">This is what sets this tool apart: sign-in is on you — everything happens in the built-in browser with your own account; credentials never touch a third party.</p>
     <div class="step"><div class="n">1</div><div><h3>Open the Home tab</h3><p>Go to "🏠 Home" — login status of all platforms is auto-checked on page load.</p></div></div>
     <div class="step"><div class="n">2</div><div><h3>Click "Sign in"</h3><p>The built-in browser opens the platform's login page: <b>Bilibili / QQ Music / NetEase</b> use <b>QR codes</b> from the mobile app; <b>YouTube / Spotify</b> use account sign-in (Google supported).</p></div></div>
     <div class="step"><div class="n">3</div><div><h3>Confirm with "Check"</h3><p>The card shows <b>✅ signed in</b> plus VIP badges (VIP / Premium / Black Vinyl). Login state is exported to <code>cookies.txt</code> for the download engine (on startup and every 6 hours).</p></div></div>
@@ -222,6 +233,7 @@
   <div class="container">
     <h2 class="sec">FAQ</h2>
     <div class="faq">
+      <details><summary>How is this different from other downloaders?</summary><p>The biggest difference: <b>you sign in with your own account</b>. No third-party parsing APIs, no shared account pools — you log in inside the built-in browser, VIP privileges are your account's own privileges, and the session stays local. Everything else (search, parsing, downloading, transcoding) is just normal logic.</p></details>
       <details><summary>Do I need to sign in to download music?</summary><p>Chinese platforms (QQ Music / NetEase / Bilibili) can be searched without signing in; VIP sources require the corresponding account. YouTube and Spotify require sign-in.</p></details>
       <details><summary>Can I download VIP songs?</summary><p>Yes. Sign in with your VIP / Premium / Black Vinyl account in the built-in browser; once VIP status is detected, those sources become downloadable.</p></details>
       <details><summary>How do I update?</summary><p><code>docker compose pull &amp;&amp; docker compose up -d</code>. Images are built and pushed by CI automatically, and the app also checks for new versions quietly at startup.</p></details>

@@ -25,6 +25,7 @@
 </script>
 <script type="application/ld+json">
 {"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
+{"@type":"Question","name":"和其他下载工具有什么区别？","acceptedAnswer":{"@type":"Answer","text":"最大的不同是登录需要你自己登录：没有第三方解析接口、没有共享账号池，你在内置浏览器里用自己的账号登录，VIP 权限就是你账号的权限，登录态只保存在本地。其余搜索、解析、下载、转码都是正常的逻辑。"}},
 {"@type":"Question","name":"需要登录才能下载音乐吗？","acceptedAnswer":{"@type":"Answer","text":"中国平台（QQ音乐/网易云/B站）无需登录即可搜索，下载 VIP 音源需要登录对应平台账号；YouTube 与 Spotify 需要登录。"}},
 {"@type":"Question","name":"VIP 歌曲可以下载吗？","acceptedAnswer":{"@type":"Answer","text":"可以。在内置浏览器中登录你的大会员 / 豪华绿钻 / 黑胶 VIP 账号，系统检测到 VIP 状态后即可下载对应音源，登录态自动导出给下载引擎复用。"}},
 {"@type":"Question","name":"如何安装？","acceptedAnswer":{"@type":"Answer","text":"安装 Docker 后执行 docker compose up -d 即可，镜像托管在 ghcr.io，内置浏览器已打包，默认端口 5174。"}},
@@ -55,8 +56,18 @@
     <a class="btn primary" href="#install">🚀 快速开始</a>
     <a class="btn ghost" href="https://github.com/friddle/ytb-dl-web" target="_blank" rel="noopener">⭐ GitHub 源码</a>
   </div>
-  <div class="badges"><span>5 大平台</span><span>扫码登录 + VIP 检测</span><span>Docker 一键部署</span><span>6 种界面语言</span><span>数据 100% 本地</span></div>
+  <div class="badges"><span>5 大平台</span><span>扫码登录 + VIP 检测</span><span>用自己的账号 · 不依赖第三方接口</span><span>Docker 一键部署</span><span>6 种界面语言</span><span>数据 100% 本地</span></div>
 </header>
+
+<section id="why" style="padding-top:10px">
+  <div class="container">
+    <div class="highlight">
+      <h3>🔑 与其他下载工具最大的不同：登录，需要你自己登录</h3>
+      <p>市面上常见的工具大多依赖<b>第三方解析接口</b>或<b>共享账号池</b> —— 接口随时失效、账号说封就封、你的请求还要过一遍别人的服务器。Gharmonize 没有任何后端账号：在内置浏览器里，用<b>你自己的账号</b>扫码或登录，看到的 VIP 权限就是你账号本身的权限，登录态只保存在<b>你本地</b>的浏览器 Profile 里。去掉这点之后，剩下的搜索、解析、批量下载、转码入库，都只是正常的逻辑而已。</p>
+      <div class="keys"><span>✅ 自己的账号自己登</span><span>✅ 无第三方解析接口</span><span>✅ 无共享账号池</span><span>✅ 登录态不出本机</span></div>
+    </div>
+  </div>
+</section>
 
 <section id="features" class="alt">
   <div class="container">
@@ -192,7 +203,7 @@
 <section id="login">
   <div class="container">
     <h2 class="sec">登录各平台</h2>
-    <p class="sec-sub">所有登录都在内置浏览器中完成，密码不经过第三方。</p>
+    <p class="sec-sub">这是本工具与其他工具最大的不同：账号需要你自己登录 —— 所有登录都在内置浏览器中用你自己的账号完成，密码不经过第三方。</p>
     <div class="step"><div class="n">1</div><div><h3>打开首页平台卡片</h3><p>进入「🏠 首页」，页面会自动检测一次所有平台的登录状态。</p></div></div>
     <div class="step"><div class="n">2</div><div><h3>点击「登录」</h3><p>内置浏览器自动打开对应平台的登录页：<b>Bilibili / QQ音乐 / 网易云</b> 用手机 App <b>扫码</b>；<b>YouTube / Spotify</b> 直接输入账号（支持 Google 登录）。</p></div></div>
     <div class="step"><div class="n">3</div><div><h3>回来点「检测」确认</h3><p>卡片显示 <b>✅ 已登录</b> 与 VIP 徽标（大会员 / 豪华绿钻 / 黑胶VIP）即成功。登录态会自动导出 <code>cookies.txt</code> 供下载引擎复用（启动时与每 6 小时同步）。</p></div></div>
@@ -222,6 +233,7 @@
   <div class="container">
     <h2 class="sec">常见问题</h2>
     <div class="faq">
+      <details><summary>和其他下载工具的区别是什么？</summary><p>最大的不同：<b>登录需要你自己登录</b>。没有第三方解析接口、没有共享账号池 —— 你在内置浏览器里登录自己的账号，VIP 权限就是你账号的权限，登录态只存在本地。其余的搜索、解析、下载、转码都是正常的逻辑。</p></details>
       <details><summary>需要登录才能下载音乐吗？</summary><p>中国平台（QQ音乐/网易云/B站）无需登录即可搜索；下载 VIP 音源需要登录对应平台账号。YouTube 与 Spotify 需要登录。</p></details>
       <details><summary>VIP 歌曲可以下载吗？</summary><p>可以。在内置浏览器中登录你的大会员 / 豪华绿钻 / 黑胶 VIP 账号，系统检测到 VIP 状态后即可下载对应音源。</p></details>
       <details><summary>如何更新版本？</summary><p><code>docker compose pull && docker compose up -d</code>。镜像由 CI 自动构建推送，应用启动时也会静默检查新版本并提示。</p></details>
