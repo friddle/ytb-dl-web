@@ -170,6 +170,7 @@ export class HomeApp {
     });
     this.selectAll?.addEventListener('change', () => {
       this.resultsList?.querySelectorAll('.media-item-check').forEach((c) => { c.checked = this.selectAll.checked; });
+      this.resultsList?.querySelectorAll('.media-group-check').forEach((c) => { c.checked = this.selectAll.checked; c.indeterminate = false; this.onPlaylistMasterToggle(Number(c.dataset.idx)); });
       this.updateSelectedCount();
     });    this.downloadBtn?.addEventListener('click', () => this.downloadSelected());
     this.convertCheckbox?.addEventListener('change', () => { this.syncConvertUi(); this.persistDlPrefs(); });
@@ -473,16 +474,20 @@ export class HomeApp {
     this.updateSelectedCount();
   }
 
-  // Builds a rich row for any search/parse item, showing every field the
-  // channel provides: cover, source tag, title, format/quality, VIP badge,
-  // creators (singer/uploader/channel), album, duration and intro text.
-  buildMediaRow(item, idx) {
-    const row = document.createElement('label');
-    row.className = 'media-row';
-    const duration = item.durationSec ? this.fmtDuration(item.durationSec) : '';
+  // Builds a rich row for any search/parse item. Song rows: label + checkbox +
+  // preview button. Playlist rows: a .media-group master checkbox (checked =
+  // select all tracks, the default) + expandable detail (点击展开 → per-track
+  // checkboxes + preview), rendered by renderPlaylistChildren.
+  buildMediaRow(item, idx, opts = {}) {
+    const trackOf = opts.trackOf ?? null; // set → this row is a track inside that playlist idx
+    const isTopPlaylist = trackOf === null && item.type === 'playlist';
+    const row = document.createElement(isTopPlaylist ? 'div' : 'label');
+    row.className = 'media-row' + (isTopPlaylist ? ' is-playlist' : '');
     const isPlaylist = item.type === 'playlist';
+    const duration = item.durationSec ? this.fmtDuration(item.durationSec) : '';
     const count = isPlaylist && item.trackCount ? ` (${item.trackCount})` : '';
     const tag = `${this.platTag(item.platform)}${isPlaylist ? ' 📃' : ''}`;
+    const checkClass = trackOf !== null ? 'media-track-check' : (isPlaylist ? 'media-group-check' : 'media-item-check');
     const chips = [];
     if (item.fileFormat) chips.push(`<span class="media-chip fmt">${item.fileFormat}${item.quality ? ' · ' + item.quality : ''}</span>`);
     if (item.vip) chips.push(`<span class="media-chip vip">👑 ${this.tt('home.vipRequired', 'VIP')}</span>`);
@@ -504,7 +509,8 @@ export class HomeApp {
     if (item.album) chips.push(`<span class="media-chip album">${this.tt('home.album', '专辑')}: </span>`);
     if (item.stats?.plays) chips.push(`<span class="media-chip plays">▶ ${item.stats.plays >= 10000 ? Math.round(item.stats.plays / 10000) + 'w' : item.stats.plays}</span>`);
     row.innerHTML = `
-      <input type="checkbox" class="media-item-check" data-idx="${idx}">
+      <input type="checkbox" class="${checkClass}" data-idx="${idx}" ${trackOf !== null ? `data-parent="${trackOf}"` : ''} ${isTopPlaylist ? 'checked' : ''}>
+      ${isTopPlaylist ? `<button type="button" class="media-expand" aria-label="${this.tt('home.plDetail', '展开歌单')}"><span class="media-expand-arrow">▸</span></button>` : ''}
       <span class="media-row-cover">${item.cover ? `<img src="${item.cover}" alt="" loading="lazy" referrerpolicy="no-referrer">` : '🎵'}</span>
       <span class="media-row-body">
         <span class="media-row-main">
@@ -516,7 +522,7 @@ export class HomeApp {
         ${chips.length ? `<span class="media-row-meta">${chips.join('')}</span>` : ''}
         ${item.description ? '<span class="media-row-desc"></span>' : ''}
       </span>
-      ${!isPlaylist ? `<button type="button" class="media-play" data-idx="${idx}" title="${this.tt('home.preview', '试听')}">▶</button>` : ''}`;
+      ${!isPlaylist || trackOf !== null ? `<button type="button" class="media-play" title="${this.tt('home.preview', '试听')}">▶</button>` : ''}`;
     row.querySelector('.media-item-title').textContent = (item.title || '') + count;
     // Fill text content for creator/album/description chips (XSS-safe).
     const chipsEls = row.querySelectorAll('.media-chip.creator, .media-chip.album');
@@ -529,14 +535,137 @@ export class HomeApp {
     if (item.album && chipsEls[ci]) chipsEls[ci++].append(document.createTextNode(String(item.album)));
     const descEl = row.querySelector('.media-row-desc');
     if (descEl) descEl.textContent = item.description || '';
-    row.querySelector('.media-item-check').addEventListener('change', () => this.updateSelectedCount());
-    // Preview button: the row is a <label>, so stop the default checkbox toggle.
+    if (trackOf !== null) {
+      row.querySelector('.media-track-check').addEventListener('change', () => this.syncPlaylistMaster(trackOf));
+    } else if (isTopPlaylist) {
+      row.querySelector('.media-group-check').addEventListener('change', () => this.onPlaylistMasterToggle(idx));
+    } else {
+      row.querySelector('.media-item-check').addEventListener('change', () => this.updateSelectedCount());
+    }
+    // Preview button: stop the label's default checkbox toggle.
     row.querySelector('.media-play')?.addEventListener('click', (e) => {
       e.preventDefault();
       e.stopPropagation();
       this.playPreview(item, e.currentTarget);
     });
+    // Playlist rows: clicking the body or the arrow toggles the detail section.
+    if (isTopPlaylist) {
+      const body = row.querySelector('.media-row-body');
+      body.style.cursor = 'pointer';
+      body.addEventListener('click', (e) => { e.preventDefault(); this.togglePlaylistDetail(idx); });
+      row.querySelector('.media-expand').addEventListener('click', (e) => { e.preventDefault(); this.togglePlaylistDetail(idx); });
+    }
     return row;
+  }
+
+  // --------------------------------------------------------------
+  // Playlist (工单) detail: lazy-loaded track list. Master checkbox =
+  // select all (默认全选), per-track re-check, per-track preview.
+  // --------------------------------------------------------------
+
+  plState(item) {
+    if (!item.__pl) item.__pl = { loading: false, error: null, items: null, selected: null, expanded: false };
+    return item.__pl;
+  }
+
+  async togglePlaylistDetail(idx) {
+    const item = this.results[idx];
+    if (!item || item.type !== 'playlist') return;
+    const st = this.plState(item);
+    if (st.items) { st.expanded = !st.expanded; this.renderResults(); this.updateSelectedCount(); return; }
+    if (st.loading) return;
+    st.loading = true;
+    st.error = null;
+    st.expanded = true;
+    this.renderResults();
+    try {
+      const r = await fetch(`/api/media/resolve?url=${encodeURIComponent(item.url)}`);
+      const d = await r.json();
+      if (!r.ok || !d.ok) throw new Error(d?.error?.message || `HTTP ${r.status}`);
+      st.items = (d.items || []).filter((t) => t.url);
+      // 默认全选：master checked → every track selected.
+      st.selected = new Set(st.items.map((_, i) => i));
+    } catch (e) {
+      st.error = e.message;
+    } finally {
+      st.loading = false;
+      this.renderResults();
+      this.updateSelectedCount();
+    }
+  }
+
+  renderPlaylistChildren(container, item, idx) {
+    const st = this.plState(item);
+    container.innerHTML = '';
+    if (!st.expanded) { container.hidden = true; return; }
+    container.hidden = false;
+    const wrap = document.createElement('div');
+    wrap.className = 'media-row-children';
+    if (st.loading) {
+      wrap.innerHTML = `<div class="media-pl-status">${this.tt('home.plLoading', '加载曲目…')}</div>`;
+    } else if (st.error) {
+      wrap.innerHTML = `<div class="media-pl-status err">${this.tt('home.plFailed', '歌单加载失败')}: </div>`;
+      wrap.querySelector('.media-pl-status.err').append(document.createTextNode(st.error || ''));
+    } else if (!st.items) {
+      wrap.innerHTML = `<div class="media-pl-status">${this.tt('home.plHint', '点击展开查看曲目')}</div>`;
+    } else {
+      st.items.forEach((t, ti) => {
+        const row = this.buildMediaRow(t, ti, { trackOf: idx });
+        const cb = row.querySelector('.media-track-check');
+        if (cb) cb.checked = st.selected.has(ti);
+        wrap.appendChild(row);
+      });
+    }
+    container.appendChild(wrap);
+  }
+
+  // Track checkbox change → refresh the playlist master (all/some/none).
+  syncPlaylistMaster(idx) {
+    const item = this.results[idx];
+    if (!item) { this.updateSelectedCount(); return; }
+    const st = this.plState(item);
+    if (st.items && st.selected) {
+      st.selected = new Set([...this.resultsList.querySelectorAll(`.media-track-check[data-parent="${idx}"]:checked`)].map((c) => Number(c.dataset.idx)));
+      const master = this.resultsList.querySelector(`.media-group-check[data-idx="${idx}"]`);
+      if (master) {
+        master.checked = st.selected.size === st.items.length;
+        master.indeterminate = st.selected.size > 0 && st.selected.size < st.items.length;
+      }
+    }
+    this.updateSelectedCount();
+  }
+
+  // Master checkbox change → select / deselect every loaded track.
+  onPlaylistMasterToggle(idx) {
+    const item = this.results[idx];
+    if (!item) { this.updateSelectedCount(); return; }
+    const st = this.plState(item);
+    const master = this.resultsList.querySelector(`.media-group-check[data-idx="${idx}"]`);
+    const checked = master?.checked ?? true;
+    if (st.items && st.selected) {
+      st.selected = checked ? new Set(st.items.map((_, i) => i)) : new Set();
+      this.resultsList.querySelectorAll(`.media-track-check[data-parent="${idx}"]`).forEach((c) => { c.checked = checked; });
+    }
+    this.updateSelectedCount();
+  }
+
+  renderResults() {
+    if (!this.resultsList) return;
+    this.resultsList.innerHTML = '';
+    this.results.forEach((item, idx) => {
+      if (item.type === 'playlist') {
+        const group = document.createElement('div');
+        group.className = 'media-group';
+        group.appendChild(this.buildMediaRow(item, idx));
+        const children = document.createElement('div');
+        children.className = 'media-group-children';
+        this.renderPlaylistChildren(children, item, idx);
+        group.appendChild(children);
+        this.resultsList.appendChild(group);
+      } else {
+        this.resultsList.appendChild(this.buildMediaRow(item, idx));
+      }
+    });
   }
 
   // ------------------------------------------------------------------
@@ -601,12 +730,6 @@ export class HomeApp {
     });
   }
 
-  renderResults() {
-    if (!this.resultsList) return;
-    this.resultsList.innerHTML = '';
-    this.results.forEach((item, idx) => this.resultsList.appendChild(this.buildMediaRow(item, idx)));
-  }
-
   platTag(platform) {
     return {
       bilibili: '📺 B站', qqmusic: '🐧 QQ', netease: '🎵 网易',
@@ -621,7 +744,8 @@ export class HomeApp {
   }
 
   updateSelectedCount() {
-    const n = this.resultsList?.querySelectorAll('.media-item-check:checked').length || 0;
+    const n = (this.resultsList?.querySelectorAll('.media-item-check:checked').length || 0) +
+      (this.resultsList?.querySelectorAll('.media-group-check:checked').length || 0);
     if (this.downloadBtn) this.downloadBtn.disabled = n === 0;
   }
 
@@ -629,11 +753,48 @@ export class HomeApp {
   // preferences (convert checkbox → format/bitrate; unchecked = ORIGINAL).
   // Playlist items are expanded into their tracks first so every item gets its
   // own progress row and failure reason. Optional per-download subfolder.
+  // Expands one playlist item into the download queue. When the detail track
+  // list is loaded, only the CHECKED tracks are queued (未展开/未加载 → 全部).
+  async pushPlaylistTracks(queue, item, masterChecked) {
+    const st = this.plState(item);
+    if (st.items && st.items.length) {
+      const chosen = (st.selected ? [...st.selected] : st.items.map((_, i) => i))
+        .sort((a, b) => a - b)
+        .map((i) => st.items[i])
+        .filter(Boolean);
+      if (!chosen.length) return;
+      queue.push(...chosen.map((t) => ({
+        ...t,
+        platform: t.platform || item.platform,
+        fromPlaylist: item.title
+      })));
+      return;
+    }
+    try {
+      const r = await fetch(`/api/media/resolve?url=${encodeURIComponent(item.url)}`);
+      const d = await r.json();
+      if (!r.ok || !d.ok) throw new Error(d?.error?.message || `HTTP ${r.status}`);
+      const tracks = (d.items || []).map((t) => ({
+        ...t,
+        platform: item.platform,
+        fromPlaylist: item.title
+      }));
+      this.notify(`${this.tt('home.expandPlaylists', '歌单已展开')}: ${item.title} → ${tracks.length}`, 'info');
+      if (tracks.length) queue.push(...tracks);
+    } catch (err) {
+      queue.push({ ...item, status: 'failed', error: `${this.tt('home.expandFailed', '歌单解析失败')}: ${err.message}`, progress: 0 });
+    }
+  }
+
   async downloadSelected() {
     if (this.submitting) return;
     const checked = [...(this.resultsList?.querySelectorAll('.media-item-check:checked') || [])];
-    if (!checked.length) { this.notify(this.tt('home.selectRequired', '请先勾选要下载的条目'), 'error'); return; }
+    const groups = [...(this.resultsList?.querySelectorAll('.media-group-check:checked') || [])];
+    if (!checked.length && !groups.length) { this.notify(this.tt('home.selectRequired', '请先勾选要下载的条目'), 'error'); return; }
     const selected = checked.map((c) => this.results[Number(c.dataset.idx)]).filter(Boolean);
+    // Playlist groups: master checked → its selected tracks (or expand-all
+    // when the track list was never loaded); unchecked → skip entirely.
+    const playlists = groups.map((g) => ({ item: this.results[Number(g.dataset.idx)], masterChecked: true })).filter((g) => g.item);
 
     this.submitting = true;
     this.downloadBtn?.setAttribute('disabled', '1');
@@ -642,23 +803,13 @@ export class HomeApp {
     const queue = [];
     for (const item of selected) {
       if (item.type === 'playlist') {
-        try {
-          const r = await fetch(`/api/media/resolve?url=${encodeURIComponent(item.url)}`);
-          const d = await r.json();
-          if (!r.ok || !d.ok) throw new Error(d?.error?.message || `HTTP ${r.status}`);
-          const tracks = (d.items || []).map((t) => ({
-            ...t,
-            platform: item.platform,
-            fromPlaylist: item.title
-          }));
-          this.notify(`${this.tt('home.expandPlaylists', '歌单已展开')}: ${item.title} → ${tracks.length}`, 'info');
-          if (tracks.length) queue.push(...tracks);
-        } catch (err) {
-          queue.push({ ...item, status: 'failed', error: `${this.tt('home.expandFailed', '歌单解析失败')}: ${err.message}`, progress: 0 });
-        }
+        await this.pushPlaylistTracks(queue, item, /* masterChecked */ true);
       } else {
         queue.push({ ...item });
       }
+    }
+    for (const { item } of playlists) {
+      if (item.type === 'playlist') await this.pushPlaylistTracks(queue, item, true);
     }
     if (!queue.length) {
       this.submitting = false;

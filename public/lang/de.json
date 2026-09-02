@@ -1396,5 +1396,9 @@
   "home.previewUnavailable": "Vorschau für diese Plattform nicht unterstützt",
   "home.libraryHint": "Tipp: Nach dem Download die Mediathek direkt mit Infuse / Jellyfin / Navidrome u. ä. scannen.",
   "home.checkAll": "Alle prüfen",
-  "settings.restartHint": "Änderungen des Download-Ordners werden nach einem Neustart wirksam"
+  "settings.restartHint": "Änderungen des Download-Ordners werden nach einem Neustart wirksam",
+  "home.plDetail": "Playlist aufklappen",
+  "home.plLoading": "Titel werden geladen…",
+  "home.plFailed": "Playlist konnte nicht geladen werden",
+  "home.plHint": "Zum Aufklappen klicken"
 }

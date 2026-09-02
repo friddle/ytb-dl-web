@@ -918,24 +918,22 @@ router.get("/api/media/stream", rateLimit(30, 60_000), async (req, res) => {
   try {
     let upstream;
     if (platform === "netease") {
-      // NetEase trial CDN has no IP binding — hand the redirect straight to
-      // the client (robust against CDN hosts the server can't reach).
+      // Proxy the trial stream server-side: redirecting the client to the CDN
+      // URL fails Chromium's media URL-safety check (raw +// in the query).
       const upstreamUrl = `https://music.163.com/song/media/outer/url?id=${encodeURIComponent(id)}.mp3`;
-      try {
-        const manual = await fetch(upstreamUrl, {
-          redirect: "manual",
-          headers: { "User-Agent": UA, Referer: "https://music.163.com/" }
-        });
-        const loc = manual.headers.get("location");
-        if (manual.status >= 300 && manual.status < 400 && loc) {
-          return res.redirect(302, loc);
+      let lastErr = null;
+      for (let attempt = 0; attempt < 2 && !upstream; attempt++) {
+        try {
+          upstream = await fetch(upstreamUrl, {
+            redirect: "follow",
+            headers: { "User-Agent": UA, Referer: "https://music.163.com/" }
+          });
+        } catch (e) {
+          lastErr = e;
+          await new Promise((r) => setTimeout(r, 800));
         }
-        // No redirect: fall through and proxy the direct response.
-        upstream = manual;
-      } catch (e) {
-        // Server can't even reach music.163.com — let the client try.
-        return res.redirect(302, upstreamUrl);
       }
+      if (!upstream) throw lastErr || new Error("netease upstream unreachable");
     } else if (platform === "qqmusic") {
       const info = await resolveQqMusicStreamUrl(`https://y.qq.com/n/ryqq/songDetail/${encodeURIComponent(id)}`);
       upstream = await fetch(info.purl, { redirect: "follow", headers: { Referer: "https://y.qq.com/", "User-Agent": UA } });
@@ -989,10 +987,16 @@ router.get("/api/media/resolve", rateLimit(20, 60_000), async (req, res) => {
     }
     const data = await ytdlpFlatJson(url);
     const entries = Array.isArray(data?.entries) ? data.entries : null;
+    // Detect the platform once so every mapped entry (and the adapter) gets a
+    // proper platform instead of "unknown" — the preview player relies on it.
+    // (host was already parsed + normalized for the netease hash fix above)
+    const entryPlatform = isNetease ? "netease"
+      : host.includes("qq.com") ? "qqmusic"
+      : host.includes("bilibili.com") || host.includes("b23.tv") ? "bilibili"
+      : host.includes("youtube.com") || host.includes("youtu.be") ? "youtube"
+      : null;
     if (entries) {
       const playlistTitle = stripHtml(data.title || "");
-      let host = "";
-      try { host = new URL(url).hostname.toLowerCase(); } catch { /* fallthrough */ }
       const isQq = host.includes("qq.com");
       const items = entries.map((e, i) => {
         const pagePart = e.playlist_index || (i + 1);
@@ -1033,7 +1037,7 @@ router.get("/api/media/resolve", rateLimit(20, 60_000), async (req, res) => {
           url: `https://www.bilibili.com/video/${data.id}/?p=${pagePart}`
         };
       }).filter((it) => it.title);
-      return res.json({ ok: true, mode: "list", title: stripHtml(data.title || ""), totalCount: items.length, items: items.map((it) => adaptSearchItem(it)) });
+      return res.json({ ok: true, mode: "list", platform: entryPlatform, title: stripHtml(data.title || ""), totalCount: items.length, items: items.map((it) => adaptSearchItem({ ...it, platform: it.platform || entryPlatform })) });
     }
     const single = {
       id: data?.id || "",
@@ -1043,7 +1047,7 @@ router.get("/api/media/resolve", rateLimit(20, 60_000), async (req, res) => {
       durationSec: Number(data?.duration) || null,
       url: data?.webpage_url || url
     };
-    return res.json({ ok: true, mode: "single", title: single.title, totalCount: 1, items: [adaptSearchItem(single)] });
+    return res.json({ ok: true, mode: "single", platform: entryPlatform, title: single.title, totalCount: 1, items: [adaptSearchItem({ ...single, platform: single.platform || entryPlatform })] });
   } catch (err) {
     console.warn("[media] resolve failed:", err?.message || err);
     res.status(502).json({ error: { code: "RESOLVE_FAILED", message: err?.message || "resolve failed" } });

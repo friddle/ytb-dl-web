@@ -1424,5 +1424,9 @@
   "home.previewUnavailable": "Aperçu non pris en charge pour cette plateforme",
   "home.libraryHint": "Astuce : après le téléchargement, scannez la bibliothèque avec Infuse / Jellyfin / Navidrome, etc.",
   "home.checkAll": "Tout vérifier",
-  "settings.restartHint": "Les changements de dossier de téléchargement s'appliquent après redémarrage"
+  "settings.restartHint": "Les changements de dossier de téléchargement s'appliquent après redémarrage",
+  "home.plDetail": "Déplier la playlist",
+  "home.plLoading": "Chargement des titres…",
+  "home.plFailed": "Échec du chargement de la playlist",
+  "home.plHint": "Cliquez pour voir les titres"
 }

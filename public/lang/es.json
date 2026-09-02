@@ -1424,5 +1424,9 @@
   "home.previewUnavailable": "Vista previa no disponible para esta plataforma",
   "home.libraryHint": "Consejo: tras descargar, escanea la biblioteca con Infuse / Jellyfin / Navidrome, etc.",
   "home.checkAll": "Comprobar todo",
-  "settings.restartHint": "Los cambios de carpeta de descarga se aplican tras reiniciar el servicio"
+  "settings.restartHint": "Los cambios de carpeta de descarga se aplican tras reiniciar el servicio",
+  "home.plDetail": "Desplegar playlist",
+  "home.plLoading": "Cargando pistas…",
+  "home.plFailed": "Error al cargar la playlist",
+  "home.plHint": "Haz clic para ver las pistas"
 }

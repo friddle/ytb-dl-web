@@ -85,6 +85,17 @@
 .media-chip.fmt{color:var(--primary);font-weight:600}
 .media-chip.vip{background:rgba(255,193,7,.16);border-color:transparent;color:#e3a008;font-weight:700}
 .media-row-desc{color:var(--text-muted);display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;font-size:11.5px;opacity:.75;overflow:hidden}
+/* playlist (工单) groups: master row + expandable detail children */
+.media-group{display:flex;flex-direction:column;gap:4px}
+.media-row.is-playlist{background:color-mix(in oklab,var(--primary-lighter) 8%,var(--bg))}
+.media-expand{background:none;border:0;color:var(--text-muted);cursor:pointer;flex:0 0 18px;font-size:13px;padding:0}
+.media-expand-arrow{display:inline-block;transition:transform .15s ease}
+.media-group.expanded .media-expand-arrow,.media-row.is-playlist.expanded .media-expand-arrow{transform:rotate(90deg)}
+.media-group-children[hidden]{display:none}
+.media-row-children{display:flex;flex-direction:column;gap:4px;margin-left:26px;border-left:2px solid color-mix(in oklab,var(--border) 70%,transparent);padding-left:8px}
+.media-row-children .media-row{font-size:.97em;padding:4px 8px}
+.media-pl-status{color:var(--text-muted);font-size:12px;padding:6px 10px;opacity:.8}
+.media-pl-status.err{color:#f14c0c}
 /* download module sub-tabs + status filter */
 .dl-subtabs{border-bottom:1px solid var(--border);display:flex;gap:6px;margin:12px 0 10px}
 .dl-subtab{background:none;border:0;border-bottom:2px solid transparent;color:var(--text-muted);cursor:pointer;font-size:13.5px;font-weight:700;min-height:34px;padding:4px 14px}

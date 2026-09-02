@@ -1425,5 +1425,9 @@
   "home.previewUnavailable": "Preview not supported for this platform",
   "home.libraryHint": "Tip: after downloading, scan the library directly with Infuse / Jellyfin / Navidrome and similar players.",
   "home.checkAll": "Check all",
-  "settings.restartHint": "Download-folder changes take effect after a service restart"
+  "settings.restartHint": "Download-folder changes take effect after a service restart",
+  "home.plDetail": "Expand playlist",
+  "home.plLoading": "Loading tracks…",
+  "home.plFailed": "Failed to load playlist",
+  "home.plHint": "Click to expand tracks"
 }

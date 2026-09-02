@@ -1425,5 +1425,9 @@
   "home.previewUnavailable": "Bu platformda ön izleme desteklenmiyor",
   "home.libraryHint": "İpucu: İndirdikten sonra kütüphaneyi Infuse / Jellyfin / Navidrome gibi oynatıcılarla tarayın.",
   "home.checkAll": "Tümünü kontrol et",
-  "settings.restartHint": "İndirme klasörü değişikliği yeniden başlatmadan sonra geçerli olur"
+  "settings.restartHint": "İndirme klasörü değişikliği yeniden başlatmadan sonra geçerli olur",
+  "home.plDetail": "Listeyi aç",
+  "home.plLoading": "Parçalar yükleniyor…",
+  "home.plFailed": "Liste yüklenemedi",
+  "home.plHint": "Parçaları görmek için tıkla"
 }
