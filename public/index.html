@@ -68,7 +68,10 @@
       <section class="card home-card" id="moduleStatus">
         <div class="view-head">
           <h2 data-i18n="home.statusTitle">📱 平台状态</h2>
-          <button type="button" class="btn-outline view-hint-btn" data-open-settings title="默认输出/浏览器在设置页调整">⚙️ <span data-i18n="home.openSetting">打开设置</span></button>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button type="button" class="btn-outline view-hint-btn" id="checkAllBtn">🔄 <span data-i18n="home.checkAll">全部检测</span></button>
+            <button type="button" class="btn-outline view-hint-btn" data-open-settings title="默认输出/浏览器在设置页调整">⚙️ <span data-i18n="home.openSetting">打开设置</span></button>
+          </div>
         </div>
         <small class="comment" data-i18n="home.statusHint">打开页面会自动检测一次登录状态；每个渠道可单独点击“检测”刷新登录与 VIP 状态（使用内置浏览器的真实登录态）。</small>
         <div class="plat-tabs" id="platTabs" role="tablist"></div>

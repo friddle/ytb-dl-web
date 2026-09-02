@@ -1423,5 +1423,7 @@
   "home.vipTip": "Current account has no VIP; download may fail",
   "home.preview": "Preview",
   "home.previewUnavailable": "Preview not supported for this platform",
-  "home.libraryHint": "Tip: after downloading, scan the library directly with Infuse / Jellyfin / Navidrome and similar players."
+  "home.libraryHint": "Tip: after downloading, scan the library directly with Infuse / Jellyfin / Navidrome and similar players.",
+  "home.checkAll": "Check all",
+  "settings.restartHint": "Download-folder changes take effect after a service restart"
 }

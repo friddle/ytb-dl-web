@@ -490,9 +490,16 @@ function showDiscModal(type, title, message, onConfirm = null, onCancel = null) 
 }
 
 // Initializes disc metadata progress stream payload for the browser UI layer.
-function initDiscProgressStream() {
+// The SSE connection is lazy: it only opens while the Disc tab is visible and
+// it never auto-reconnects after an error (e.g. 401 without admin login), so
+// the console stays clean on other tabs.
+let discStream = null;
+
+export function startDiscProgressStream() {
+  if (discStream) return;
   try {
     const es = new EventSource(`${API_BASE}/api/disc/stream`);
+    discStream = es;
 
     es.onmessage = (ev) => {
       if (!ev.data) return;
@@ -504,12 +511,19 @@ function initDiscProgressStream() {
       }
     };
 
-    es.onerror = (err) => {
-      console.warn('disc progress stream error:', err);
+    es.onerror = () => {
+      // Close instead of letting EventSource retry forever (401 / network).
+      stopDiscProgressStream();
     };
   } catch (e) {
     console.error('disc progress stream init error:', e);
   }
+}
+
+export function stopDiscProgressStream() {
+  if (!discStream) return;
+  try { discStream.close(); } catch { /* already closed */ }
+  discStream = null;
 }
 
 // Handles reset progress in the browser UI layer.
@@ -1251,7 +1265,8 @@ export function initDiscRipperPanel() {
   }
 
   resetProgress();
-  initDiscProgressStream();
+  // The progress SSE stream connects lazily from HomeApp when the Disc tab
+  // becomes visible (startDiscProgressStream).
 
   logDisc(
     t('disc.log.panelReady') ||

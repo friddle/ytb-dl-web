@@ -135,6 +135,22 @@
 .mini-player__body{padding:4px 10px 10px}
 .mini-player__audio{width:100%}
 .mini-player__frame{aspect-ratio:16/9;border:0;border-radius:8px;display:block;width:100%}
+/* playing preview button state */
+.media-play.playing{background:var(--primary);color:var(--primary-contrast,#fff)}
+/* mobile: keep nav on one scrollable line, trim row meta */
+@media (max-width:640px){
+  .top-tabs{flex-wrap:nowrap;overflow-x:auto;padding-bottom:4px;scrollbar-width:none}
+  .top-tabs::-webkit-scrollbar{display:none}
+  .top-tab{flex:0 0 auto;padding:6px 14px}
+  .search-controls{align-items:stretch;flex-direction:column}
+  .search-type-select{max-width:none;width:100%}
+  .media-chip.creator,.media-chip.album,.media-chip.plays{display:none}
+  .media-item-artist{display:none}
+  .media-item-platform{flex-basis:auto}
+  .link-hero-mode{flex:1 1 auto;max-width:none}
+  .cfg-grid{grid-template-columns:1fr}
+  .home-title-actions{flex-direction:column;align-items:stretch}
+}
 /* ===================== v2 redesign additions ===================== */
 .app-title{align-items:center;display:flex;flex-wrap:wrap;gap:12px;margin:0}
 .app-title .app-logo-large{height:44px;width:auto}

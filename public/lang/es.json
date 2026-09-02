@@ -1422,5 +1422,7 @@
   "home.vipTip": "La cuenta no tiene VIP; la descarga puede fallar",
   "home.preview": "Escuchar",
   "home.previewUnavailable": "Vista previa no disponible para esta plataforma",
-  "home.libraryHint": "Consejo: tras descargar, escanea la biblioteca con Infuse / Jellyfin / Navidrome, etc."
+  "home.libraryHint": "Consejo: tras descargar, escanea la biblioteca con Infuse / Jellyfin / Navidrome, etc.",
+  "home.checkAll": "Comprobar todo",
+  "settings.restartHint": "Los cambios de carpeta de descarga se aplican tras reiniciar el servicio"
 }

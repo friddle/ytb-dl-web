@@ -1422,5 +1422,7 @@
   "home.vipTip": "Compte sans VIP ; le téléchargement peut échouer",
   "home.preview": "Écoute",
   "home.previewUnavailable": "Aperçu non pris en charge pour cette plateforme",
-  "home.libraryHint": "Astuce : après le téléchargement, scannez la bibliothèque avec Infuse / Jellyfin / Navidrome, etc."
+  "home.libraryHint": "Astuce : après le téléchargement, scannez la bibliothèque avec Infuse / Jellyfin / Navidrome, etc.",
+  "home.checkAll": "Tout vérifier",
+  "settings.restartHint": "Les changements de dossier de téléchargement s'appliquent après redémarrage"
 }

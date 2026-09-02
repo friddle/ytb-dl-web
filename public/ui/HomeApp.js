@@ -1,4 +1,5 @@
 import { notificationManager } from './NotificationManager.js';
+import { startDiscProgressStream, stopDiscProgressStream } from './discRipperPanel.js';
 
 // Platforms shown in the 平台状态 tab strip (first module of the home page).
 const PLAT_ORDER = ['bilibili', 'qqmusic', 'netease', 'youtube', 'spotify'];
@@ -119,6 +120,16 @@ export class HomeApp {
     this.searchInput?.addEventListener('keydown', (e) => { if (e.key === 'Enter') this.runSearch(); });
     document.getElementById('openDetailedSettingsBtn')?.addEventListener('click', () => this.showView('settings'));
     document.getElementById('retryFailedBtn')?.addEventListener('click', () => this.retryFailed());
+    // One-shot live check for every platform (sequential, server caches 45s).
+    document.getElementById('checkAllBtn')?.addEventListener('click', async () => {
+      const btn = document.getElementById('checkAllBtn');
+      if (btn?.dataset.busy) return;
+      if (btn) btn.dataset.busy = '1';
+      for (const key of PLAT_ORDER) {
+        await this.checkPlatform(key);
+      }
+      if (btn) delete btn.dataset.busy;
+    });
     this.selectAll?.addEventListener('change', () => {
       this.resultsList?.querySelectorAll('.media-item-check').forEach((c) => { c.checked = this.selectAll.checked; });
       this.updateSelectedCount();
@@ -485,7 +496,7 @@ export class HomeApp {
     row.querySelector('.media-play')?.addEventListener('click', (e) => {
       e.preventDefault();
       e.stopPropagation();
-      this.playPreview(item);
+      this.playPreview(item, e.currentTarget);
     });
     return row;
   }
@@ -495,8 +506,11 @@ export class HomeApp {
   // YouTube/Bilibili. One singleton bar at the bottom of the page.
   // ------------------------------------------------------------------
 
-  playPreview(item) {
+  playPreview(item, btn) {
     if (!item || item.type === 'playlist') return;
+    const key = `${item.platform}:${item.id}`;
+    // Clicking the playing row's button again toggles playback off.
+    if (this.playingKey === key) { this.closePreview(); return; }
     this.closePreview();
     const bar = document.getElementById('miniPlayer');
     if (!bar) return;
@@ -514,13 +528,37 @@ export class HomeApp {
     }
     bar.querySelector('.mini-player__title').textContent = title;
     bar.hidden = false;
+    this.setPlayingUi(key, btn);
+    // Surface failures (VIP-only songs return 404) instead of failing silently.
+    body.querySelector('audio')?.addEventListener('error', () => {
+      this.notify(this.tt('home.previewUnavailable', '该平台暂不支持试听'), 'error');
+      this.closePreview();
+    });
+  }
+
+  setPlayingUi(key, btn) {
+    this.playingKey = key;
+    document.querySelectorAll('.media-play.playing').forEach((b) => {
+      b.classList.remove('playing');
+      b.textContent = '▶';
+    });
+    if (btn) {
+      btn.classList.add('playing');
+      btn.textContent = '⏸';
+    }
   }
 
   closePreview() {
     const bar = document.getElementById('miniPlayer');
-    if (!bar) return;
-    bar.hidden = true;
-    bar.querySelector('.mini-player__body').innerHTML = ''; // stops audio + removes iframes
+    if (bar) {
+      bar.hidden = true;
+      bar.querySelector('.mini-player__body').innerHTML = ''; // stops audio + removes iframes
+    }
+    this.playingKey = null;
+    document.querySelectorAll('.media-play.playing').forEach((b) => {
+      b.classList.remove('playing');
+      b.textContent = '▶';
+    });
   }
 
   renderResults() {
@@ -1061,6 +1099,9 @@ export class HomeApp {
       this.populateScopeConfig();
     }
     if (view === 'upload') this.loadToolsLine(this.uploadToolsText);
+    // Disc progress SSE only runs while the Disc tab is visible.
+    if (view === 'disc') startDiscProgressStream();
+    else stopDiscProgressStream();
     if (push) {
       const hash = `#/${view}`;
       if (location.hash !== hash) location.hash = hash;
@@ -1157,7 +1198,13 @@ export class HomeApp {
       }
       const d = await resp.json().catch(() => ({}));
       if (!resp.ok) throw new Error(d?.error?.message || `HTTP ${resp.status}`);
-      this.notify(this.tt('settings.saved', '设置已保存'), 'success');
+      const dirChanged = updates.MEDIA_DOWNLOAD_DIR !== undefined && updates.MEDIA_DOWNLOAD_DIR !== (this.config?.downloadDir || '');
+      this.notify(
+        dirChanged
+          ? `${this.tt('settings.saved', '设置已保存')} — ${this.tt('settings.restartHint', '修改下载目录需重启服务后生效')}`
+          : this.tt('settings.saved', '设置已保存'),
+        'success'
+      );
       await this.loadConfig();
     } catch (err) {
       this.notify(`${this.tt('settings.saveFailed', '保存失败')}: ${err.message}`, 'error');
