@@ -3,6 +3,7 @@
 /* end Ggrbz css editor */
 
 /* ===================== Home page (v2 redesign) ===================== */
+[hidden]{display:none!important}
 .home-main{display:grid;gap:14px;margin:14px 0 0}
 .home-card{padding:16px 18px}
 .plat-tabs{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 4px}

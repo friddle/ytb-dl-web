@@ -149,6 +149,7 @@ export class HomeApp {
     this.renderPlatPanel();
     this.renderSearchPlatforms();
     this.renderPlayerBtns();
+    if (this.dlDirText) this.dlDirText.textContent = this.config?.downloadDir || '-';
     this.syncConvertUi();
     this.loadFormats();
     this.fillSettings();
@@ -249,7 +250,7 @@ export class HomeApp {
       </div>
       <div class="plat-panel__actions">
         <button type="button" class="btn-outline" id="platCheckBtn" ${checking ? 'disabled' : ''}>🔍 <span>${this.tt('home.checkBtn', '检测')}</span></button>
-        <button type="button" class="btn-outline" id="platLoginBtn">🛩️ <span>${this.tt('media.scanLogin', '扫码登录')}</span></button>
+        <button type="button" class="btn-outline" id="platLoginBtn"><span>${this.tt('media.scanLogin', '🛩️ 扫码登录')}</span></button>
       </div>
       ${hint ? `<small class="comment plat-panel__hint"></small>` : ''}`;
 
@@ -262,7 +263,6 @@ export class HomeApp {
       this.openInBrowser(loginUrl);
     });
   }
-
   // ------------------------------------------------------------------
   // Module 2: aggregated search
   // ------------------------------------------------------------------
