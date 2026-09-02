@@ -32,3 +32,7 @@ INITIAL_ADMIN_PASSWORD.txt
 *.pfx
 *.jks
 *.keystore
+# local dev artifacts
+.playwright-mcp/
+/*.png
+/*.log

@@ -30,6 +30,10 @@ RUN set -eux; \
     else \
       npm install --omit=dev; \
     fi; \
+    # ignore-scripts skips lifecycle scripts, so better-sqlite3's native
+    # prebuild is never fetched; rebuild that one package with scripts on.
+    npm rebuild better-sqlite3 --ignore-scripts=false; \
+    node -e "require('better-sqlite3'); console.log('better-sqlite3 native binding OK')"; \
     rm -rf /root/.npm
 
 COPY . .
@@ -48,7 +52,10 @@ ENV NODE_ENV=production \
     DISABLE_QSV_IN_DOCKER=1 \
     DISABLE_VAAPI_IN_DOCKER=1
 
-RUN mkdir -p uploads outputs temp/binary-tmp local-inputs cookies && chmod -R 0775 /usr/src/app
+# Only the runtime-writable dirs get their own tiny layer; chmod -R on the
+# whole app would duplicate every file's metadata into this layer.
+RUN mkdir -p uploads outputs temp/binary-tmp local-inputs cookies data/db \
+  && chmod -R 0775 uploads outputs temp local-inputs cookies data
 
 EXPOSE 5174
 
