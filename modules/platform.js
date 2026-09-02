@@ -542,11 +542,7 @@ export async function downloadPlatformMedia(
     }
   }
 
-  const fallbackViaYtDlp = async (
-    platformName,
-    baseMetadata = null,
-    rootError = null
-  ) => {
+  async function fallbackViaYtDlp(platformName, baseMetadata = null, rootError = null) {
     try {
       const fallbackPath = await downloadYouTubeVideo(
         inputUrl,
@@ -619,7 +615,7 @@ export async function downloadPlatformMedia(
         `${platformName} media could not be resolved (${rootMsg}); yt-dlp fallback failed (${fbMsg})${loginHint}`
       );
     }
-  };
+  }
 
   let resolved = null;
   let resolveError = null;
