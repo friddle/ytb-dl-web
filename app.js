@@ -364,6 +364,21 @@ async function runStartupDiagnostics() {
 app.use(express.json({ limit: '10mb' }))
 
 app.disable('x-powered-by')
+// Built-in browser (chrome-driverless) origins allowed to be framed by the media tab.
+function browserFrameOrigins() {
+  const origins = new Set()
+  for (const raw of [process.env.CHROME_DRIVERLESS_EXTERNAL_URL, process.env.CHROME_DRIVERLESS_INTERNAL_URL]) {
+    const value = String(raw || '').trim()
+    if (!value) continue
+    try {
+      const parsed = new URL(value)
+      if (['http:', 'https:'].includes(parsed.protocol)) origins.add(parsed.origin)
+    } catch {
+      origins.add(value.replace(/\/+$/, ''))
+    }
+  }
+  return [...origins]
+}
 app.use((req, res, next) => {
   const isHttps = Boolean(req.secure)
   res.setHeader('X-Content-Type-Options', 'nosniff')
@@ -372,6 +387,7 @@ app.use((req, res, next) => {
   res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=()')
   res.setHeader('Cross-Origin-Resource-Policy', 'same-origin')
   if (isHttps) res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains')
+  const frameSources = ['https://www.youtube.com', 'https://www.youtube-nocookie.com', ...browserFrameOrigins()]
   res.setHeader('Content-Security-Policy', [
     "default-src 'self'",
     "base-uri 'none'",
@@ -384,7 +400,7 @@ app.use((req, res, next) => {
     "font-src 'self' data:",
     "img-src 'self' data: blob: https:",
     "media-src 'self' blob: https:",
-    "frame-src https://www.youtube.com https://www.youtube-nocookie.com",
+    `frame-src ${frameSources.join(' ')}`,
     "connect-src 'self' https://api.github.com https://*.spotify.com https://*.youtube.com https://music.youtube.com https://i.ytimg.com https://*.googlevideo.com",
     "worker-src 'self' blob:"
   ].join('; '))

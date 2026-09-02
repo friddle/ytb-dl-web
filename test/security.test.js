@@ -120,7 +120,14 @@ test('default env ships without a known admin password', () => {
 });
 test('CSP contains core anti-XSS directives', () => {
   const text = fs.readFileSync('app.js','utf8');
-  for (const directive of ["script-src 'self' https://www.youtube.com https://s.ytimg.com","script-src-attr 'none'","object-src 'none'","frame-ancestors 'none'","frame-src https://www.youtube.com https://www.youtube-nocookie.com"]) assert.ok(text.includes(directive));
+  for (const directive of ["script-src 'self' https://www.youtube.com https://s.ytimg.com","script-src-attr 'none'","object-src 'none'","frame-ancestors 'none'","frame-src ${frameSources.join(' ')}"]) assert.ok(text.includes(directive));
+});
+test('CSP frame-src allowlists configured built-in browser origins only', () => {
+  const text = fs.readFileSync('app.js','utf8');
+  assert.ok(text.includes('function browserFrameOrigins()'));
+  assert.ok(text.includes('CHROME_DRIVERLESS_EXTERNAL_URL'));
+  assert.ok(text.includes('CHROME_DRIVERLESS_INTERNAL_URL'));
+  assert.ok(text.includes('parsed.origin'));
 });
 test('chunk and completed upload paths are constrained to the upload root', () => {
   const text = fs.readFileSync('routes/jobs.js', 'utf8');
