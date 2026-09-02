@@ -1162,7 +1162,7 @@
   "ui.liveModeNoPaging": "Keine Seitennummerierung im Live-Modus",
   "download.allZip": "Alle herunterladen (.zip)",
   "label.playlist": "Playlist?",
-  "app.subtitle": "Vom Link zum Sound, mit einem Klick: Gharmonize.",
+  "app.subtitle": "Unterstützt NetEase / QQ Music / Bilibili / YouTube / Spotify",
   "section.output": "⚙️ Ausgabe-Einstellungen",
   "section.url": "🔗 Von URL konvertieren",
   "ph.url": "URL eingeben",
@@ -1369,5 +1369,7 @@
   "home.parseFailed": "Parsen fehlgeschlagen",
   "home.downloadParsed": "Geparste Ergebnisse herunterladen",
   "btn.theme": "Design wechseln",
-  "btn.lang": "Sprache wechseln"
+  "btn.lang": "Sprache wechseln",
+  "app.title": "Streaming-Musik-Download-Manager",
+  "settings.logsSection": "📜 Server-Logs"
 }

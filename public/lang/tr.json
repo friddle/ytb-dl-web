@@ -1163,7 +1163,7 @@
   "ui.liveModeNoPaging": "Canlı modda sayfalama yok",
   "download.allZip": "Hepsini indir (.zip)",
   "label.playlist": "Oynatma Listesi mi ?",
-  "app.subtitle": "Linkten sese, tek tık: Gharmonize.",
+  "app.subtitle": "NetEase / QQ Music / Bilibili / YouTube / Spotify destekler",
   "section.output": "⚙️ Çıktı Ayarları",
   "section.url": "🔗 URL'den Dönüştür",
   "ph.url": "URL Girin",
@@ -1398,5 +1398,7 @@
   "home.parseFailed": "Ayrıştırma başarısız",
   "home.downloadParsed": "Ayrıştırılan sonuçları indir",
   "btn.theme": "Temayı değiştir",
-  "btn.lang": "Dili değiştir"
+  "btn.lang": "Dili değiştir",
+  "app.title": "Akış Medya Müzik İndirme Yöneticisi",
+  "settings.logsSection": "📜 Sunucu günlükleri"
 }

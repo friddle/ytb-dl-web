@@ -25,12 +25,13 @@
   <div class="container">
     <div class="header">
       <div class="title-section">
-        <h1>
+        <h1 class="app-title">
           <a href="https://github.com/G-grbz/" target="_blank" rel="noopener noreferrer">
             <img src="./src/logo.png" alt="Gharmonize" class="app-logo-large">
           </a>
+          <span class="app-title__text" data-i18n="app.title">流媒体音乐下载管理</span>
         </h1>
-        <p class="subtitle" data-i18n="app.subtitle">From link to audio, one click: Gharmonize.</p>
+        <p class="subtitle" data-i18n="app.subtitle">支持 网易云 / QQ音乐 / Bilibili / YouTube / Spotify</p>
       </div>
 
       <button type="button" id="themeToggle" class="theme-icon-btn" data-i18n-title="btn.theme" title="Theme">🌙</button>
@@ -47,19 +48,16 @@
     </div>
 
     <!-- ============================================================ -->
-    <!-- Top navigation: 10 tabs                                     -->
+    <!-- Top navigation: routes in location.hash for sharing           -->
     <!-- ============================================================ -->
     <nav class="top-tabs" id="topTabs" role="tablist">
       <button type="button" class="top-tab active" data-view="home" role="tab" aria-selected="true"><span data-i18n="home.tabHome">首页</span></button>
       <button type="button" class="top-tab" data-view="search" role="tab" aria-selected="false"><span data-i18n="nav.search">搜索</span></button>
-      <button type="button" class="top-tab" data-view="parse" role="tab" aria-selected="false"><span data-i18n="nav.parse">解析</span></button>
       <button type="button" class="top-tab" data-view="download" role="tab" aria-selected="false"><span data-i18n="nav.download">下载</span></button>
-      <button type="button" class="top-tab" data-view="upload" role="tab" aria-selected="false"><span data-i18n="nav.upload">上传</span></button>
       <a class="top-tab" href="/ytlive.html" rel="noopener"><span data-i18n="nav.ytlive">YTLive</span></a>
       <button type="button" class="top-tab" data-view="disc" role="tab" aria-selected="false"><span data-i18n="nav.disc">Disc</span></button>
       <button type="button" class="top-tab" data-view="browser" role="tab" aria-selected="false"><span data-i18n="nav.browser">浏览器</span></button>
       <button type="button" class="top-tab" data-view="settings" role="tab" aria-selected="false"><span data-i18n="home.tabSettings">设置</span></button>
-      <button type="button" class="top-tab" data-view="log" role="tab" aria-selected="false"><span data-i18n="nav.log">日志</span></button>
     </nav>
 
     <!-- ============================================================ -->
@@ -111,27 +109,22 @@
           <div id="searchResultsList" class="home-results-list"></div>
         </div>
       </section>
-    </section>
 
-    <!-- ============================================================ -->
-    <!-- PARSE: link / playlist expansion                              -->
-    <!-- ============================================================ -->
-    <section id="parseView" class="view-section" hidden>
+      <!-- ============================================================ -->
+      <!-- SEARCH (cont.): link parse — hero full-width input           -->
+      <!-- ============================================================ -->
       <section class="card home-card">
         <h2 data-i18n="media.resolveTitle">🔗 链接解析（各种平台 / 歌单）</h2>
-        <div class="form-group">
-          <label for="parseModeSelect" data-i18n="media.resolveMode">解析模式</label>
-          <select id="parseModeSelect" class="form-control">
+        <div class="form-group link-hero-group">
+          <label for="parseUrlInput" data-i18n="media.linkLabel">视频 / 歌单链接</label>
+          <input type="text" id="parseUrlInput" class="form-control link-hero" data-i18n-ph="media.linkPlaceholder" placeholder="B站合集、网易云歌单、QQ歌单、YouTube等所有平台链接" autocomplete="off" spellcheck="false">
+        </div>
+        <div class="btn-row link-hero-row">
+          <select id="parseModeSelect" class="form-control link-hero-mode">
             <option value="auto" data-i18n="media.modeAuto">自动判断（单视频 / 合集）</option>
             <option value="single" data-i18n="media.modeSingle">单视频（仅当前分P）</option>
             <option value="list" data-i18n="media.modeList">合集 / 列表（展开所有分P）</option>
           </select>
-        </div>
-        <div class="form-group">
-          <label for="parseUrlInput" data-i18n="media.linkLabel">视频 / 歌单链接</label>
-          <input type="text" id="parseUrlInput" class="form-control" data-i18n-ph="media.linkPlaceholder" placeholder="B站合集、网易云歌单、QQ歌单、YouTube等所有平台链接">
-        </div>
-        <div class="btn-row">
           <button type="button" id="parseBtn" class="btn" data-i18n="media.resolve">🔗 解析</button>
         </div>
         <div id="parseResultsWrap" style="display:none;margin-top:12px;">
@@ -180,17 +173,14 @@
         <div class="view-tools" id="dlToolsLine" hidden>
           <span class="comment" data-i18n="ui.binaryVersionsLabel">使用的工具</span>: <span id="dlToolsText">-</span>
         </div>
-      </section>
-    </section>
 
-    <!-- ============================================================ -->
-    <!-- UPLOAD / convert (restored classic pane)                     -->
-    <!-- ============================================================ -->
-    <section id="uploadView" class="tab-pane view-section" hidden>
-      <div class="view-tools" id="uploadToolsLine" hidden>
-        <span class="comment" data-i18n="ui.binaryVersionsLabel">使用的工具</span>: <span id="uploadToolsText">-</span>
-      </div>
-      <div class="card-grid">
+        <!-- ============================================================ -->
+        <!-- UPLOAD / convert (restored classic pane)                     -->
+        <!-- ============================================================ -->
+        <div class="view-tools" id="uploadToolsLine" hidden>
+          <span class="comment" data-i18n="ui.binaryVersionsLabel">使用的工具</span>: <span id="uploadToolsText">-</span>
+        </div>
+        <div class="card-grid">
         <div class="card">
         <h2 data-i18n="section.file">📁 Upload File</h2>
         <form id="fileForm" enctype="multipart/form-data">
@@ -306,6 +296,7 @@
           </div>
         </div>
       </div>
+      </section>
     </section>
 
     <!-- ============================================================ -->
@@ -361,7 +352,6 @@
     <!-- ============================================================ -->
     <section id="settingsPage" class="settings-page" hidden>
       <div class="settings-page__header">
-        <button type="button" id="settingsBackBtn" class="btn-outline">← <span data-i18n="settings.back">返回</span></button>
         <h2 data-i18n="settings.pageTitle">⚙️ 设置</h2>
       </div>
 
@@ -415,22 +405,17 @@
         </div>
       </div>
 
+      <div class="card settings-card">
+        <div class="view-head">
+          <h3 data-i18n="settings.logsSection">📜 服务日志</h3>
+          <button type="button" id="logRefreshBtn" class="btn-outline view-hint-btn">🔄 <span data-i18n="nav.logRefresh">刷新</span></button>
+        </div>
+        <div id="logLinesBox" class="log-box" role="log"></div>
+      </div>
+
       <div class="btn-row">
         <button type="button" id="settingsSaveBtn" class="btn" data-i18n="settings.save">💾 保存</button>
       </div>
-    </section>
-
-    <!-- ============================================================ -->
-    <!-- LOG tab                                                      -->
-    <!-- ============================================================ -->
-    <section id="logView" class="view-section" hidden>
-      <section class="card home-card">
-        <div class="view-head">
-          <h2 data-i18n="nav.log">📄 日志</h2>
-          <button type="button" id="logRefreshBtn" class="btn-outline">🔄 <span data-i18n="nav.logRefresh">刷新</span></button>
-        </div>
-        <div id="logLinesBox" class="log-box" role="log"></div>
-      </section>
     </section>
   </div>
 

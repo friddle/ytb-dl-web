@@ -1163,7 +1163,7 @@
   "ui.liveModeNoPaging": "No paging in live mode",
   "download.allZip": "Download all (.zip)",
   "label.playlist": "Is it a playlist?",
-  "app.subtitle": "From link to sound, one click: Gharmonize.",
+  "app.subtitle": "NetEase Cloud / QQ Music / Bilibili / YouTube / Spotify",
   "section.output": "⚙️ Output Settings",
   "section.url": "🔗 Convert from URL",
   "ph.url": "Enter URL",
@@ -1398,5 +1398,7 @@
   "home.parseFailed": "Parse failed",
   "home.downloadParsed": "Download parsed results",
   "btn.theme": "Toggle theme",
-  "btn.lang": "Switch language"
+  "btn.lang": "Switch language",
+  "app.title": "Streaming Music Download Manager",
+  "settings.logsSection": "📜 Server logs"
 }

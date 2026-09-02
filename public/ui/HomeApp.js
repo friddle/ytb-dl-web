@@ -12,6 +12,11 @@ const PLAT_ICONS = {
 };
 
 export class HomeApp {
+  // Visible views; each maps to location.hash (e.g. #/search) so any tab is
+  // directly linkable/shareable. Legacy routes (parse/upload/log) redirect.
+  static VIEWS = { home: 'homeMain', search: 'searchView', download: 'downloadView', disc: 'discView', settings: 'settingsPage' };
+  static ROUTE_ALIASES = { parse: 'search', upload: 'download', log: 'settings' };
+
   constructor() {
     this.config = null;              // /api/media/config payload
     this.status = {};                // platform → {loggedIn, vip, vipLabel, uname, source}
@@ -28,6 +33,9 @@ export class HomeApp {
     this.bindStatic();
     this.loadConfig();
     document.addEventListener('i18n:applied', () => this.rerender());
+    // Hash routing: deep-linkable tabs + back/forward support.
+    window.addEventListener('hashchange', () => this.applyRoute());
+    this.applyRoute();
   }
 
   cacheElements() {
@@ -61,10 +69,9 @@ export class HomeApp {
     this.topTabsEl = document.getElementById('topTabs');
     // Language icon button (cycles languages)
     this.langIconBtn = document.getElementById('langIconBtn');
-    // Search view
+    // Search view (includes the link-parse hero card)
     this.searchViewEl = document.getElementById('searchView');
-    // Parse view
-    this.parseViewEl = document.getElementById('parseView');
+    // Parse (inside search view)
     this.parseModeSelect = document.getElementById('parseModeSelect');
     this.parseUrlInput = document.getElementById('parseUrlInput');
     this.parseBtn = document.getElementById('parseBtn');
@@ -78,11 +85,10 @@ export class HomeApp {
     this.dlFormatOverrideSelect = document.getElementById('dlFormatOverrideSelect');
     this.dlToolsLine = document.getElementById('dlToolsLine');
     this.dlToolsText = document.getElementById('dlToolsText');
-    // Upload view tools
+    // Upload tools (inside download view)
     this.uploadToolsLine = document.getElementById('uploadToolsLine');
     this.uploadToolsText = document.getElementById('uploadToolsText');
-    // Log view
-    this.logViewEl = document.getElementById('logView');
+    // Log box (inside settings view)
     this.logLinesBox = document.getElementById('logLinesBox');
     this.logRefreshBtn = document.getElementById('logRefreshBtn');
     this._logTimer = null;
@@ -105,13 +111,12 @@ export class HomeApp {
     this.selectAll?.addEventListener('change', () => {
       this.resultsList?.querySelectorAll('.media-item-check').forEach((c) => { c.checked = this.selectAll.checked; });
       this.updateSelectedCount();
-    });
-    this.downloadBtn?.addEventListener('click', () => this.downloadSelected());
+    });    this.downloadBtn?.addEventListener('click', () => this.downloadSelected());
     this.convertCheckbox?.addEventListener('change', () => { this.syncConvertUi(); this.persistDlPrefs(); });
     this.formatSelect?.addEventListener('change', () => { this.syncBitrateOptions(); this.persistDlPrefs(); });
     this.bitrateSelect?.addEventListener('change', () => this.persistDlPrefs());
 
-    // Top tabs: 首页 / 上传 / Disc / 设置 (YTLive is a plain link)
+    // Top tabs: routes live in location.hash (YTLive is a plain link).
     this.topTabsEl?.querySelectorAll('.top-tab[data-view]').forEach((tab) => {
       tab.addEventListener('click', () => {
         if (tab.dataset.view === 'browser') { this.openBrowserTab(); return; }
@@ -127,7 +132,6 @@ export class HomeApp {
       const next = order[(order.indexOf(current) + 1) % order.length] || 'zh';
       window.i18n?.setLang?.(next);
     });
-    document.getElementById('settingsBackBtn')?.addEventListener('click', () => this.showView('home'));
     document.getElementById('settingsSaveBtn')?.addEventListener('click', () => this.saveSettings());
     this.settingsBundledCheckbox?.addEventListener('change', () => this.syncSettingsLockUi());
 
@@ -379,7 +383,8 @@ export class HomeApp {
     this.results = merged;
     if (this.resultsWrap) this.resultsWrap.style.display = '';
     if (this.dlOptsRow) this.dlOptsRow.style.display = '';
-    if (this.selectAll) this.selectAll.checked = merged.length > 0;
+    // Nothing is preselected — the user picks what to download.
+    if (this.selectAll) this.selectAll.checked = false;
     this.resultsMeta.textContent = `${this.tt('home.total', '共')} ${merged.length} ${this.tt('home.items', '条')}`;
     this.renderResults();
     this.updateSelectedCount();
@@ -396,7 +401,7 @@ export class HomeApp {
       const count = isPlaylist && item.trackCount ? ` (${item.trackCount})` : '';
       const tag = `${this.platTag(item.platform)}${isPlaylist ? ' 📃' : ''}`;
       row.innerHTML = `
-        <input type="checkbox" class="media-item-check" data-idx="${idx}" checked>
+        <input type="checkbox" class="media-item-check" data-idx="${idx}">
         <span class="media-item-platform" style="font-size:.8em;opacity:.75;min-width:70px;">${tag}</span>
         <span class="media-item-title" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
         <span class="media-item-artist" style="font-size:.82em;opacity:.75;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
@@ -570,7 +575,7 @@ export class HomeApp {
       row.style.cssText = 'display:flex;align-items:center;gap:10px;padding:6px 10px;border:1px solid rgba(128,128,128,.2);border-radius:6px;cursor:pointer;';
       const duration = item.durationSec ? this.fmtDuration(item.durationSec) : '';
       row.innerHTML = `
-        <input type="checkbox" class="media-item-check" data-idx="${idx}" checked>
+        <input type="checkbox" class="media-item-check" data-idx="${idx}">
         <span class="media-item-platform" style="font-size:.8em;opacity:.75;min-width:70px;">${this.platTag(item.platform)}</span>
         <span class="media-item-title" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
         <span class="media-item-artist" style="font-size:.82em;opacity:.75;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
@@ -819,15 +824,18 @@ export class HomeApp {
   }
 
   // ------------------------------------------------------------------
-  // Views: home / upload / disc / settings (top tabs)
+  // Views: home / search / download / disc / settings — routed via hash
   // ------------------------------------------------------------------
 
-  showView(view) {
-    const views = {
-      home: 'homeMain', search: 'searchView', parse: 'parseView', download: 'downloadView',
-      upload: 'uploadView', disc: 'discView', settings: 'settingsPage', log: 'logView'
-    };
-    for (const [name, id] of Object.entries(views)) {
+  applyRoute() {
+    const raw = String(location.hash || '').replace(/^#\/?/, '').toLowerCase();
+    const view = HomeApp.ROUTE_ALIASES[raw] || raw;
+    this.showView(HomeApp.VIEWS[view] ? view : 'home', { push: false });
+  }
+
+  showView(view, { push = true } = {}) {
+    if (!HomeApp.VIEWS[view]) view = 'home';
+    for (const [name, id] of Object.entries(HomeApp.VIEWS)) {
       const el = document.getElementById(id);
       if (el) el.hidden = name !== view;
     }
@@ -836,8 +844,8 @@ export class HomeApp {
       tab.classList.toggle('active', active);
       tab.setAttribute('aria-selected', active ? 'true' : 'false');
     });
-    if (view === 'settings') this.fillSettings();
-    if (view === 'log') {
+    if (view === 'settings') {
+      this.fillSettings();
       this.loadLogs();
       if (this._logTimer) clearInterval(this._logTimer);
       this._logTimer = setInterval(() => this.loadLogs(), 4000);
@@ -845,7 +853,14 @@ export class HomeApp {
       clearInterval(this._logTimer);
       this._logTimer = null;
     }
-    if (view === 'download' || view === 'upload') this.loadToolsLine(view === 'download' ? this.dlToolsText : this.uploadToolsText);
+    if (view === 'download') {
+      this.loadToolsLine(this.dlToolsText);
+      this.loadToolsLine(this.uploadToolsText);
+    }
+    if (push) {
+      const hash = `#/${view}`;
+      if (location.hash !== hash) location.hash = hash;
+    }
     window.scrollTo({ top: 0 });
   }
 

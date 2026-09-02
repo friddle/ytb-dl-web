@@ -70,6 +70,14 @@
 .dq-bar>span{background:var(--primary);border-radius:999px;display:block;height:100%;transition:width .4s ease}
 
 /* ===================== v2 redesign additions ===================== */
+.app-title{align-items:center;display:flex;flex-wrap:wrap;gap:12px;margin:0}
+.app-title .app-logo-large{height:44px;width:auto}
+.app-title__text{font-size:clamp(19px,3.2vw,27px);letter-spacing:.5px;line-height:1.2}
+.link-hero-group{margin-top:12px}
+.link-hero{font-size:15px;min-height:48px;padding:11px 16px;width:100%}
+.link-hero:focus{border-color:var(--primary);box-shadow:0 0 0 3px color-mix(in oklab,var(--primary) 22%,transparent);outline:none}
+.link-hero-row{align-items:center;display:flex;flex-wrap:wrap;gap:10px;margin-top:10px}
+.link-hero-mode{max-width:280px}
 .theme-icon-btn{align-items:center;background:color-mix(in oklab,var(--bg-elev) 92%,var(--bg-muted) 8%);border:1px solid var(--border);border-radius:999px;color:var(--text);cursor:pointer;display:inline-flex;flex:0 0 auto;font-size:15px;height:34px;justify-content:center;line-height:1;min-width:34px;padding:0;transition:border-color .15s ease,transform .15s ease}.theme-icon-btn:hover{border-color:color-mix(in oklab,var(--primary) 45%,var(--border));transform:translateY(-1px)}
 .view-head{align-items:center;display:flex;flex-wrap:wrap;gap:10px;justify-content:space-between;margin-bottom:6px}
 .view-head h2{margin:0}

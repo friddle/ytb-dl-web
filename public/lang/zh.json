@@ -1167,7 +1167,7 @@
   "ui.liveModeNoPaging": "No paging in live mode",
   "download.allZip": "Download all (.zip)",
   "label.playlist": "Is it a playlist?",
-  "app.subtitle": "From link to sound, one click: Gharmonize.",
+  "app.subtitle": "支持 网易云 / QQ音乐 / Bilibili / YouTube / Spotify",
   "section.output": "⚙️ Output Settings",
   "section.url": "🔗 Convert from URL",
   "ph.url": "Enter URL",
@@ -1370,5 +1370,7 @@
   "home.parseFailed": "解析失败",
   "home.downloadParsed": "下载解析结果",
   "btn.theme": "切换主题",
-  "btn.lang": "切换语言"
+  "btn.lang": "切换语言",
+  "app.title": "流媒体音乐下载管理",
+  "settings.logsSection": "📜 服务日志"
 }
