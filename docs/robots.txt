@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://friddle.github.io/ytb-dl-web/sitemap.xml
