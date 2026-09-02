@@ -21,8 +21,15 @@ RUN set -eux; \
         libcups2 libdrm2 libxkbcommon0 libatspi2.0-0 libxcomposite1 libxdamage1 \
         libxfixes3 libxrandr2 libgbm1 libpango-1.0-0 libcairo2 libasound2 \
         fonts-wqy-zenhei fonts-wqy-microhei \
-        ffmpeg nodejs npm; \
+        ffmpeg; \
     rm -rf /var/lib/apt/lists/*
+
+# Node 22 from the official tarball: Debian's apt nodejs (20.x) is below the
+# app's engines (>=22.12) and has no better-sqlite3 prebuilt ABI.
+RUN set -eux; \
+    curl -fsSL https://nodejs.org/dist/v22.12.0/node-v22.12.0-linux-x64.tar.xz \
+      | tar -xJ -C /usr/local --strip-components=1; \
+    node --version; npm --version
 
 RUN pip install --no-cache-dir playwright fastapi uvicorn pydantic Pillow websockets
 RUN python -m playwright install chromium
