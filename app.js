@@ -466,7 +466,12 @@ app.get('/', rateLimit(120, 60_000), (_req, res, next) => {
   })
 })
 
-app.use(express.static(PUBLIC_DIR))
+// Always revalidate static UI assets so deploy rollouts reach every client.
+app.use(express.static(PUBLIC_DIR, {
+  setHeaders(res) {
+    res.setHeader('Cache-Control', 'no-cache')
+  }
+}))
 
 app.use('/api', async (req, res, next) => {
   if (req.path === '/binaries/status') {

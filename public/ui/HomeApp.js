@@ -14,8 +14,8 @@ const PLAT_ICONS = {
 export class HomeApp {
   // Visible views; each maps to location.hash (e.g. #/search) so any tab is
   // directly linkable/shareable. Legacy routes (parse/upload/log) redirect.
-  static VIEWS = { home: 'homeMain', search: 'searchView', download: 'downloadView', disc: 'discView', settings: 'settingsPage' };
-  static ROUTE_ALIASES = { parse: 'search', upload: 'download', log: 'settings' };
+  static VIEWS = { home: 'homeMain', search: 'searchView', download: 'downloadView', upload: 'uploadView', disc: 'discView', settings: 'settingsPage' };
+  static ROUTE_ALIASES = { parse: 'search', online: 'search', log: 'settings' };
 
   constructor() {
     this.config = null;              // /api/media/config payload
@@ -53,12 +53,24 @@ export class HomeApp {
     this.selectAll = document.getElementById('searchSelectAll');
     this.downloadBtn = document.getElementById('downloadSelectedBtn');
     // Download options + progress queue
-    this.dlOptsRow = document.getElementById('dlOptsRow');
-    this.dlBasePath = document.getElementById('dlBasePath');
-    this.dlSubdirInput = document.getElementById('dlSubdirInput');
     this.downloadQueueEl = document.getElementById('downloadQueue');
     this.downloadQueueList = document.getElementById('downloadQueueList');
     this.downloadQueueSummary = document.getElementById('downloadQueueSummary');
+    // Download module sub-tabs (status / config) + status filter (all/song/playlist)
+    this.dlSubTabsEl = document.getElementById('dlSubTabs');
+    this.dlStatusPane = document.getElementById('dlStatusPane');
+    this.dlConfigPane = document.getElementById('dlConfigPane');
+    this.dlStatusFilterEl = document.getElementById('dlStatusFilter');
+    this.dlStatusFilter = 'all';
+    this.dlTab = 'status';
+    // Per-scope download config: songs and playlists are configured separately.
+    this.dlCfg = { song: { format: 'default', bitrate: 'auto', subdir: '' }, playlist: { format: 'default', bitrate: 'auto', subdir: '' } };
+    this.cfgSongFormatSelect = document.getElementById('dlSongFormatSelect');
+    this.cfgSongBitrateSelect = document.getElementById('dlSongBitrateSelect');
+    this.cfgSongSubdirInput = document.getElementById('dlSongSubdirInput');
+    this.cfgListFormatSelect = document.getElementById('dlListFormatSelect');
+    this.cfgListBitrateSelect = document.getElementById('dlListBitrateSelect');
+    this.cfgListSubdirInput = document.getElementById('dlListSubdirInput');
     // Download settings (live inside the settings page)
     this.convertCheckbox = document.getElementById('convertAfterCheckbox');
     this.formatSelect = document.getElementById('dlFormatSelect');
@@ -82,7 +94,6 @@ export class HomeApp {
     this.parsedItems = [];
     // Download view
     this.downloadViewEl = document.getElementById('downloadView');
-    this.dlFormatOverrideSelect = document.getElementById('dlFormatOverrideSelect');
     this.dlToolsLine = document.getElementById('dlToolsLine');
     this.dlToolsText = document.getElementById('dlToolsText');
     // Upload tools (inside download view)
@@ -115,6 +126,24 @@ export class HomeApp {
     this.convertCheckbox?.addEventListener('change', () => { this.syncConvertUi(); this.persistDlPrefs(); });
     this.formatSelect?.addEventListener('change', () => { this.syncBitrateOptions(); this.persistDlPrefs(); });
     this.bitrateSelect?.addEventListener('change', () => this.persistDlPrefs());
+
+    // Download module: status/config sub-tabs + status filter chips.
+    this.dlSubTabsEl?.querySelectorAll('.dl-subtab[data-dltab]').forEach((tab) => {
+      tab.addEventListener('click', () => this.setDlTab(tab.dataset.dltab));
+    });
+    this.dlStatusFilterEl?.querySelectorAll('.dl-filter-chip[data-filter]').forEach((chip) => {
+      chip.addEventListener('click', () => {
+        this.dlStatusFilter = chip.dataset.filter || 'all';
+        this.dlStatusFilterEl.querySelectorAll('.dl-filter-chip').forEach((c) => c.classList.toggle('active', c === chip));
+        this.renderQueue();
+      });
+    });
+    // Per-scope config persistence.
+    const cfgBind = [this.cfgSongFormatSelect, this.cfgListFormatSelect];
+    cfgBind.forEach((sel) => sel?.addEventListener('change', () => { this.syncScopeBitrates(); this.persistScopeCfg(); }));
+    [this.cfgSongBitrateSelect, this.cfgListBitrateSelect, this.cfgSongSubdirInput, this.cfgListSubdirInput].forEach((el) => {
+      el?.addEventListener('change', () => this.persistScopeCfg());
+    });
 
     // Top tabs: routes live in location.hash (YTLive is a plain link).
     this.topTabsEl?.querySelectorAll('.top-tab[data-view]').forEach((tab) => {
@@ -382,7 +411,6 @@ export class HomeApp {
 
     this.results = merged;
     if (this.resultsWrap) this.resultsWrap.style.display = '';
-    if (this.dlOptsRow) this.dlOptsRow.style.display = '';
     // Nothing is preselected — the user picks what to download.
     if (this.selectAll) this.selectAll.checked = false;
     this.resultsMeta.textContent = `${this.tt('home.total', '共')} ${merged.length} ${this.tt('home.items', '条')}`;
@@ -395,17 +423,17 @@ export class HomeApp {
     this.resultsList.innerHTML = '';
     this.results.forEach((item, idx) => {
       const row = document.createElement('label');
-      row.style.cssText = 'display:flex;align-items:center;gap:10px;padding:6px 10px;border:1px solid rgba(128,128,128,.2);border-radius:6px;cursor:pointer;';
+      row.className = 'media-row';
       const duration = item.durationSec ? this.fmtDuration(item.durationSec) : '';
       const isPlaylist = item.type === 'playlist';
       const count = isPlaylist && item.trackCount ? ` (${item.trackCount})` : '';
       const tag = `${this.platTag(item.platform)}${isPlaylist ? ' 📃' : ''}`;
       row.innerHTML = `
         <input type="checkbox" class="media-item-check" data-idx="${idx}">
-        <span class="media-item-platform" style="font-size:.8em;opacity:.75;min-width:70px;">${tag}</span>
-        <span class="media-item-title" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
-        <span class="media-item-artist" style="font-size:.82em;opacity:.75;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
-        ${duration ? `<span style="font-size:.8em;opacity:.6;">${duration}</span>` : ''}`;
+        <span class="media-item-platform">${tag}</span>
+        <span class="media-item-title"></span>
+        <span class="media-item-artist"></span>
+        ${duration ? `<span class="media-item-dur">${duration}</span>` : ''}`;
       row.querySelector('.media-item-title').textContent = (item.title || '') + count;
       row.querySelector('.media-item-artist').textContent = item.artist || '';
       row.querySelector('.media-item-check').addEventListener('change', () => this.updateSelectedCount());
@@ -439,13 +467,6 @@ export class HomeApp {
     if (this.submitting) return;
     const checked = [...(this.resultsList?.querySelectorAll('.media-item-check:checked') || [])];
     if (!checked.length) { this.notify(this.tt('home.selectRequired', '请先勾选要下载的条目'), 'error'); return; }
-    const convert = !!this.convertCheckbox?.checked;
-    const override = this.dlFormatOverrideSelect?.value || 'default';
-    const format = override === 'default' ? (convert ? (this.formatSelect?.value || 'mp3') : 'original')
-      : override === 'original' ? 'original'
-      : override;
-    const bitrate = format === 'original' ? 'auto' : (this.bitrateSelect?.value || '320k');
-    const rawSubdir = String(this.dlSubdirInput?.value || '').trim().replace(/^\/+|\/+$/g, '');
     const selected = checked.map((c) => this.results[Number(c.dataset.idx)]).filter(Boolean);
 
     this.submitting = true;
@@ -480,15 +501,20 @@ export class HomeApp {
     }
 
     // Queue rows: pending → queued → processing → completed/error.
+    // Each row freezes its own effective format/bitrate/subdir at submit time
+    // (song scope for singles, playlist scope for expanded lists).
     this.queueRows = queue.map((it) => ({
       ...it,
       jobId: null,
       status: 'pending',
       progress: 0,
-      error: it.error || null
+      error: it.error || null,
+      cfg: this.resolveRowCfg(it)
     }));
     this.renderQueue();
     this.downloadQueueEl.style.display = '';
+    this.setDlTab('status');
+    this.showView('download');
     this.downloadQueueEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 
     let ok = 0;
@@ -504,14 +530,14 @@ export class HomeApp {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             url: row.url,
-            format,
-            bitrate,
+            format: row.cfg.format,
+            bitrate: row.cfg.bitrate,
             isPlaylist: false,
             sampleRate: 48000,
             autoCreateZip: false,
             title: row.title || '',
             artist: row.artist || '',
-            ...(rawSubdir ? { outputSubdir: rawSubdir } : {})
+            ...(row.cfg.subdir ? { outputSubdir: row.cfg.subdir } : {})
           })
         });
         const data = await resp.json().catch(() => ({}));
@@ -533,8 +559,106 @@ export class HomeApp {
     this.submitting = false;
     this.downloadBtn?.removeAttribute('disabled');
     this.pollQueueStatuses();
-    // Jump to the DOWNLOAD tab so tasks/progress are immediately visible.
-    this.showView('download');
+  }
+
+  // ------------------------------------------------------------------
+  // Download module: sub-tabs, status filter, per-scope config
+  // ------------------------------------------------------------------
+
+  setDlTab(tab) {
+    this.dlTab = tab === 'config' ? 'config' : 'status';
+    this.dlSubTabsEl?.querySelectorAll('.dl-subtab').forEach((t) => {
+      const active = t.dataset.dltab === this.dlTab;
+      t.classList.toggle('active', active);
+      t.setAttribute('aria-selected', active ? 'true' : 'false');
+    });
+    if (this.dlStatusPane) this.dlStatusPane.hidden = this.dlTab !== 'status';
+    if (this.dlConfigPane) this.dlConfigPane.hidden = this.dlTab !== 'config';
+    if (this.dlTab === 'config') this.populateScopeConfig();
+  }
+
+  rowKind(row) {
+    return (row.fromPlaylist || row.type === 'playlist') ? 'playlist' : 'song';
+  }
+
+  persistScopeCfg() {
+    const read = (fmtSel, brSel, dirInput) => ({
+      format: fmtSel?.value || 'default',
+      bitrate: brSel?.value || 'auto',
+      subdir: String(dirInput?.value || '').trim().replace(/^\/+|\/+$/g, '')
+    });
+    this.dlCfg.song = read(this.cfgSongFormatSelect, this.cfgSongBitrateSelect, this.cfgSongSubdirInput);
+    this.dlCfg.playlist = read(this.cfgListFormatSelect, this.cfgListBitrateSelect, this.cfgListSubdirInput);
+    try { localStorage.setItem('gharmonize_dl_scope_cfg', JSON.stringify(this.dlCfg)); } catch { /* ignore */ }
+  }
+
+  restoreScopeCfg() {
+    try {
+      const raw = localStorage.getItem('gharmonize_dl_scope_cfg');
+      if (!raw) return;
+      const saved = JSON.parse(raw);
+      if (saved?.song) this.dlCfg.song = { ...this.dlCfg.song, ...saved.song };
+      if (saved?.playlist) this.dlCfg.playlist = { ...this.dlCfg.playlist, ...saved.playlist };
+    } catch { /* ignore */ }
+  }
+
+  fillScopeSelects(fmtSel, brSel, cfg) {
+    if (!fmtSel) return;
+    // Rebuild options on every call so repeated populates stay idempotent.
+    fmtSel.innerHTML = '';
+    const def = document.createElement('option');
+    def.value = 'default';
+    def.textContent = this.tt('home.followSettings', '跟随设置');
+    fmtSel.appendChild(def);
+    const orig = document.createElement('option');
+    orig.value = 'original';
+    orig.textContent = this.tt('nav.dlOverrideOriginal', '不转换（原样）');
+    fmtSel.appendChild(orig);
+    for (const f of this.formats) {
+      if (f.format === 'original') continue; // already added above
+      const opt = document.createElement('option');
+      opt.value = f.format;
+      opt.textContent = f.format.toUpperCase();
+      fmtSel.appendChild(opt);
+    }
+    fmtSel.value = [...fmtSel.options].some((o) => o.value === cfg.format) ? cfg.format : 'default';
+    // Bitrates follow the chosen concrete format; hidden for default/original.
+    brSel.innerHTML = '';
+    const fmtObj = this.formats.find((f) => f.format === cfg.format);
+    for (const br of (fmtObj?.bitrates || ['auto'])) {
+      const opt = document.createElement('option');
+      opt.value = br;
+      opt.textContent = br === 'lossless' ? this.tt('home.lossless', '无损') : br;
+      brSel.appendChild(opt);
+    }
+    if (brSel.querySelector(`option[value="${CSS.escape(cfg.bitrate)}"]`)) brSel.value = cfg.bitrate;
+    const showBr = !!fmtObj;
+    if (brSel) brSel.disabled = !showBr;
+  }
+
+  populateScopeConfig() {
+    this.fillScopeSelects(this.cfgSongFormatSelect, this.cfgSongBitrateSelect, this.dlCfg.song);
+    this.fillScopeSelects(this.cfgListFormatSelect, this.cfgListBitrateSelect, this.dlCfg.playlist);
+    if (this.cfgSongSubdirInput && document.activeElement !== this.cfgSongSubdirInput) this.cfgSongSubdirInput.value = this.dlCfg.song.subdir || '';
+    if (this.cfgListSubdirInput && document.activeElement !== this.cfgListSubdirInput) this.cfgListSubdirInput.value = this.dlCfg.playlist.subdir || '';
+  }
+
+  syncScopeBitrates() {
+    this.persistScopeCfg();
+    this.fillScopeSelects(this.cfgSongFormatSelect, this.cfgSongBitrateSelect, this.dlCfg.song);
+    this.fillScopeSelects(this.cfgListFormatSelect, this.cfgListBitrateSelect, this.dlCfg.playlist);
+  }
+
+  // Effective format/bitrate/subdir for one queue row: concrete scope config
+  // wins; 'default' falls back to the settings-page download defaults.
+  resolveRowCfg(row) {
+    const scope = this.dlCfg[this.rowKind(row)] || this.dlCfg.song;
+    const convert = !!this.convertCheckbox?.checked;
+    const defFormat = convert ? (this.formatSelect?.value || 'mp3') : 'original';
+    const defBitrate = defFormat === 'original' ? 'auto' : (this.bitrateSelect?.value || '320k');
+    const format = scope.format === 'default' ? defFormat : scope.format;
+    const bitrate = format === 'original' ? 'auto' : (scope.format === 'default' ? defBitrate : (scope.bitrate || 'auto'));
+    return { format, bitrate, subdir: scope.subdir || '' };
   }
 
   // ------------------------------------------------------------------
@@ -572,14 +696,14 @@ export class HomeApp {
     this.parseResultsList.innerHTML = '';
     this.parsedItems.forEach((item, idx) => {
       const row = document.createElement('label');
-      row.style.cssText = 'display:flex;align-items:center;gap:10px;padding:6px 10px;border:1px solid rgba(128,128,128,.2);border-radius:6px;cursor:pointer;';
+      row.className = 'media-row';
       const duration = item.durationSec ? this.fmtDuration(item.durationSec) : '';
       row.innerHTML = `
         <input type="checkbox" class="media-item-check" data-idx="${idx}">
-        <span class="media-item-platform" style="font-size:.8em;opacity:.75;min-width:70px;">${this.platTag(item.platform)}</span>
-        <span class="media-item-title" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
-        <span class="media-item-artist" style="font-size:.82em;opacity:.75;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
-        ${duration ? `<span style="font-size:.8em;opacity:.6;">${duration}</span>` : ''}`;
+        <span class="media-item-platform">${this.platTag(item.platform)}</span>
+        <span class="media-item-title"></span>
+        <span class="media-item-artist"></span>
+        ${duration ? `<span class="media-item-dur">${duration}</span>` : ''}`;
       row.querySelector('.media-item-title').textContent = item.title || '';
       row.querySelector('.media-item-artist').textContent = item.artist || '';
       this.parseResultsList.appendChild(row);
@@ -640,16 +764,13 @@ export class HomeApp {
   async retryFailed() {
     const rows = (this.queueRows || []).filter((r) => r.status === 'failed');
     if (!rows.length) return;
-    const convert = !!this.convertCheckbox?.checked;
-    const format = convert ? (this.formatSelect?.value || 'mp3') : 'original';
-    const bitrate = convert ? (this.bitrateSelect?.value || '320k') : 'auto';
-    const rawSubdir = String(this.dlSubdirInput?.value || '').trim().replace(/^\/+|\/+$/g, '');
     const retryBtn = document.getElementById('retryFailedBtn');
     if (retryBtn) retryBtn.setAttribute('disabled', '1');
     const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     let ok = 0;
     for (const row of rows) {
       if (ok > 0) await sleep(1_100);
+      const cfg = row.cfg || this.resolveRowCfg(row);
       try {
         const resp = await fetch('/api/jobs', {
           method: 'POST',
@@ -657,14 +778,14 @@ export class HomeApp {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             url: row.url,
-            format,
-            bitrate,
+            format: cfg.format,
+            bitrate: cfg.bitrate,
             isPlaylist: false,
             sampleRate: 48000,
             autoCreateZip: false,
             title: row.title || '',
             artist: row.artist || '',
-            ...(rawSubdir ? { outputSubdir: rawSubdir } : {})
+            ...(cfg.subdir ? { outputSubdir: cfg.subdir } : {})
           })
         });
         const data = await resp.json().catch(() => ({}));
@@ -706,20 +827,23 @@ export class HomeApp {
   renderQueue() {
     if (!this.downloadQueueList) return;
     this.downloadQueueList.innerHTML = '';
-    for (const row of this.queueRows || []) {
+    const rows = this.queueRows || [];
+    const visible = rows.filter((r) => this.dlStatusFilter === 'all' || this.rowKind(r) === this.dlStatusFilter);
+    for (const row of visible) {
       const div = document.createElement('div');
       div.className = 'dq-row';
+      const kindTag = this.rowKind(row) === 'playlist' ? '📃 ' : '';
       div.innerHTML = `
-        <span class="media-item-platform" style="font-size:.8em;opacity:.75;min-width:70px;">${this.platTag(row.platform)}</span>
+        <span class="media-item-platform">${this.platTag(row.platform)}</span>
         <span class="dq-title"></span>
         <span class="dq-artist"></span>
         ${row.durationSec ? `<span class="dq-dur">${this.fmtDuration(row.durationSec)}</span>` : ''}
         <span class="dq-status">${this.queueStatusBadge(row)}</span>`;
-      div.querySelector('.dq-title').textContent = row.title || '';
+      div.querySelector('.dq-title').textContent = kindTag + (row.title || '');
       div.querySelector('.dq-artist').textContent = row.artist || '';
       this.downloadQueueList.appendChild(div);
     }
-    const rows = this.queueRows || [];
+    if (this.downloadQueueEl) this.downloadQueueEl.style.display = rows.length ? '' : 'none';
     const done = rows.filter((r) => r.status === 'completed').length;
     const failed = rows.filter((r) => ['failed', 'error'].includes(r.status)).length;
     if (this.downloadQueueSummary) {
@@ -750,6 +874,8 @@ export class HomeApp {
     const preferred = this.formats.find((f) => f.format === 'mp3') || this.formats[0];
     if (preferred) this.formatSelect.value = preferred.format;
     this.restoreDlPrefs();
+    this.restoreScopeCfg();
+    this.populateScopeConfig();
     this.syncBitrateOptions();
     this.syncConvertUi();
   }
@@ -855,8 +981,9 @@ export class HomeApp {
     }
     if (view === 'download') {
       this.loadToolsLine(this.dlToolsText);
-      this.loadToolsLine(this.uploadToolsText);
+      this.populateScopeConfig();
     }
+    if (view === 'upload') this.loadToolsLine(this.uploadToolsText);
     if (push) {
       const hash = `#/${view}`;
       if (location.hash !== hash) location.hash = hash;

@@ -697,18 +697,21 @@ export class MediaConverterApp {
         const initialFormat = this.getEffectiveFormat(document.getElementById('formatSelect')?.value || 'mp3');
          this.updateQualityLabel(initialFormat);
 
-        document.getElementById('previewBtn').addEventListener('click', () => this.previewManager.handlePreviewClick());
-        document.getElementById('convertSelectedBtn').addEventListener('click', () => this.previewManager.convertSelected());
-        document.getElementById('convertAllBtn').addEventListener('click', () => this.previewManager.convertAll());
-        document.getElementById('selectAllChk').addEventListener('change', (e) => this.previewManager.toggleSelectAll(e.target.checked));
-        document.getElementById('playlistCheckbox').addEventListener('change', (e) => this.onPlaylistToggle(e.target.checked));
-        document.getElementById('prevPageBtn').addEventListener('click', () => this.previewManager.loadPage(this.previewManager.currentPreview.page - 1));
-        document.getElementById('nextPageBtn').addEventListener('click', () => this.previewManager.loadPage(this.previewManager.currentPreview.page + 1));
-        document.getElementById('pageSizeSel').addEventListener('change', (e) => {
+        // Classic preview-pane controls are optional in the redesigned upload
+        // view; bind only the ones present so init never throws.
+        const on = (id, ev, fn) => document.getElementById(id)?.addEventListener(ev, fn);
+        on('previewBtn', 'click', () => this.previewManager.handlePreviewClick());
+        on('convertSelectedBtn', 'click', () => this.previewManager.convertSelected());
+        on('convertAllBtn', 'click', () => this.previewManager.convertAll());
+        on('selectAllChk', 'change', (e) => this.previewManager.toggleSelectAll(e.target.checked));
+        on('playlistCheckbox', 'change', (e) => this.onPlaylistToggle(e.target.checked));
+        on('prevPageBtn', 'click', () => this.previewManager.loadPage(this.previewManager.currentPreview.page - 1));
+        on('nextPageBtn', 'click', () => this.previewManager.loadPage(this.previewManager.currentPreview.page + 1));
+        on('pageSizeSel', 'change', (e) => {
             this.previewManager.currentPreview.pageSize = Number(e.target.value) || 50;
             if (this.previewManager.currentPreview.url) this.previewManager.loadPage(1, true);
         });
-        document.getElementById('startIntegratedBtn').addEventListener('click', () => {
+        on('startIntegratedBtn', 'click', () => {
             this.spotifyManager.startIntegratedSpotifyProcess();
         });
 
