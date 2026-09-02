@@ -167,6 +167,68 @@ async function searchNeteasePlaylists(keyword, limit) {
   })).filter((it) => it.id && it.title && it.url);
 }
 
+// Playlist (歌单) detail — QQ Music playlist tracklist runs inside the
+// embedded browser via musicu.fcg (yt-dlp has no QQ playlist extractor and
+// returns an empty entry list). Playlist detail = the 工单 detail view.
+async function resolveQqPlaylistDetail(url) {
+  const idMatch = String(url || "").match(/playlist\/([A-Za-z0-9]+)/) ||
+    String(url || "").match(/[?&]id=([0-9]+)/);
+  const disstid = idMatch ? idMatch[1] : null;
+  if (!disstid) throw new Error("QQ音乐歌单链接无法解析 id");
+  return withTaskTab("https://y.qq.com/", "gharmonize-qq-playlist-detail", async (index) => {
+    await sleep(2_000);
+    const expression = `(async () => {
+      try {
+        const r = await fetch("https://u.y.qq.com/cgi-bin/musicu.fcg", {
+          method: "POST", credentials: "include", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            comm: { ct: 19, cv: 1873 },
+            req: { module: "music.playlist.PlaylistInfo", method: "run", param: { disstid: Number(${JSON.stringify(disstid)}) || ${JSON.stringify(disstid)}, onlysonglist: 1, songnum: 100 } }
+          })
+        });
+        const j = await r.json();
+        const data = (j && j.req && j.req.data) || {};
+        const list = data.songlist || [];
+        return {
+          ok: true,
+          title: (data.dirinfo && data.dirinfo.title) || data.dissname || data.title || "",
+          list: list.map((s) => ({
+            mid: s.mid || s.songmid || "",
+            name: s.name || s.songname || "",
+            singers: (s.singer || []).map((x) => x && x.name).filter(Boolean).join(" / "),
+            interval: s.interval || null,
+            album: (s.album && s.album.name) || "",
+            albummid: (s.album && s.album.mid) || "",
+            pay: s.pay || null,
+            size_flac: s.size_flac, size_320: s.size_320, size_128: s.size_128
+          }))
+        };
+      } catch (e) { return { ok: false, error: String(e).slice(0, 140) }; }
+    })()`;
+    const data = await cdEvaluate(expression, 45_000, index);
+    if (!data || data.ok !== true) {
+      throw new Error(`QQ音乐歌单详情失败: ${(data && data.error) || "no data"}`);
+    }
+    const items = (data.list || []).map((s, i) => ({
+      id: s.mid,
+      platform: "qqmusic",
+      type: "song",
+      title: stripHtml(s.name || `Track ${i + 1}`),
+      artist: stripHtml(s.singers || ""),
+      album: stripHtml(s.album || ""),
+      durationSec: Number(s.interval) || null,
+      url: s.mid ? `https://y.qq.com/n/ryqq/songDetail/${s.mid}` : url,
+      // raw fields for the search adapter
+      pay: s.pay || null,
+      size_flac: s.size_flac,
+      size_320: s.size_320,
+      size_128: s.size_128,
+      albummid: s.albummid || null
+    })).filter((it) => it.id && it.title);
+    return { title: stripHtml(data.title || ""), items };
+  });
+}
+
 // Playlist (歌单) search — QQ Music desktop search CGI runs inside the embedded
 // browser (its cookies satisfy the login-gated CGI); search_type 3 = playlist.
 async function searchQqMusicPlaylists(keyword, limit) {
@@ -636,6 +698,80 @@ function livePlatformStatus({ refresh = false, platform = null } = {}) {
 }
 
 // ---------------------------------------------------------------------------
+// 试听 (preview playback): resolves a playable audio URL for ONE track and
+// redirects the client's <audio> element to it. Redirect (not proxy) keeps
+// server load zero; QQ purls and yt-dlp direct URLs are resolved server-side.
+// Resolved URLs are cached (they stay valid ~1h+ and are expensive to get).
+// ---------------------------------------------------------------------------
+
+const previewUrlCache = new Map(); // url → { at, location | error }
+const PREVIEW_TTL_MS = 30 * 60_000;
+
+async function resolvePreviewLocation(url, platform) {
+  const cached = previewUrlCache.get(url);
+  if (cached && Date.now() - cached.at < PREVIEW_TTL_MS) {
+    if (cached.error) throw new Error(cached.error);
+    return cached.location;
+  }
+  try {
+    let location = null;
+    if (platform === "netease") {
+      // Public trial-URL endpoint: 302s to the CDN trial mp3.
+      const m = String(url).match(/id=([0-9]+)/);
+      if (m) location = `https://music.163.com/song/media/outer/url?id=${m[1]}.mp3`;
+    } else {
+      // qqmusic / youtube / bilibili / others: yt-dlp resolves a bestaudio
+      // direct URL (QQ's vkey CGI is risk-controlled — yt-dlp still works,
+      // including VIP flac streams with the exported cookies).
+      const args = ["--ignore-config", "--no-warnings", "--socket-timeout", "15", "--force-ipv4", "-f", "bestaudio/best", "--get-url"];
+      for (const extra of getExtraArgs()) args.push(extra);
+      if (fs.existsSync(COOKIES_FILE)) args.push("--cookies", COOKIES_FILE);
+      args.push(url);
+      location = await new Promise((resolve, reject) => {
+        const child = spawnSafe(YTDLP_BIN, args, { env: getBinaryRuntimeEnv() });
+        let out = "";
+        const timer = setTimeout(() => { try { child.kill("SIGKILL"); } catch {} reject(new Error("preview resolve timeout")); }, 45000);
+        child.stdout.on("data", (c) => { out += c.toString(); });
+        child.on("close", () => {
+          clearTimeout(timer);
+          const first = out.split("\n").map((l) => l.trim()).filter(Boolean)[0];
+          if (first && /^https?:\/\//.test(first)) resolve(first);
+          else reject(new Error("no direct audio url"));
+        });
+        child.on("error", (e) => { clearTimeout(timer); reject(e); });
+      });
+      if (!location && platform === "qqmusic") {
+        // Last resort: the legacy browser-vkey purl.
+        try {
+          const { resolveQqMusicStreamUrl } = await import("../modules/platform.js");
+          location = (await resolveQqMusicStreamUrl(url))?.purl || null;
+        } catch { /* keep null */ }
+      }
+    }
+    if (!location) throw new Error("no preview source");
+    previewUrlCache.set(url, { at: Date.now(), location });
+    return location;
+  } catch (e) {
+    previewUrlCache.set(url, { at: Date.now(), error: String(e?.message || e).slice(0, 160) });
+    throw e;
+  }
+}
+
+router.get("/api/media/preview", rateLimit(120, 60_000), async (req, res) => {
+  const url = String(req.query.url || "").trim();
+  const platform = String(req.query.platform || "").trim().toLowerCase();
+  if (!/^https?:\/\//i.test(url)) {
+    return res.status(400).json({ error: { code: "URL_REQUIRED", message: "url is required" } });
+  }
+  try {
+    const location = await resolvePreviewLocation(url, platform);
+    res.redirect(302, location);
+  } catch (e) {
+    res.status(502).json({ error: { code: "PREVIEW_FAILED", message: e?.message || "preview failed" } });
+  }
+});
+
+// ---------------------------------------------------------------------------
 // Routes
 // ---------------------------------------------------------------------------
 
@@ -782,7 +918,24 @@ router.get("/api/media/stream", rateLimit(30, 60_000), async (req, res) => {
   try {
     let upstream;
     if (platform === "netease") {
-      upstream = await fetch(`https://music.163.com/song/media/outer/url?id=${encodeURIComponent(id)}.mp3`, { redirect: "follow" });
+      // NetEase trial CDN has no IP binding — hand the redirect straight to
+      // the client (robust against CDN hosts the server can't reach).
+      const upstreamUrl = `https://music.163.com/song/media/outer/url?id=${encodeURIComponent(id)}.mp3`;
+      try {
+        const manual = await fetch(upstreamUrl, {
+          redirect: "manual",
+          headers: { "User-Agent": UA, Referer: "https://music.163.com/" }
+        });
+        const loc = manual.headers.get("location");
+        if (manual.status >= 300 && manual.status < 400 && loc) {
+          return res.redirect(302, loc);
+        }
+        // No redirect: fall through and proxy the direct response.
+        upstream = manual;
+      } catch (e) {
+        // Server can't even reach music.163.com — let the client try.
+        return res.redirect(302, upstreamUrl);
+      }
     } else if (platform === "qqmusic") {
       const info = await resolveQqMusicStreamUrl(`https://y.qq.com/n/ryqq/songDetail/${encodeURIComponent(id)}`);
       upstream = await fetch(info.purl, { redirect: "follow", headers: { Referer: "https://y.qq.com/", "User-Agent": UA } });
@@ -819,6 +972,21 @@ router.get("/api/media/resolve", rateLimit(20, 60_000), async (req, res) => {
   }
 
   try {
+    // QQ playlists: yt-dlp has no extractor and returns an empty list — use
+    // the in-browser PlaylistInfo CGI instead.
+    if (host.includes("qq.com") && /\/playlist\//i.test(url)) {
+      try {
+        const qq = await resolveQqPlaylistDetail(url);
+        return res.json({
+          ok: true, mode: "list", platform: "qqmusic",
+          title: qq.title || "", totalCount: qq.items.length,
+          items: qq.items.map((it) => adaptSearchItem(it))
+        });
+      } catch (qqErr) {
+        console.warn("[media] qq playlist detail failed:", qqErr?.message || qqErr);
+        return res.status(502).json({ error: { code: "RESOLVE_FAILED", message: qqErr?.message || "resolve failed" } });
+      }
+    }
     const data = await ytdlpFlatJson(url);
     const entries = Array.isArray(data?.entries) ? data.entries : null;
     if (entries) {
@@ -865,7 +1033,7 @@ router.get("/api/media/resolve", rateLimit(20, 60_000), async (req, res) => {
           url: `https://www.bilibili.com/video/${data.id}/?p=${pagePart}`
         };
       }).filter((it) => it.title);
-      return res.json({ ok: true, mode: "list", title: stripHtml(data.title || ""), totalCount: items.length, items });
+      return res.json({ ok: true, mode: "list", title: stripHtml(data.title || ""), totalCount: items.length, items: items.map((it) => adaptSearchItem(it)) });
     }
     const single = {
       id: data?.id || "",
@@ -875,7 +1043,7 @@ router.get("/api/media/resolve", rateLimit(20, 60_000), async (req, res) => {
       durationSec: Number(data?.duration) || null,
       url: data?.webpage_url || url
     };
-    return res.json({ ok: true, mode: "single", title: single.title, totalCount: 1, items: [single] });
+    return res.json({ ok: true, mode: "single", title: single.title, totalCount: 1, items: [adaptSearchItem(single)] });
   } catch (err) {
     console.warn("[media] resolve failed:", err?.message || err);
     res.status(502).json({ error: { code: "RESOLVE_FAILED", message: err?.message || "resolve failed" } });

@@ -582,17 +582,17 @@ export async function downloadPlatformMedia(
   fs.mkdirSync(tempDir, { recursive: true });
   const platform = detectPlatform(inputUrl);
 
-  // QQ Music: resolve the real audio URL through the embedded browser's web
-  // player vkey CGI (live cookies incl. WeChat sessions), then stream it.
-  // yt-dlp's QQMusic extractor cannot authenticate WeChat logins.
+  // QQ Music: QQ's vkey CGI is now risk-controlled (code 500003 / subcode
+  // 860100005) for anonymous AND logged-in sessions, so the browser vkey path
+  // fails for every song. yt-dlp + the exported cookies still gets
+  // full-quality streams (flac for VIP accounts), so yt-dlp goes first and
+  // the browser vkey stays as a fallback.
   if (platform === "qqmusic") {
     try {
+      return await fallbackViaYtDlp(platform, null, null);
+    } catch (ytErr) {
+      if (!YTDLP_FALLBACK_PLATFORMS.has(platform)) throw ytErr;
       return await downloadQqMusicViaBrowser(inputUrl, jobId, tempDir, progressCallback, opts, ctrl);
-    } catch (qqErr) {
-      if (YTDLP_FALLBACK_PLATFORMS.has(platform)) {
-        return fallbackViaYtDlp(platform, null, qqErr);
-      }
-      throw qqErr;
     }
   }
 
