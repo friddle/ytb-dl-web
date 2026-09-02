@@ -1332,5 +1332,21 @@
   "home.selectRequired": "请先勾选要下载的条目",
   "home.jobsSubmitted": "已提交",
   "home.jobsUnit": "个下载任务",
-  "home.jobsFailed": "提交失败"
+  "home.jobsFailed": "提交失败",
+  "home.tabHome": "🏠 首页",
+  "home.tabSettings": "⚙️ 设置",
+  "home.subdirLabel": "本次下载目录",
+  "home.subdirPlaceholder": "子目录（可留空）",
+  "home.dlRoot": "根目录（在设置中修改）",
+  "home.detailedSettings": "详细设置",
+  "home.progressTitle": "📥 下载进度",
+  "home.jobQueued": "排队中",
+  "home.jobPending": "等待",
+  "home.jobDownloading": "下载中",
+  "home.jobConverting": "转换中",
+  "home.jobDone": "完成",
+  "home.jobFailed": "失败",
+  "home.jobCanceled": "已取消",
+  "home.expandPlaylists": "歌单已展开",
+  "home.expandFailed": "歌单解析失败"
 }

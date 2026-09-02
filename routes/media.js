@@ -5,6 +5,7 @@ import path from "path";
 import { spawnSafe } from "../modules/safeProcess.js";
 import { rateLimit } from "../modules/rateLimit.js";
 import { loginStatus, isPlatformLoggedIn } from "../modules/chromeDriverless.js";
+import { getJob } from "../modules/store.js";
 import { YTDLP_BIN, getBinaryRuntimeEnv } from "../modules/binaries.js";
 import { getExtraArgs } from "../modules/config.js";
 
@@ -489,6 +490,30 @@ router.get("/api/media/config", rateLimit(60, 60_000), (_req, res) => {
     browserBundled: browserBundled(),
     downloadDir: mediaDownloadDir()
   });
+});
+
+// Batched job status for the home download queue UI: one poll covers every
+// submitted item (progress %, phase, error reason).
+router.get("/api/media/jobs-status", rateLimit(240, 60_000), (req, res) => {
+  const ids = String(req.query.ids || "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .slice(0, 80);
+  const jobs = ids.map((id) => {
+    const j = getJob(id);
+    if (!j) return { id, status: "missing", progress: 0, error: null };
+    return {
+      id,
+      status: String(j.status || "queued"),
+      progress: Number(j.progress) || 0,
+      currentPhase: j.currentPhase || null,
+      error: j.error ? String(j.error).slice(0, 400) : null,
+      resultPath: j.resultPath || null,
+      title: j.metadata?.frozenTitle || j.metadata?.extracted?.title || j.metadata?.originalName || null
+    };
+  });
+  res.json({ ok: true, jobs });
 });
 
 router.get("/api/media/login-status", rateLimit(120, 60_000), async (req, res) => {

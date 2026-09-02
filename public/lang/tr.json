@@ -1360,5 +1360,21 @@
   "home.selectRequired": "Önce indirmek için öğe seçin",
   "home.jobsSubmitted": "Gönderildi",
   "home.jobsUnit": "indirme görevi",
-  "home.jobsFailed": "Gönderim başarısız"
+  "home.jobsFailed": "Gönderim başarısız",
+  "home.tabHome": "🏠 Ana sayfa",
+  "home.tabSettings": "⚙️ Ayarlar",
+  "home.subdirLabel": "İndirme klasörü",
+  "home.subdirPlaceholder": "Alt klasör (isteğe bağlı)",
+  "home.dlRoot": "Kök klasör (Ayarlar'dan değiştir)",
+  "home.detailedSettings": "Ayrıntılı ayarlar",
+  "home.progressTitle": "📥 İndirme ilerlemesi",
+  "home.jobQueued": "Sırada",
+  "home.jobPending": "Bekliyor",
+  "home.jobDownloading": "İndiriliyor",
+  "home.jobConverting": "Dönüştürülüyor",
+  "home.jobDone": "Tamam",
+  "home.jobFailed": "Başarısız",
+  "home.jobCanceled": "İptal edildi",
+  "home.expandPlaylists": "Çalma listesi genişletildi",
+  "home.expandFailed": "Çalma listesi çözümleme hatası"
 }

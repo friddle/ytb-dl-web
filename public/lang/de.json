@@ -1331,5 +1331,21 @@
   "home.selectRequired": " Erst Elemente zum Herunterladen auswählen",
   "home.jobsSubmitted": "Übermittelt",
   "home.jobsUnit": "Download-Auftrag/Aufträge",
-  "home.jobsFailed": "Übermittlung fehlgeschlagen"
+  "home.jobsFailed": "Übermittlung fehlgeschlagen",
+  "home.tabHome": "🏠 Start",
+  "home.tabSettings": "⚙️ Einstellungen",
+  "home.subdirLabel": "Download-Ordner",
+  "home.subdirPlaceholder": "Unterordner (optional)",
+  "home.dlRoot": "Stammordner (in Einstellungen ändern)",
+  "home.detailedSettings": "Detaillierte Einstellungen",
+  "home.progressTitle": "📥 Download-Fortschritt",
+  "home.jobQueued": "Warteschlange",
+  "home.jobPending": "Ausstehend",
+  "home.jobDownloading": "Lädt",
+  "home.jobConverting": "Konvertieren",
+  "home.jobDone": "Fertig",
+  "home.jobFailed": "Fehlgeschlagen",
+  "home.jobCanceled": "Abgebrochen",
+  "home.expandPlaylists": "Playlist erweitert",
+  "home.expandFailed": "Playlist-Auflösung fehlgeschlagen"
 }

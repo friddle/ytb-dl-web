@@ -3,6 +3,7 @@ import path from "path";
 import fs from "fs";
 import crypto from "crypto";
 import multer from "multer";
+import { normalizeRelPath } from "../modules/outputPaths.js";
 import { sendOk, sendError, ERR, isDirectMediaUrl, sanitizeFilename } from "../modules/utils.js";
 import { sanitizeLogValue } from "../modules/security.js";
 import {
@@ -1216,6 +1217,19 @@ router.post("/api/jobs", rateLimit(10, 60_000), upload.single("file"), async (re
       format = resolveRingtoneOutputFormat(ringtone, format);
       bitrate = resolveRingtoneBitrate(ringtone, bitrate);
       sampleRate = String(resolveRingtoneSampleRate(ringtone, sampleRate));
+    }
+
+    // Optional per-download output subfolder (relative to OUTPUT_DIR). Only a
+    // safe relative path is accepted; the absolute root stays server-controlled.
+    {
+      const rawOutputSubdir = String(body.outputSubdir ?? "").trim();
+      if (rawOutputSubdir) {
+        const normalizedSubdir = normalizeRelPath(rawOutputSubdir);
+        if (!normalizedSubdir) {
+          return sendError(res, "INVALID_OUTPUT_SUBDIR", "Invalid outputSubdir", 400);
+        }
+        metadata.outputSubdir = normalizedSubdir;
+      }
     }
 
     const isVideoOutput = format === "mp4" || format === "mkv";

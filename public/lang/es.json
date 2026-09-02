@@ -1359,5 +1359,21 @@
   "home.selectRequired": "Selecciona primero elementos para descargar",
   "home.jobsSubmitted": "Enviado",
   "home.jobsUnit": "tarea(s) de descarga",
-  "home.jobsFailed": "Error al enviar"
+  "home.jobsFailed": "Error al enviar",
+  "home.tabHome": "🏠 Inicio",
+  "home.tabSettings": "⚙️ Ajustes",
+  "home.subdirLabel": "Carpeta de descarga",
+  "home.subdirPlaceholder": "Subcarpeta (opcional)",
+  "home.dlRoot": "Carpeta raíz (cambiar en Ajustes)",
+  "home.detailedSettings": "Ajustes detallados",
+  "home.progressTitle": "📥 Progreso de descarga",
+  "home.jobQueued": "En cola",
+  "home.jobPending": "Pendiente",
+  "home.jobDownloading": "Descargando",
+  "home.jobConverting": "Convirtiendo",
+  "home.jobDone": "Hecho",
+  "home.jobFailed": "Falló",
+  "home.jobCanceled": "Cancelado",
+  "home.expandPlaylists": "Playlist expandida",
+  "home.expandFailed": "Error al resolver la playlist"
 }

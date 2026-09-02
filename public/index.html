@@ -63,17 +63,6 @@
       </button>
 
       <button
-        id="settingsBtn"
-        class="btn-outline settings-btn"
-        type="button"
-        data-i18n-title="settings.pageTitle"
-        title="Settings"
-      >
-        <span class="settings-btn__icon" aria-hidden="true">⚙️</span>
-        <span class="settings-btn__label sr-only" data-i18n="settings.pageTitle">Settings</span>
-      </button>
-
-      <button
         id="jobsBell"
         class="jobs-bell"
         type="button"
@@ -91,7 +80,15 @@
     </div>
 
     <!-- ============================================================ -->
-    <!-- Home page: 4 modules                                          -->
+    <!-- Top tabs: 首页 / 设置                                          -->
+    <!-- ============================================================ -->
+    <nav class="top-tabs" id="topTabs" role="tablist">
+      <button type="button" class="top-tab active" data-view="home" role="tab" aria-selected="true">🏠 <span data-i18n="home.tabHome">首页</span></button>
+      <button type="button" class="top-tab" data-view="settings" role="tab" aria-selected="false">⚙️ <span data-i18n="home.tabSettings">设置</span></button>
+    </nav>
+
+    <!-- ============================================================ -->
+    <!-- Home view: platform status + aggregated search                -->
     <!-- ============================================================ -->
     <main class="home-main" id="homeMain">
 
@@ -122,6 +119,16 @@
           <button type="button" id="searchBtn" class="btn" data-i18n="media.search">🔍 搜索</button>
         </div>
 
+        <div class="home-dl-opts" id="dlOptsRow" style="display:none;">
+          <span class="form-label" data-i18n="home.subdirLabel">本次下载目录</span>
+          <div class="home-dl-subdir">
+            <code id="dlBasePath" data-i18n-title="home.dlRoot" title="根目录（在设置中修改）">/</code>
+            <span class="home-dl-sep">/</span>
+            <input type="text" id="dlSubdirInput" class="form-control" data-i18n-ph="home.subdirPlaceholder" placeholder="子目录（可留空）" autocomplete="off">
+          </div>
+          <button type="button" class="btn-outline" id="openDetailedSettingsBtn">⚙️ <span data-i18n="home.detailedSettings">详细设置</span></button>
+        </div>
+
         <div id="searchResultsWrap" style="display:none;">
           <div class="home-results-toolbar">
             <label style="display:flex;align-items:center;gap:6px;"><input type="checkbox" id="searchSelectAll"> <span data-i18n="home.selectAll">全选</span></label>
@@ -130,35 +137,14 @@
           </div>
           <div id="searchResultsList" class="home-results-list"></div>
         </div>
-      </section>
 
-      <!-- Module 3: 下载设置 -->
-      <section class="card home-card" id="moduleDownload">
-        <h2 data-i18n="home.dlTitle">⬇️ 下载设置</h2>
-        <div class="checkbox-group">
-          <input type="checkbox" id="convertAfterCheckbox" checked>
-          <label for="convertAfterCheckbox" data-i18n="home.convertAfter">下载后转换格式</label>
+        <div id="downloadQueue" class="home-dl-queue" style="display:none;">
+          <div class="home-dl-queue__head">
+            <span data-i18n="home.progressTitle">📥 下载进度</span>
+            <span id="downloadQueueSummary" class="comment"></span>
+          </div>
+          <div id="downloadQueueList" class="home-dl-queue__list"></div>
         </div>
-        <div class="form-group" id="dlFormatGroup">
-          <label for="dlFormatSelect" data-i18n="media.format">格式</label>
-          <select id="dlFormatSelect" class="form-control"></select>
-        </div>
-        <div class="form-group" id="dlBitrateGroup">
-          <label for="dlBitrateSelect" data-i18n="media.bitrate">码率</label>
-          <select id="dlBitrateSelect" class="form-control"></select>
-        </div>
-        <small class="comment home-dir-line">
-          <span data-i18n="home.labelDir">默认下载路径</span>:
-          <code id="dlDirText">-</code>
-          <button type="button" class="linklike" id="openSettingsFromDlBtn">⚙️ <span data-i18n="home.changeInSettings">在设置中修改</span></button>
-        </small>
-      </section>
-
-      <!-- Module 4: 播放器 -->
-      <section class="card home-card" id="modulePlayer">
-        <h2 data-i18n="home.playerTitle">🎧 播放器</h2>
-        <small class="comment" data-i18n="home.playerHint">在新标签页中打开对应平台的网页播放器。</small>
-        <div class="player-btns" id="playerBtns"></div>
       </section>
     </main>
 
@@ -189,6 +175,22 @@
         <div class="form-group">
           <label for="settingsInternalUrlInput" data-i18n="settings.internalUrl">内部访问域名地址（可选）</label>
           <input type="text" id="settingsInternalUrlInput" class="form-control" placeholder="https://browser.lan/" autocomplete="off">
+        </div>
+      </div>
+
+      <div class="card settings-card">
+        <h3 data-i18n="home.dlTitle">⬇️ 下载设置</h3>
+        <div class="checkbox-group">
+          <input type="checkbox" id="convertAfterCheckbox" checked>
+          <label for="convertAfterCheckbox" data-i18n="home.convertAfter">下载后转换格式</label>
+        </div>
+        <div class="form-group" id="dlFormatGroup">
+          <label for="dlFormatSelect" data-i18n="media.format">格式</label>
+          <select id="dlFormatSelect" class="form-control"></select>
+        </div>
+        <div class="form-group" id="dlBitrateGroup">
+          <label for="dlBitrateSelect" data-i18n="media.bitrate">码率</label>
+          <select id="dlBitrateSelect" class="form-control"></select>
         </div>
       </div>
 

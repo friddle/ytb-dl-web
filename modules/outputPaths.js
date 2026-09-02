@@ -113,7 +113,7 @@ export function formatOutputTimestamp(inputDate, lang = "en") {
   return `${stamp}_${ms}_UTC`;
 }
 
-function normalizeRelPath(relPath) {
+export function normalizeRelPath(relPath) {
   const rel = String(relPath || "").replace(/\\/g, "/").replace(/^\/+/, "");
   const normalized = path.posix.normalize(rel).replace(/^\/+/, "");
   if (!normalized || normalized === "." || normalized.startsWith("..")) return null;
@@ -122,7 +122,9 @@ function normalizeRelPath(relPath) {
 
 // Checks whether job should use dedicated playlist output folder.
 export function shouldUsePlaylistOutputDir(job) {
-  return !!job?.metadata?.isPlaylist;
+  // Playlists always get their own folder; singles too when the caller pinned
+  // an explicit outputSubdir ("download into this subfolder").
+  return !!job?.metadata?.isPlaylist || !!normalizeRelPath(job?.metadata?.outputSubdir);
 }
 
 // Picks display title used for playlist output folder naming.

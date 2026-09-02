@@ -1360,5 +1360,21 @@
   "home.selectRequired": "Select items to download first",
   "home.jobsSubmitted": "Submitted",
   "home.jobsUnit": "download job(s)",
-  "home.jobsFailed": "Submit failed"
+  "home.jobsFailed": "Submit failed",
+  "home.tabHome": "🏠 Home",
+  "home.tabSettings": "⚙️ Settings",
+  "home.subdirLabel": "Download folder",
+  "home.subdirPlaceholder": "Subfolder (optional)",
+  "home.dlRoot": "Root folder (change in Settings)",
+  "home.detailedSettings": "Detailed settings",
+  "home.progressTitle": "📥 Download progress",
+  "home.jobQueued": "Queued",
+  "home.jobPending": "Pending",
+  "home.jobDownloading": "Downloading",
+  "home.jobConverting": "Converting",
+  "home.jobDone": "Done",
+  "home.jobFailed": "Failed",
+  "home.jobCanceled": "Canceled",
+  "home.expandPlaylists": "Playlist expanded",
+  "home.expandFailed": "Playlist resolve failed"
 }

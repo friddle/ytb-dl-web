@@ -44,15 +44,21 @@ export class HomeApp {
     this.resultsMeta = document.getElementById('searchMeta');
     this.selectAll = document.getElementById('searchSelectAll');
     this.downloadBtn = document.getElementById('downloadSelectedBtn');
-    // Download settings
+    // Download options + progress queue
+    this.dlOptsRow = document.getElementById('dlOptsRow');
+    this.dlBasePath = document.getElementById('dlBasePath');
+    this.dlSubdirInput = document.getElementById('dlSubdirInput');
+    this.downloadQueueEl = document.getElementById('downloadQueue');
+    this.downloadQueueList = document.getElementById('downloadQueueList');
+    this.downloadQueueSummary = document.getElementById('downloadQueueSummary');
+    // Download settings (live inside the settings page)
     this.convertCheckbox = document.getElementById('convertAfterCheckbox');
     this.formatSelect = document.getElementById('dlFormatSelect');
     this.bitrateSelect = document.getElementById('dlBitrateSelect');
     this.formatGroup = document.getElementById('dlFormatGroup');
     this.bitrateGroup = document.getElementById('dlBitrateGroup');
-    this.dlDirText = document.getElementById('dlDirText');
-    // Player
-    this.playerBtnsEl = document.getElementById('playerBtns');
+    // Top tabs / views
+    this.topTabsEl = document.getElementById('topTabs');
     // Settings page
     this.settingsPage = document.getElementById('settingsPage');
     this.settingsBundledCheckbox = document.getElementById('settingsBundledCheckbox');
@@ -67,17 +73,21 @@ export class HomeApp {
   bindStatic() {
     this.searchBtn?.addEventListener('click', () => this.runSearch());
     this.searchInput?.addEventListener('keydown', (e) => { if (e.key === 'Enter') this.runSearch(); });
+    document.getElementById('openDetailedSettingsBtn')?.addEventListener('click', () => this.showView('settings'));
     this.selectAll?.addEventListener('change', () => {
       this.resultsList?.querySelectorAll('.media-item-check').forEach((c) => { c.checked = this.selectAll.checked; });
       this.updateSelectedCount();
     });
     this.downloadBtn?.addEventListener('click', () => this.downloadSelected());
-    this.convertCheckbox?.addEventListener('change', () => this.syncConvertUi());
-    this.formatSelect?.addEventListener('change', () => this.syncBitrateOptions());
-    document.getElementById('openSettingsFromDlBtn')?.addEventListener('click', () => this.openSettings());
+    this.convertCheckbox?.addEventListener('change', () => { this.syncConvertUi(); this.persistDlPrefs(); });
+    this.formatSelect?.addEventListener('change', () => { this.syncBitrateOptions(); this.persistDlPrefs(); });
+    this.bitrateSelect?.addEventListener('change', () => this.persistDlPrefs());
 
-    document.getElementById('settingsBtn')?.addEventListener('click', () => this.openSettings());
-    document.getElementById('settingsBackBtn')?.addEventListener('click', () => this.closeSettings());
+    // Top tabs: 首页 / 设置
+    this.topTabsEl?.querySelectorAll('.top-tab').forEach((tab) => {
+      tab.addEventListener('click', () => this.showView(tab.dataset.view));
+    });
+    document.getElementById('settingsBackBtn')?.addEventListener('click', () => this.showView('home'));
     document.getElementById('settingsSaveBtn')?.addEventListener('click', () => this.saveSettings());
     this.settingsBundledCheckbox?.addEventListener('change', () => this.syncSettingsLockUi());
     document.getElementById('settingsCheckUpdateBtn')?.addEventListener('click', async (btn) => {
@@ -128,7 +138,6 @@ export class HomeApp {
     this.renderPlatTabs();
     this.renderPlatPanel();
     this.renderSearchPlatforms();
-    this.renderPlayerBtns();
     this.renderResults();
   }
 
@@ -145,13 +154,11 @@ export class HomeApp {
     }
     // Seed status from the cookie snapshot so the page renders instantly.
     this.status = { ...(this.config?.platforms || {}) };
+    if (this.dlBasePath) this.dlBasePath.textContent = this.config?.downloadDir || '/';
     this.renderPlatTabs();
     this.renderPlatPanel();
     this.renderSearchPlatforms();
-    this.renderPlayerBtns();
-    if (this.dlDirText) this.dlDirText.textContent = this.config?.downloadDir || '-';
-    this.syncConvertUi();
-    this.loadFormats();
+    await this.loadFormats(); // populates selects + applies saved prefs
     this.fillSettings();
     // The one automatic login/VIP check on page load (server-side 45s cache).
     this.refreshAllStatuses();
@@ -330,6 +337,7 @@ export class HomeApp {
 
     this.results = merged;
     if (this.resultsWrap) this.resultsWrap.style.display = '';
+    if (this.dlOptsRow) this.dlOptsRow.style.display = '';
     if (this.selectAll) this.selectAll.checked = merged.length > 0;
     this.resultsMeta.textContent = `${this.tt('home.total', '共')} ${merged.length} ${this.tt('home.items', '条')}`;
     this.renderResults();
@@ -377,8 +385,10 @@ export class HomeApp {
     if (this.downloadBtn) this.downloadBtn.disabled = n === 0;
   }
 
-  // Submits one /api/jobs job per selected item, using the module-3 settings
-  // (convert checkbox → format/bitrate; unchecked = ORIGINAL passthrough).
+  // Submits one /api/jobs job per selected item, using the settings-page
+  // preferences (convert checkbox → format/bitrate; unchecked = ORIGINAL).
+  // Playlist items are expanded into their tracks first so every item gets its
+  // own progress row and failure reason. Optional per-download subfolder.
   async downloadSelected() {
     if (this.submitting) return;
     const checked = [...(this.resultsList?.querySelectorAll('.media-item-check:checked') || [])];
@@ -386,42 +396,159 @@ export class HomeApp {
     const convert = !!this.convertCheckbox?.checked;
     const format = convert ? (this.formatSelect?.value || 'mp3') : 'original';
     const bitrate = convert ? (this.bitrateSelect?.value || '320k') : 'auto';
-    const items = checked.map((c) => this.results[Number(c.dataset.idx)]).filter(Boolean);
+    const rawSubdir = String(this.dlSubdirInput?.value || '').trim().replace(/^\/+|\/+$/g, '');
+    const selected = checked.map((c) => this.results[Number(c.dataset.idx)]).filter(Boolean);
 
     this.submitting = true;
     this.downloadBtn?.setAttribute('disabled', '1');
+
+    // Expand playlists into track lists (details visible in the queue).
+    const queue = [];
+    for (const item of selected) {
+      if (item.type === 'playlist') {
+        try {
+          const r = await fetch(`/api/media/resolve?url=${encodeURIComponent(item.url)}`);
+          const d = await r.json();
+          if (!r.ok || !d.ok) throw new Error(d?.error?.message || `HTTP ${r.status}`);
+          const tracks = (d.items || []).map((t) => ({
+            ...t,
+            platform: item.platform,
+            fromPlaylist: item.title
+          }));
+          this.notify(`${this.tt('home.expandPlaylists', '歌单已展开')}: ${item.title} → ${tracks.length}`, 'info');
+          if (tracks.length) queue.push(...tracks);
+        } catch (err) {
+          queue.push({ ...item, status: 'failed', error: `${this.tt('home.expandFailed', '歌单解析失败')}: ${err.message}`, progress: 0 });
+        }
+      } else {
+        queue.push({ ...item });
+      }
+    }
+    if (!queue.length) {
+      this.submitting = false;
+      this.downloadBtn?.removeAttribute('disabled');
+      return;
+    }
+
+    // Queue rows: pending → queued → processing → completed/error.
+    this.queueRows = queue.map((it) => ({
+      ...it,
+      jobId: null,
+      status: 'pending',
+      progress: 0,
+      error: it.error || null
+    }));
+    this.renderQueue();
+    this.downloadQueueEl.style.display = '';
+    this.downloadQueueEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
     let ok = 0;
-    const failed = [];
-    for (const item of items) {
+    for (const row of this.queueRows) {
+      if (row.status === 'failed') continue;
       try {
         const resp = await fetch('/api/jobs', {
           method: 'POST',
           credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            url: item.url,
+            url: row.url,
             format,
             bitrate,
-            isPlaylist: item.type === 'playlist',
+            isPlaylist: false,
             sampleRate: 48000,
-            autoCreateZip: false
+            autoCreateZip: false,
+            ...(rawSubdir ? { outputSubdir: rawSubdir } : {})
           })
         });
         const data = await resp.json().catch(() => ({}));
-        if (resp.ok && (data.id || data.ok)) ok += 1;
-        else failed.push(`${item.title}: ${data?.error?.message || `HTTP ${resp.status}`}`);
+        if (resp.ok && (data.id || data.ok || data.data?.id)) {
+          row.jobId = data.id || data.data?.id;
+          row.status = 'queued';
+          ok += 1;
+        } else {
+          row.status = 'failed';
+          row.error = data?.error?.message || `HTTP ${resp.status}`;
+        }
       } catch (err) {
-        failed.push(`${item.title}: ${err.message}`);
+        row.status = 'failed';
+        row.error = err.message;
       }
+      this.renderQueue();
     }
     this.submitting = false;
     this.downloadBtn?.removeAttribute('disabled');
+    this.pollQueueStatuses();
+  }
 
-    if (ok > 0) {
-      this.notify(`${this.tt('home.jobsSubmitted', '已提交')} ${ok} ${this.tt('home.jobsUnit', '个下载任务')}`, 'success');
-      window.jobsPanelManager?.open?.();
+  // Polls the batched jobs-status endpoint until every row reaches a terminal state.
+  async pollQueueStatuses() {
+    if (this._queuePollTimer) clearInterval(this._queuePollTimer);
+    const tick = async () => {
+      const ids = (this.queueRows || []).map((r) => r.jobId).filter(Boolean);
+      if (!ids.length) { clearInterval(this._queuePollTimer); this._queuePollTimer = null; return; }
+      try {
+        const r = await fetch(`/api/media/jobs-status?ids=${encodeURIComponent(ids.join(','))}`);
+        const d = await r.json();
+        const byId = new Map((d?.jobs || []).map((j) => [j.id, j]));
+        let active = 0;
+        for (const row of this.queueRows || []) {
+          if (!row.jobId) { if (row.status !== 'failed') active += 1; continue; }
+          const j = byId.get(row.jobId);
+          if (!j) continue;
+          row.status = j.status;
+          row.progress = j.progress || 0;
+          row.currentPhase = j.currentPhase;
+          row.error = j.error;
+          const terminal = ['completed', 'error', 'canceled', 'missing'].includes(j.status);
+          if (!terminal) active += 1;
+        }
+        this.renderQueue();
+        if (!active) { clearInterval(this._queuePollTimer); this._queuePollTimer = null; }
+      } catch { /* transient network error; retry on next tick */ }
+    };
+    await tick();
+    this._queuePollTimer = setInterval(tick, 2500);
+  }
+
+  queueStatusBadge(row) {
+    const t = (k, fb) => this.tt(k, fb);
+    if (row.status === 'completed') return `<span class="dq-badge ok">✅ ${t('home.jobDone', '完成')}</span>`;
+    if (row.status === 'failed' || row.status === 'error' || row.status === 'missing') {
+      const reason = row.error ? String(row.error).replace(/"/g, '&quot;') : '';
+      return `<span class="dq-badge err" title="${reason}">❌ ${t('home.jobFailed', '失败')}</span><span class="dq-reason" title="${reason}">${reason}</span>`;
     }
-    if (failed.length) this.notify(`${this.tt('home.jobsFailed', '提交失败')} ${failed.length} → ${failed.slice(0, 2).join('；')}`, 'error');
+    if (row.status === 'canceled') return `<span class="dq-badge err">⛔ ${t('home.jobCanceled', '已取消')}</span>`;
+    if (row.status === 'processing') {
+      const phase = row.currentPhase === 'convert' ? t('home.jobConverting', '转换中') : t('home.jobDownloading', '下载中');
+      return `<span class="dq-badge run">⏳ ${phase} ${Math.round(row.progress || 0)}%</span>
+        <span class="dq-bar"><span style="width:${Math.min(100, Math.max(2, row.progress || 0))}%"></span></span>`;
+    }
+    if (row.status === 'queued') return `<span class="dq-badge run">🕰️ ${t('home.jobQueued', '排队中')}</span>`;
+    return `<span class="dq-badge">⋯ ${t('home.jobPending', '等待')}</span>`;
+  }
+
+  renderQueue() {
+    if (!this.downloadQueueList) return;
+    this.downloadQueueList.innerHTML = '';
+    for (const row of this.queueRows || []) {
+      const div = document.createElement('div');
+      div.className = 'dq-row';
+      div.innerHTML = `
+        <span class="media-item-platform" style="font-size:.8em;opacity:.75;min-width:70px;">${this.platTag(row.platform)}</span>
+        <span class="dq-title"></span>
+        <span class="dq-artist"></span>
+        ${row.durationSec ? `<span class="dq-dur">${this.fmtDuration(row.durationSec)}</span>` : ''}
+        <span class="dq-status">${this.queueStatusBadge(row)}</span>`;
+      div.querySelector('.dq-title').textContent = row.title || '';
+      div.querySelector('.dq-artist').textContent = row.artist || '';
+      this.downloadQueueList.appendChild(div);
+    }
+    const rows = this.queueRows || [];
+    const done = rows.filter((r) => r.status === 'completed').length;
+    const failed = rows.filter((r) => ['failed', 'error'].includes(r.status)).length;
+    if (this.downloadQueueSummary) {
+      this.downloadQueueSummary.textContent = `${done}/${rows.length}${failed ? ` • ${this.tt('home.jobFailed', '失败')} ${failed}` : ''}`;
+    }
   }
 
   // ------------------------------------------------------------------
@@ -446,7 +573,33 @@ export class HomeApp {
     }
     const preferred = this.formats.find((f) => f.format === 'mp3') || this.formats[0];
     if (preferred) this.formatSelect.value = preferred.format;
+    this.restoreDlPrefs();
     this.syncBitrateOptions();
+    this.syncConvertUi();
+  }
+
+  // Download preferences survive reloads via localStorage.
+  persistDlPrefs() {
+    try {
+      localStorage.setItem('gharmonize_dl_prefs', JSON.stringify({
+        convert: !!this.convertCheckbox?.checked,
+        format: this.formatSelect?.value || 'mp3',
+        bitrate: this.bitrateSelect?.value || '320k'
+      }));
+    } catch { /* private mode etc. */ }
+  }
+
+  restoreDlPrefs() {
+    try {
+      const raw = localStorage.getItem('gharmonize_dl_prefs');
+      if (!raw) return;
+      const prefs = JSON.parse(raw);
+      if (this.convertCheckbox) this.convertCheckbox.checked = prefs.convert !== false;
+      if (prefs.format && this.formatSelect?.querySelector(`option[value="${CSS.escape(prefs.format)}"]`)) {
+        this.formatSelect.value = prefs.format;
+      }
+      if (prefs.bitrate) this._pendingBitrate = prefs.bitrate;
+    } catch { /* ignore malformed prefs */ }
   }
 
   syncBitrateOptions() {
@@ -459,34 +612,20 @@ export class HomeApp {
       opt.textContent = br === 'lossless' ? this.tt('home.lossless', '无损') : br;
       this.bitrateSelect.appendChild(opt);
     }
-    this.bitrateSelect.value = fmt.defaultBitrate || (fmt.bitrates || ['auto'])[0];
+    const wanted = this._pendingBitrate;
+    const options = [...this.bitrateSelect.options].map((o) => o.value);
+    if (wanted && options.includes(wanted)) {
+      this.bitrateSelect.value = wanted;
+    } else {
+      this.bitrateSelect.value = fmt.defaultBitrate || (fmt.bitrates || ['auto'])[0];
+    }
+    this._pendingBitrate = null;
   }
 
   syncConvertUi() {
     const on = !!this.convertCheckbox?.checked;
     if (this.formatGroup) this.formatGroup.style.display = on ? '' : 'none';
     if (this.bitrateGroup) this.bitrateGroup.style.display = on ? '' : 'none';
-  }
-
-  // ------------------------------------------------------------------
-  // Module 4: players
-  // ------------------------------------------------------------------
-
-  renderPlayerBtns() {
-    if (!this.playerBtnsEl) return;
-    const playerUrls = this.config?.playerUrls || {};
-    this.playerBtnsEl.innerHTML = '';
-    for (const key of PLAT_ORDER) {
-      const url = playerUrls[key];
-      if (!url) continue;
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'btn-outline player-btn';
-      btn.innerHTML = `<span>${PLAT_ICONS[key] || ''}</span> <span class="player-btn__name"></span>`;
-      btn.querySelector('.player-btn__name').textContent = this.platLabel(key);
-      btn.addEventListener('click', () => this.openInBrowser(url));
-      this.playerBtnsEl.appendChild(btn);
-    }
   }
 
   // ------------------------------------------------------------------
@@ -509,21 +648,22 @@ export class HomeApp {
   }
 
   // ------------------------------------------------------------------
-  // Settings page
+  // Views: home / settings (top tabs)
   // ------------------------------------------------------------------
 
-  openSettings() {
-    this.fillSettings();
-    if (this.settingsPage) {
-      this.settingsPage.hidden = false;
-      document.getElementById('homeMain')?.setAttribute('hidden', '1');
+  showView(view) {
+    const isSettings = view === 'settings';
+    if (this.settingsPage) this.settingsPage.hidden = !isSettings;
+    document.getElementById('homeMain')?.toggleAttribute('hidden', isSettings);
+    this.topTabsEl?.querySelectorAll('.top-tab').forEach((tab) => {
+      const active = (tab.dataset.view === 'settings') === isSettings;
+      tab.classList.toggle('active', active);
+      tab.setAttribute('aria-selected', active ? 'true' : 'false');
+    });
+    if (isSettings) {
+      this.fillSettings();
       window.scrollTo({ top: 0 });
     }
-  }
-
-  closeSettings() {
-    if (this.settingsPage) this.settingsPage.hidden = true;
-    document.getElementById('homeMain')?.removeAttribute('hidden');
   }
 
   fillSettings() {

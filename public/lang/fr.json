@@ -1359,5 +1359,21 @@
   "home.selectRequired": "Sélectionnez d'abord des éléments à télécharger",
   "home.jobsSubmitted": "Soumis",
   "home.jobsUnit": "téléchargement(s)",
-  "home.jobsFailed": "Échec de l'envoi"
+  "home.jobsFailed": "Échec de l'envoi",
+  "home.tabHome": "🏠 Accueil",
+  "home.tabSettings": "⚙️ Réglages",
+  "home.subdirLabel": "Dossier de téléchargement",
+  "home.subdirPlaceholder": "Sous-dossier (optionnel)",
+  "home.dlRoot": "Dossier racine (modifier dans les réglages)",
+  "home.detailedSettings": "Réglages détaillés",
+  "home.progressTitle": "📥 Progression des téléchargements",
+  "home.jobQueued": "En attente",
+  "home.jobPending": "En attente",
+  "home.jobDownloading": "Téléchargement",
+  "home.jobConverting": "Conversion",
+  "home.jobDone": "Terminé",
+  "home.jobFailed": "Échoué",
+  "home.jobCanceled": "Annulé",
+  "home.expandPlaylists": "Playliste développée",
+  "home.expandFailed": "Échec de résolution de la playlist"
 }

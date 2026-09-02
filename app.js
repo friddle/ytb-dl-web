@@ -408,19 +408,26 @@ app.use((req, res, next) => {
 })
 
 // Same-origin browser requests get cookie auth; reject cross-site state changes.
+// Behind reverse proxies the Host header may be rewritten, so the origin is also
+// compared against X-Forwarded-Host and GHARMONIZE_ALLOWED_ORIGINS (comma
+// separated hostnames). Ports are ignored when comparing hostnames.
 app.use((req, res, next) => {
   if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) return next()
   if ((req.get('authorization') || '').startsWith('Bearer ')) return next()
   const origin = String(req.get('origin') || '').trim()
   if (!origin) return next()
-  try {
-    const parsed = new URL(origin)
-    const expectedHost = String(req.get('host') || '').toLowerCase()
-    if (parsed.host.toLowerCase() !== expectedHost) {
-      return res.status(403).json({ error: { code: 'CROSS_SITE_REQUEST_BLOCKED', message: 'Cross-site state-changing request blocked' } })
+  const normalizeHost = (value) => String(value || '').toLowerCase().split(',')[0].trim().split(':')[0]
+  let originHost = null
+  try { originHost = normalizeHost(new URL(origin).host) } catch { originHost = null }
+  const allowed = new Set()
+  for (const candidate of [req.get('host'), req.get('x-forwarded-host'), process.env.GHARMONIZE_ALLOWED_ORIGINS]) {
+    for (const piece of String(candidate || '').split(',')) {
+      const host = normalizeHost(piece)
+      if (host) allowed.add(host)
     }
-  } catch {
-    return res.status(403).json({ error: { code: 'CROSS_SITE_REQUEST_BLOCKED', message: 'Invalid request origin' } })
+  }
+  if (!originHost || !allowed.has(originHost)) {
+    return res.status(403).json({ error: { code: 'CROSS_SITE_REQUEST_BLOCKED', message: 'Cross-site state-changing request blocked' } })
   }
   next()
 })
