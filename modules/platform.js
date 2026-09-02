@@ -462,7 +462,7 @@ async function downloadQqMusicViaBrowser(inputUrl, jobId, tempDir, progressCallb
         artist: singers,
         duration: typeof track.interval === "number" ? track.interval : null,
         filesize: Number(mid.filesize) || 0,
-        prefix: (mid.filename || "").split(songMid)[0] || ""
+        prefix: (mid.filename || "").split(${JSON.stringify(songMid)})[0] || ""
       };
     } catch (e) { return { error: String(e).slice(0, 160) }; }
   })()`;
