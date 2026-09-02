@@ -356,7 +356,7 @@ export class HomeApp {
     this.searchPlatformsEl.innerHTML = '';
     for (const key of SEARCHABLE) {
       const label = document.createElement('label');
-      label.style.cssText = 'display:flex;align-items:center;gap:6px;';
+      label.className = 'plat-check';
       const cb = document.createElement('input');
       cb.type = 'checkbox';
       cb.className = 'media-search-platform';
@@ -368,9 +368,13 @@ export class HomeApp {
         const loggedIn = !!this.status?.[key]?.loggedIn;
         cb.checked = LOGIN_FREE_SEARCH.includes(key) || (key === 'bilibili' && loggedIn);
       }
-      const span = document.createElement('span');
-      span.textContent = this.platLabel(key);
-      label.append(cb, span);
+      const icon = document.createElement('span');
+      icon.className = 'plat-check__icon';
+      icon.textContent = PLAT_ICONS[key] || '';
+      const name = document.createElement('span');
+      name.className = 'plat-check__name';
+      name.textContent = this.platLabel(key).replace(/^[^A-Za-z\u4e00-\u9fa5]+/, '') || key;
+      label.append(cb, icon, name);
       this.searchPlatformsEl.appendChild(label);
     }
   }
@@ -418,27 +422,69 @@ export class HomeApp {
     this.updateSelectedCount();
   }
 
+  // Builds a rich row for any search/parse item, showing every field the
+  // channel provides: cover, source tag, title, format/quality, VIP badge,
+  // creators (singer/uploader/channel), album, duration and intro text.
+  buildMediaRow(item, idx) {
+    const row = document.createElement('label');
+    row.className = 'media-row';
+    const duration = item.durationSec ? this.fmtDuration(item.durationSec) : '';
+    const isPlaylist = item.type === 'playlist';
+    const count = isPlaylist && item.trackCount ? ` (${item.trackCount})` : '';
+    const tag = `${this.platTag(item.platform)}${isPlaylist ? ' 📃' : ''}`;
+    const chips = [];
+    if (item.fileFormat) chips.push(`<span class="media-chip fmt">${item.fileFormat}${item.quality ? ' · ' + item.quality : ''}</span>`);
+    if (item.vip) chips.push(`<span class="media-chip vip">👑 ${this.tt('home.vipRequired', 'VIP')}</span>`);
+    // Account-aware warning (orange): the download is likely to fail when the
+    // source platform is not logged in, or the song is VIP-only and the
+    // logged-in account has no VIP tier.
+    const acct = this.status?.[item.platform] || {};
+    let warn = '';
+    if (!isPlaylist && !acct.loggedIn) {
+      warn = `<span class="media-warn" title="${this.tt('media.notLoggedIn', '未登录')}">${this.tt('home.tagNoLogin', '未登录')}</span>`;
+    } else if (!isPlaylist && item.vip && !acct.vip) {
+      warn = `<span class="media-warn" title="${this.tt('home.vipTip', '当前账号非会员，可能无法下载')}">${this.tt('home.tagVip', '需VIP')}</span>`;
+    }
+    const creatorLabel = { singer: 'creator.singer', uploader: 'creator.uploader', channel: 'creator.channel', composer: 'creator.composer', lyricist: 'creator.lyricist' };
+    for (const [k, v] of Object.entries(item.creators || {})) {
+      if (!v) continue;
+      chips.push(`<span class="media-chip creator">${this.tt(creatorLabel[k] || 'creator.uploader', k)}: </span>`);
+    }
+    if (item.album) chips.push(`<span class="media-chip album">${this.tt('home.album', '专辑')}: </span>`);
+    if (item.stats?.plays) chips.push(`<span class="media-chip plays">▶ ${item.stats.plays >= 10000 ? Math.round(item.stats.plays / 10000) + 'w' : item.stats.plays}</span>`);
+    row.innerHTML = `
+      <input type="checkbox" class="media-item-check" data-idx="${idx}">
+      <span class="media-row-cover">${item.cover ? `<img src="${item.cover}" alt="" loading="lazy" referrerpolicy="no-referrer">` : '🎵'}</span>
+      <span class="media-row-body">
+        <span class="media-row-main">
+          <span class="media-item-platform">${tag}</span>
+          <span class="media-item-title"></span>
+          ${warn}
+          ${duration ? `<span class="media-item-dur">${duration}</span>` : ''}
+        </span>
+        ${chips.length ? `<span class="media-row-meta">${chips.join('')}</span>` : ''}
+        ${item.description ? '<span class="media-row-desc"></span>' : ''}
+      </span>`;
+    row.querySelector('.media-item-title').textContent = (item.title || '') + count;
+    // Fill text content for creator/album/description chips (XSS-safe).
+    const chipsEls = row.querySelectorAll('.media-chip.creator, .media-chip.album');
+    let ci = 0;
+    for (const [k, v] of Object.entries(item.creators || {})) {
+      if (!v) continue;
+      const el = chipsEls[ci++];
+      if (el) el.append(document.createTextNode(String(v)));
+    }
+    if (item.album && chipsEls[ci]) chipsEls[ci++].append(document.createTextNode(String(item.album)));
+    const descEl = row.querySelector('.media-row-desc');
+    if (descEl) descEl.textContent = item.description || '';
+    row.querySelector('.media-item-check').addEventListener('change', () => this.updateSelectedCount());
+    return row;
+  }
+
   renderResults() {
     if (!this.resultsList) return;
     this.resultsList.innerHTML = '';
-    this.results.forEach((item, idx) => {
-      const row = document.createElement('label');
-      row.className = 'media-row';
-      const duration = item.durationSec ? this.fmtDuration(item.durationSec) : '';
-      const isPlaylist = item.type === 'playlist';
-      const count = isPlaylist && item.trackCount ? ` (${item.trackCount})` : '';
-      const tag = `${this.platTag(item.platform)}${isPlaylist ? ' 📃' : ''}`;
-      row.innerHTML = `
-        <input type="checkbox" class="media-item-check" data-idx="${idx}">
-        <span class="media-item-platform">${tag}</span>
-        <span class="media-item-title"></span>
-        <span class="media-item-artist"></span>
-        ${duration ? `<span class="media-item-dur">${duration}</span>` : ''}`;
-      row.querySelector('.media-item-title').textContent = (item.title || '') + count;
-      row.querySelector('.media-item-artist').textContent = item.artist || '';
-      row.querySelector('.media-item-check').addEventListener('change', () => this.updateSelectedCount());
-      this.resultsList.appendChild(row);
-    });
+    this.results.forEach((item, idx) => this.resultsList.appendChild(this.buildMediaRow(item, idx)));
   }
 
   platTag(platform) {
@@ -694,20 +740,7 @@ export class HomeApp {
   renderParseResults() {
     if (!this.parseResultsList) return;
     this.parseResultsList.innerHTML = '';
-    this.parsedItems.forEach((item, idx) => {
-      const row = document.createElement('label');
-      row.className = 'media-row';
-      const duration = item.durationSec ? this.fmtDuration(item.durationSec) : '';
-      row.innerHTML = `
-        <input type="checkbox" class="media-item-check" data-idx="${idx}">
-        <span class="media-item-platform">${this.platTag(item.platform)}</span>
-        <span class="media-item-title"></span>
-        <span class="media-item-artist"></span>
-        ${duration ? `<span class="media-item-dur">${duration}</span>` : ''}`;
-      row.querySelector('.media-item-title').textContent = item.title || '';
-      row.querySelector('.media-item-artist').textContent = item.artist || '';
-      this.parseResultsList.appendChild(row);
-    });
+    this.parsedItems.forEach((item, idx) => this.parseResultsList.appendChild(this.buildMediaRow(item, idx)));
   }
 
   // Downloads the checked PARSE results (reuses the DOWNLOAD queue pipeline).
@@ -833,10 +866,12 @@ export class HomeApp {
       const div = document.createElement('div');
       div.className = 'dq-row';
       const kindTag = this.rowKind(row) === 'playlist' ? '📃 ' : '';
+      const fmtChip = row.fileFormat ? `<span class="media-chip fmt">${row.fileFormat}${row.quality ? ' · ' + row.quality : ''}</span>` : '';
+      const vipChip = row.vip ? `<span class="media-chip vip">👑 ${this.tt('home.vipRequired', 'VIP')}</span>` : '';
       div.innerHTML = `
         <span class="media-item-platform">${this.platTag(row.platform)}</span>
         <span class="dq-title"></span>
-        <span class="dq-artist"></span>
+        <span class="dq-artist">${fmtChip}${vipChip}</span>
         ${row.durationSec ? `<span class="dq-dur">${this.fmtDuration(row.durationSec)}</span>` : ''}
         <span class="dq-status">${this.queueStatusBadge(row)}</span>`;
       div.querySelector('.dq-title').textContent = kindTag + (row.title || '');

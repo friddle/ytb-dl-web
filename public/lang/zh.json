@@ -1382,5 +1382,15 @@
   "home.songCfgTitle": "🎵 歌曲下载配置",
   "home.listCfgTitle": "📃 歌单下载配置",
   "home.followSettings": "跟随设置",
-  "settings.outputSection": "🎚️ 输出设置（转换默认）"
+  "settings.outputSection": "🎚️ 输出设置（转换默认）",
+  "home.vipRequired": "VIP",
+  "creator.singer": "歌手",
+  "creator.uploader": "UP主",
+  "creator.channel": "频道",
+  "creator.composer": "作曲",
+  "creator.lyricist": "作词",
+  "home.album": "专辑",
+  "home.tagNoLogin": "未登录",
+  "home.tagVip": "需VIP",
+  "home.vipTip": "当前账号非会员，可能无法下载"
 }

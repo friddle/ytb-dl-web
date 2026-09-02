@@ -1409,5 +1409,15 @@
   "home.songCfgTitle": "🎵 Config. de descarga (canciones)",
   "home.listCfgTitle": "📃 Config. de descarga (listas)",
   "home.followSettings": "Seguir ajustes",
-  "settings.outputSection": "🎚️ Ajustes de salida (valores de conversión)"
+  "settings.outputSection": "🎚️ Ajustes de salida (valores de conversión)",
+  "home.vipRequired": "VIP",
+  "creator.singer": "Artista",
+  "creator.uploader": "Canal",
+  "creator.channel": "Canal",
+  "creator.composer": "Compositor",
+  "creator.lyricist": "Letrista",
+  "home.album": "Álbum",
+  "home.tagNoLogin": "Sin sesión",
+  "home.tagVip": "Solo VIP",
+  "home.vipTip": "La cuenta no tiene VIP; la descarga puede fallar"
 }

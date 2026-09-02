@@ -1410,5 +1410,15 @@
   "home.songCfgTitle": "🎵 Song download config",
   "home.listCfgTitle": "📃 Playlist download config",
   "home.followSettings": "Follow settings",
-  "settings.outputSection": "🎚️ Output settings (conversion defaults)"
+  "settings.outputSection": "🎚️ Output settings (conversion defaults)",
+  "home.vipRequired": "VIP",
+  "creator.singer": "Artist",
+  "creator.uploader": "Uploader",
+  "creator.channel": "Channel",
+  "creator.composer": "Composer",
+  "creator.lyricist": "Lyricist",
+  "home.album": "Album",
+  "home.tagNoLogin": "Not signed in",
+  "home.tagVip": "VIP only",
+  "home.vipTip": "Current account has no VIP; download may fail"
 }

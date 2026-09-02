@@ -1409,5 +1409,15 @@
   "home.songCfgTitle": "🎵 Config de téléchargement (chansons)",
   "home.listCfgTitle": "📃 Config de téléchargement (playlists)",
   "home.followSettings": "Suivre les réglages",
-  "settings.outputSection": "🎚️ Réglages de sortie (défauts de conversion)"
+  "settings.outputSection": "🎚️ Réglages de sortie (défauts de conversion)",
+  "home.vipRequired": "VIP",
+  "creator.singer": "Artiste",
+  "creator.uploader": "Chaîne",
+  "creator.channel": "Chaîne",
+  "creator.composer": "Compositeur",
+  "creator.lyricist": "Parolier",
+  "home.album": "Album",
+  "home.tagNoLogin": "Non connecté",
+  "home.tagVip": "VIP requis",
+  "home.vipTip": "Compte sans VIP ; le téléchargement peut échouer"
 }

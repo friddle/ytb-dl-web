@@ -1410,5 +1410,15 @@
   "home.songCfgTitle": "🎵 Şarkı indirme yapılandırması",
   "home.listCfgTitle": "📃 Liste indirme yapılandırması",
   "home.followSettings": "Ayarları takip et",
-  "settings.outputSection": "🎚️ Çıkış ayarları (dönüştürme varsayılanları)"
+  "settings.outputSection": "🎚️ Çıkış ayarları (dönüştürme varsayılanları)",
+  "home.vipRequired": "VIP",
+  "creator.singer": "Sanatçı",
+  "creator.uploader": "Yükleyen",
+  "creator.channel": "Kanal",
+  "creator.composer": "Besteci",
+  "creator.lyricist": "Söz yazarı",
+  "home.album": "Albüm",
+  "home.tagNoLogin": "Giriş yapılmadı",
+  "home.tagVip": "VIP gerekli",
+  "home.vipTip": "Hesap VIP değil; indirme başarısız olabilir"
 }

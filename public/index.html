@@ -85,15 +85,11 @@
           <h2 data-i18n="home.searchTitle">🔎 聚合搜索</h2>
           <button type="button" class="btn-outline view-hint-btn" data-open-settings title="输出设置/下载设置在设置页">⚙️ <span data-i18n="home.openSetting">打开设置</span></button>
         </div>
-        <div class="form-group">
-          <span class="form-label" data-i18n="media.searchPlatform">搜索平台</span>
-          <div class="checkbox-group" id="searchPlatforms" style="display:flex;gap:14px;flex-wrap:wrap;"></div>
-        </div>
-        <div class="form-group">
-          <label for="searchTypeSelect" data-i18n="home.searchType">搜索类型</label>
-          <select id="searchTypeSelect" class="form-control">
-            <option value="song" data-i18n="home.typeSong">歌曲</option>
-            <option value="playlist" data-i18n="home.typePlaylist">歌单</option>
+        <div class="search-controls">
+          <div class="plat-checks" id="searchPlatforms" role="group" aria-label="搜索平台"></div>
+          <select id="searchTypeSelect" class="form-control search-type-select" data-i18n-title="home.searchType" title="搜索类型">
+            <option value="song" data-i18n="home.typeSong">🎵 歌曲</option>
+            <option value="playlist" data-i18n="home.typePlaylist">📃 歌单</option>
           </select>
         </div>
         <div class="form-group home-search-row">
@@ -138,11 +134,12 @@
       </section>
 
       <!-- ============================================================ -->
-      <!-- ONLINE (cont.): convert from URL                             -->
+      <!-- ONLINE (cont.): classic URL conversion form (kept for API     -->
+      <!-- compatibility, hidden from the UI — Resolve links covers it)  -->
       <!-- ============================================================ -->
-      <section class="card home-card">
-        <h2 id="urlSectionTitle" data-i18n="section.url">🔗 Convert from URL</h2>
-        <small id="urlSectionComment" class="comment" data-i18n="ph.urlcomment"></small>
+      <div hidden>
+        <h2 id="urlSectionTitle">🔗 Convert from URL</h2>
+        <small id="urlSectionComment" class="comment"></small>
         <form id="urlForm">
           <div class="form-group" id="urlInputGroup">
             <div class="music-url-input-row">
@@ -185,7 +182,7 @@
             <button type="button" class="btn-outline" id="previewBtn" data-i18n="btn.preview" data-i18n-title="btn.preview" title="Preview playlist">Preview playlist</button>
           </div>
         </form>
-      </section>
+      </div>
     </section>
 
     <!-- ============================================================ -->
