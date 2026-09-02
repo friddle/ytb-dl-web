@@ -3,8 +3,9 @@ import { startDiscProgressStream, stopDiscProgressStream } from './discRipperPan
 
 // Platforms shown in the 平台状态 tab strip (first module of the home page).
 const PLAT_ORDER = ['bilibili', 'qqmusic', 'netease', 'youtube', 'spotify'];
-// Platforms available in aggregated search (Spotify has no cookie search API).
-const SEARCHABLE = ['qqmusic', 'netease', 'bilibili', 'youtube'];
+// Platforms available in aggregated search (Spotify via Web API: app creds or
+// the logged-in sp_dc cookie).
+const SEARCHABLE = ['qqmusic', 'netease', 'spotify', 'bilibili', 'youtube'];
 // Platforms that never need a login for search.
 const LOGIN_FREE_SEARCH = ['qqmusic', 'netease'];
 
@@ -518,6 +519,8 @@ export class HomeApp {
     const title = `${item.title || ''}${item.artist ? ' — ' + item.artist : ''}`;
     if (item.platform === 'youtube') {
       body.innerHTML = `<iframe class="mini-player__frame" src="https://www.youtube-nocookie.com/embed/${encodeURIComponent(item.id)}?autoplay=1" allow="autoplay; encrypted-media" allowfullscreen></iframe>`;
+    } else if (item.platform === 'spotify') {
+      body.innerHTML = `<iframe class="mini-player__frame mini-player__frame--spotify" src="https://open.spotify.com/embed/${item.type === 'playlist' ? 'playlist' : 'track'}/${encodeURIComponent(item.id)}?utm_source=gharmonize" allow="autoplay; encrypted-media" allowfullscreen></iframe>`;
     } else if (item.platform === 'bilibili') {
       body.innerHTML = `<iframe class="mini-player__frame" src="https://player.bilibili.com/player.html?bvid=${encodeURIComponent(item.id)}&autoplay=1&high_quality=0&danmaku=0" allow="autoplay; encrypted-media" allowfullscreen></iframe>`;
     } else if (item.platform === 'netease' || item.platform === 'qqmusic') {

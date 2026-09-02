@@ -6,8 +6,9 @@ import path from "path";
 import { spawnSafe } from "../modules/safeProcess.js";
 import { rateLimit } from "../modules/rateLimit.js";
 import { requireAuth } from "../modules/settings.js";
-import { loginStatus, isPlatformLoggedIn, exportCookiesTxt } from "../modules/chromeDriverless.js";
+import { loginStatus, isPlatformLoggedIn, exportCookiesTxt, collectCookies } from "../modules/chromeDriverless.js";
 import { adaptSearchItem } from "../modules/searchAdapter.js";
+import { makeSpotify } from "../modules/spotify.js";
 import { recordSearch, listSearches, listMusicFiles, getStats, upsertPlatformStatus } from "../modules/db.js";
 import { getJob } from "../modules/store.js";
 import { YTDLP_BIN, getBinaryRuntimeEnv } from "../modules/binaries.js";
@@ -241,8 +242,76 @@ async function searchNetease(keyword, limit) {
   })).filter((it) => it.id && it.title);
 }
 
-async function searchYoutube(keyword, limit) {
-  // YouTube search via yt-dlp (ytsearchN:<query>); works with the saved cookies.
+// --- Spotify search (official Web API) -------------------------------------
+// Token strategy: reuse the app-level client-credentials token when
+// SPOTIFY_CLIENT_ID/SECRET are configured; otherwise trade the logged-in
+// sp_dc cookie for a web-player access token. Both allow public search.
+let _spSearchToken = null;
+let _spSearchTokenExp = 0;
+
+async function getSpotifySearchToken() {
+  if (_spSearchToken && Date.now() < _spSearchTokenExp) return _spSearchToken;
+  try {
+    const api = await makeSpotify();
+    const token = api.getAccessToken();
+    if (token) {
+      _spSearchToken = token;
+      _spSearchTokenExp = Date.now() + 45 * 60_000;
+      return token;
+    }
+  } catch { /* client creds not configured — fall through to sp_dc */ }
+  const spDc = collectCookies().find((c) => c.name === "sp_dc")?.value;
+  if (!spDc) throw new Error("Spotify 需要配置 SPOTIFY_CLIENT_ID/SECRET 或先登录 Spotify 账号");
+  const r = await fetch("https://open.spotify.com/get_access_token?reason=transport&productType=web_player", {
+    headers: { Cookie: `sp_dc=${spDc}`, "User-Agent": UA }
+  });
+  const d = await r.json().catch(() => null);
+  if (!d?.accessToken) throw new Error("Spotify access token failed (sp_dc may be expired)");
+  _spSearchToken = d.accessToken;
+  _spSearchTokenExp = Number(d.accessTokenExpirationTimestampMs || Date.now() + 45 * 60_000) - 60_000;
+  return _spSearchToken;
+}
+
+async function searchSpotify(keyword, limit, type) {
+  const token = await getSpotifySearchToken();
+  const stype = type === "playlist" ? "playlist" : "track";
+  const r = await fetch(
+    `https://api.spotify.com/v1/search?q=${encodeURIComponent(keyword)}&type=${stype}&limit=${Math.min(limit, 30)}`,
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+  if (r.status === 401) {
+    _spSearchToken = null; // stale token — next attempt re-fetches
+    throw new Error("Spotify search unauthorized (token refreshed, retry)");
+  }
+  if (!r.ok) throw new Error(`Spotify search HTTP ${r.status}`);
+  const d = await r.json();
+  if (stype === "playlist") {
+    return (d.playlists?.items || []).filter(Boolean).map((p) => ({
+      id: p.id,
+      platform: "spotify",
+      type: "playlist",
+      title: stripHtml(p.name || ""),
+      artist: stripHtml(p.owner?.display_name || ""),
+      trackCount: Number(p.tracks?.total) || null,
+      durationSec: null,
+      url: p.external_urls?.spotify || `https://open.spotify.com/playlist/${p.id}`,
+      coverImgUrl: p.images?.length ? p.images[p.images.length - 1]?.url : null
+    })).filter((it) => it.id && it.title);
+  }
+  return (d.tracks?.items || []).filter(Boolean).map((t) => ({
+    id: t.id,
+    platform: "spotify",
+    type: "song",
+    title: stripHtml(t.name || ""),
+    artist: (t.artists || []).map((a) => a.name).join(" / "),
+    album: stripHtml(t.album?.name || ""),
+    durationSec: Math.round((Number(t.duration_ms) || 0) / 1000) || null,
+    url: t.external_urls?.spotify || `https://open.spotify.com/track/${t.id}`,
+    cover: t.album?.images?.length ? t.album.images[t.album.images.length - 1]?.url : null
+  })).filter((it) => it.id && it.title);
+}
+
+async function searchYoutube(keyword, limit) {  // YouTube search via yt-dlp (ytsearchN:<query>); works with the saved cookies.
   const data = await ytdlpFlatJson(`ytsearch${Math.min(limit, 30)}:${keyword}`);
   const entries = Array.isArray(data?.entries) ? data.entries : [];
   return entries.map((e) => ({
@@ -658,6 +727,8 @@ router.get("/api/media/search", rateLimit(30, 60_000), async (req, res) => {
       items = type === "playlist"
         ? await searchNeteasePlaylists(keyword, limit)
         : await searchNetease(keyword, limit);
+    } else if (platform === "spotify") {
+      items = await searchSpotify(keyword, limit, type);
     } else if (platform === "youtube") {
       if (type === "playlist") {
         items = []; // YouTube playlist search is not supported in aggregated search.
@@ -672,7 +743,7 @@ router.get("/api/media/search", rateLimit(30, 60_000), async (req, res) => {
         items = await searchBilibili(keyword, limit);
       }
     } else {
-      return res.status(400).json({ error: { code: "UNKNOWN_PLATFORM", message: "platform must be qqmusic | netease | bilibili | youtube" } });
+      return res.status(400).json({ error: { code: "UNKNOWN_PLATFORM", message: "platform must be qqmusic | netease | bilibili | youtube | spotify" } });
     }
     // Adapter pass: normalize every platform's raw payload into the rich
     // common shape (vip / fileFormat / quality / creators / description…).

@@ -88,6 +88,19 @@ function adaptYoutube(e = {}) {
   };
 }
 
+// Spotify track (Web API search): downloads land as matched MP3s.
+function adaptSpotify(s = {}) {
+  return {
+    vip: false,
+    fileFormat: "mp3",
+    quality: "320kbps MP3（匹配下载）",
+    creators: { artist: firstNonEmpty(s.artist) },
+    description: null,
+    cover: firstNonEmpty(s.cover),
+    stats: null
+  };
+}
+
 // Bilibili video search result: rich — author, description, play, pic.
 function adaptBilibili(v = {}) {
   return {
@@ -109,7 +122,8 @@ function adaptPlaylistGeneric(it = {}, platform) {
     qqmusic: null,
     netease: it.coverImgUrl || null,
     youtube: null,
-    bilibili: null
+    bilibili: null,
+    spotify: it.coverImgUrl || null
   };
   return {
     vip: false,
@@ -126,7 +140,8 @@ const SONG_ADAPTERS = {
   qqmusic: adaptQqMusic,
   netease: adaptNetease,
   youtube: adaptYoutube,
-  bilibili: adaptBilibili
+  bilibili: adaptBilibili,
+  spotify: adaptSpotify
 };
 
 // Maps a raw (already unified-basics) search item into the rich normalized form.

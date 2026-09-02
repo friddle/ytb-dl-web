@@ -135,6 +135,7 @@
 .mini-player__body{padding:4px 10px 10px}
 .mini-player__audio{width:100%}
 .mini-player__frame{aspect-ratio:16/9;border:0;border-radius:8px;display:block;width:100%}
+.mini-player__frame--spotify{aspect-ratio:auto;height:152px}
 /* playing preview button state */
 .media-play.playing{background:var(--primary);color:var(--primary-contrast,#fff)}
 /* mobile: keep nav on one scrollable line, trim row meta */
