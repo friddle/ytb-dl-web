@@ -1260,7 +1260,6 @@
   "media.searchTitle": "🔍 平台搜索",
   "media.searchPlatform": "搜索平台",
   "media.platBilibili": "Bilibili",
-  "media.platBililive": "B站直播",
   "media.platQqmusic": "QQ音乐",
   "media.platNetease": "网易云",
   "media.platYoutube": "YouTube",
@@ -1276,5 +1275,13 @@
   "media.downloadDirHint": "保存到设置 MEDIA_DOWNLOAD_DIR，重启服务后所有下载输出到该目录。",
   "media.originalHint": "选择 ORIGINAL = 保留原始音频，不做转换。",
   "media.browserTitle": "🖥️ 内置浏览器（扫码登录）",
-  "media.browserOpenNew": "🖥️ 在新窗口打开"
+  "media.browserOpenNew": "🖥️ 在新窗口打开",
+  "media.hintBilibili": "搜索与下载需登录（扫码）",
+  "media.hintQqmusic": "搜索无需登录，下载建议登录",
+  "media.hintNetease": "搜索无需登录，下载建议登录",
+  "media.hintYoutube": "登录后解锁高音质 / 年龄限制",
+  "media.loggedIn": "✅ 已登录",
+  "media.notLoggedIn": "⚠️ 未登录",
+  "media.scanLogin": "🛩️ 扫码登录",
+  "media.vip": "VIP"
 }

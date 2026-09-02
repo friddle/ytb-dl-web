@@ -34,7 +34,6 @@ const MEDIA_DOWNLOAD_DIR = String(process.env.MEDIA_DOWNLOAD_DIR || "").trim()
 // pages (Bilibili/NetEase/QQ), YouTube goes straight to the sign-in page.
 const PLATFORM_LOGIN_URLS = {
   bilibili: "https://passport.bilibili.com/login",
-  bililive: "https://passport.bilibili.com/login",
   qqmusic:
     "https://graph.qq.com/oauth2.0/show?which=Login&display=pc&client_id=100460100&response_type=code&redirect_uri=https%3A%2F%2Fy.qq.com%2Fportal%2Fplayer.html",
   youtube: "https://www.youtube.com/signin"
@@ -150,38 +149,6 @@ async function searchNetease(keyword, limit) {
   })).filter((it) => it.id && it.title);
 }
 
-async function searchBililive(keyword, limit) {
-  // Bilibili live room search (search_type=live_room), also needs login cookies.
-  const currentUrl = String(await cdEvaluate("location.href", 20000) || "");
-  if (!/bilibili\.com/.test(currentUrl)) {
-    await cdCall("pw/navigate", { url: "https://www.bilibili.com/" }, 45000);
-  }
-  const expression = `(async () => {
-    const r = await fetch("https://api.bilibili.com/x/web-interface/search/type?search_type=live_room&keyword=${encodeURIComponent(
-      keyword
-    )}&page=1", { credentials: "include", headers: { "Accept": "application/json" } });
-    const j = await r.json();
-    return j;
-  })()`;
-  const data = await cdEvaluate(expression, 45000);
-  if (!data || data.code !== 0 || !Array.isArray(data?.data?.result)) {
-    const msg = data?.message || `bilibili live search code ${data?.code ?? "?"}`;
-    throw new Error(`Bilibili 直播搜索失败: ${msg}`);
-  }
-  return data.data.result.slice(0, limit).map((v) => {
-    const roomId = v.roomid || v.id;
-    return {
-      id: String(roomId || ""),
-      platform: "bililive",
-      title: stripHtml(v.title || ""),
-      artist: stripHtml(v.uname || v.upName || ""),
-      album: "",
-      durationSec: null,
-      url: roomId ? `https://live.bilibili.com/${roomId}` : ""
-    };
-  }).filter((it) => it.id && it.title && it.url);
-}
-
 async function searchYoutube(keyword, limit) {
   // YouTube search via yt-dlp (ytsearchN:<query>); works with the saved cookies.
   const data = await ytdlpFlatJson(`ytsearch${Math.min(limit, 30)}:${keyword}`);
@@ -263,6 +230,148 @@ function ytdlpFlatJson(url) {
 }
 
 // ---------------------------------------------------------------------------
+// Live platform login / VIP probes
+//
+// The cookie-file based loginStatus() only sees the profile snapshot saved by
+// the browser, so a fresh login inside the embedded browser is invisible until
+// the profile is saved again. Instead we run a tiny JS probe inside the
+// embedded browser itself (shared cookie jar / session) for each platform.
+// ---------------------------------------------------------------------------
+
+const LIVE_STATUS_TTL_MS = 45_000;
+let liveStatusCache = { at: 0, platforms: null };
+let liveStatusInFlight = null;
+
+// Each probe opens a background tab on the platform, runs `js` there (same
+// origin fetch carries the login cookies), then closes the tab.
+const PLATFORM_PROBES = {
+  bilibili: {
+    url: "https://www.bilibili.com/",
+    js: `async () => {
+      try {
+        const r = await fetch('https://api.bilibili.com/x/web-interface/nav', { credentials: 'include' });
+        const j = await r.json();
+        const d = (j && j.data) || {};
+        const vip = Number(d.vipStatus) === 1;
+        return { loggedIn: !!d.isLogin, vip, vipLabel: vip ? '大会员' : '', uname: d.uname || '' };
+      } catch (e) { return { loggedIn: false, vip: false, vipLabel: '', error: String(e).slice(0, 100) }; }
+    }`
+  },
+  qqmusic: {
+    url: "https://y.qq.com/",
+    js: `async () => {
+      try {
+        const ck = document.cookie || '';
+        const pick = (n) => { const m = ck.match(new RegExp('(?:^|;\\\\s*)' + n + '=([^;]+)')); return m ? decodeURIComponent(m[1]) : ''; };
+        const uin = pick('uin') || pick('wxuin') || pick('uinA');
+        const key = pick('qqmusic_key');
+        let loggedIn = (!!key && key !== '') || (!!uin && uin !== '0' && uin !== '');
+        let vip = false, vipLabel = '', uname = '';
+        try {
+          const r = await fetch('https://u.y.qq.com/cgi-bin/musicu.fcg', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ comm: { ct: 19, cv: 1873, uin: Number(uin) || 0 }, req: { module: 'music.userInfo.UserInfoCgi', method: 'GetUserInfo', param: {} } })
+          });
+          const j = await r.json();
+          const d = (j && j.req && j.req.data) || {};
+          const u = d.userInfo || d.user || d;
+          uname = u.nick || u.nickname || uname;
+          const vt = Number((u.vipInfo && (u.vipInfo.viptype ?? u.vipInfo.vipType)) ?? u.vipType ?? u.viptype ?? 0);
+          if (vt > 0) { vip = true; vipLabel = '豪华绿钻'; }
+          if (uname) loggedIn = true;
+        } catch (e) {}
+        return { loggedIn: !!loggedIn, vip, vipLabel, uname: uname || '' };
+      } catch (e) { return { loggedIn: false, vip: false, vipLabel: '', error: String(e).slice(0, 100) }; }
+    }`
+  },
+  netease: {
+    url: "https://music.163.com/",
+    js: `async () => {
+      try {
+        const r = await fetch('/api/nuser/account/get', { credentials: 'include' });
+        const j = await r.json();
+        const p = (j && j.profile) || null;
+        const red = p ? Number(p.redVipLevel) > 0 : false;
+        const vip = !!p && (red || Number(p.vipType) > 0);
+        return { loggedIn: !!p, vip, vipLabel: red ? '黑胶VIP' : (vip ? '音乐VIP' : ''), uname: (p && p.nickname) || '' };
+      } catch (e) { return { loggedIn: false, vip: false, vipLabel: '', error: String(e).slice(0, 100) }; }
+    }`
+  },
+  youtube: {
+    url: "https://www.youtube.com/",
+    js: `() => {
+      try {
+        const ck = document.cookie || '';
+        const has = (re) => re.test(ck);
+        const loggedIn = has(/(?:^|;\\s*)SID=/) || has(/(?:^|;\\s*)SAPISID=/) || has(/(?:^|;\\s*)__Secure-[13]PAPISID=/);
+        return { loggedIn, vip: false, vipLabel: '', uname: '' };
+      } catch (e) { return { loggedIn: false, vip: false, vipLabel: '', error: String(e).slice(0, 100) }; }
+    }`
+  }
+};
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// Opens one background tab for the probe and always closes it afterwards.
+async function probePlatform(key, spec) {
+  await cdCall("pw/new_tab", { url: spec.url }, 30_000);
+  try {
+    await sleep(2_000); // let the SPA boot / cookie context settle
+    const value = await cdEvaluate(spec.js, 20_000);
+    if (!value || typeof value !== "object") throw new Error("probe returned no object");
+    return value;
+  } finally {
+    try {
+      const tabs = await cdCall("pw/tabs", {}, 10_000);
+      const list = Array.isArray(tabs?.tabs) ? tabs.tabs : [];
+      // Close the tab we opened (match by URL prefix, fall back to the last one).
+      let idx = -1;
+      for (let i = list.length - 1; i >= 0; i--) {
+        if (String(list[i]?.url || "").startsWith(spec.url.split("/").slice(0, 3).join("/"))) { idx = i; break; }
+      }
+      if (idx < 0 && list.length > 1) idx = list.length - 1;
+      if (idx >= 0 && list.length > 1) await cdCall("pw/tab_close", { index: idx }, 10_000);
+    } catch {}
+  }
+}
+
+// Merges live probes over the cookie-file based status; falls back cleanly.
+async function livePlatformStatus({ refresh = false } = {}) {
+  const base = loginStatus().platforms;
+  const fresh = Date.now() - liveStatusCache.at < LIVE_STATUS_TTL_MS;
+  if (!refresh && fresh && liveStatusCache.platforms) return liveStatusCache.platforms;
+  if (liveStatusInFlight) return liveStatusInFlight;
+
+  liveStatusInFlight = (async () => {
+    const merged = { ...base };
+    for (const [key, spec] of Object.entries(PLATFORM_PROBES)) {
+      try {
+        const probe = await probePlatform(key, spec);
+        merged[key] = {
+          ...(merged[key] || {}),
+          ...probe,
+          source: "live",
+          loggedIn: !!probe.loggedIn || !!base[key]?.loggedIn
+        };
+      } catch {
+        // Browser not running / CD unavailable: keep the cookie-file status.
+        merged[key] = { ...(merged[key] || {}), source: "cookies" };
+      }
+    }
+    liveStatusCache = { at: Date.now(), platforms: merged };
+    return merged;
+  })();
+
+  try {
+    return await liveStatusInFlight;
+  } finally {
+    liveStatusInFlight = null;
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Routes
 // ---------------------------------------------------------------------------
 
@@ -275,6 +384,17 @@ router.get("/api/media/config", rateLimit(60, 60_000), (_req, res) => {
     browserInternalUrl: BROWSER_INTERNAL_URL || null,
     downloadDir: MEDIA_DOWNLOAD_DIR
   });
+});
+
+router.get("/api/media/login-status", rateLimit(60, 60_000), async (req, res) => {
+  const refresh = ["1", "true"].includes(String(req.query.refresh || "").toLowerCase());
+  try {
+    const platforms = await livePlatformStatus({ refresh });
+    res.json({ ok: true, platforms });
+  } catch (e) {
+    // Never fail the status endpoint; degrade to the cookie-file snapshot.
+    res.json({ ok: true, platforms: loginStatus().platforms, degraded: true });
+  }
 });
 
 router.get("/api/media/search", rateLimit(30, 60_000), async (req, res) => {
@@ -304,11 +424,8 @@ router.get("/api/media/search", rateLimit(30, 60_000), async (req, res) => {
     } else if (platform === "bilibili") {
       if (!loginGate("Bilibili（哔哩哔哩）")) return;
       items = await searchBilibili(keyword, limit);
-    } else if (platform === "bililive") {
-      if (!loginGate("Bilibili 直播")) return;
-      items = await searchBililive(keyword, limit);
     } else {
-      return res.status(400).json({ error: { code: "UNKNOWN_PLATFORM", message: "platform must be qqmusic | netease | bilibili | bililive | youtube" } });
+      return res.status(400).json({ error: { code: "UNKNOWN_PLATFORM", message: "platform must be qqmusic | netease | bilibili | youtube" } });
     }
     res.json({ ok: true, platform, keyword, count: items.length, items });
   } catch (err) {

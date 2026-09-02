@@ -88,7 +88,9 @@ export class VersionManager {
 
         if (this.isNewerVersion(latestVersion, this.currentVersion)) {
             console.log(this.t('version.updateFound'));
-            await this.notifyNewVersion(latestVersion, data);
+            // Only manual checks (Settings) show the update modal; the
+            // automatic startup check stays silent.
+            if (this.isManualCheck) await this.notifyNewVersion(latestVersion, data);
         } else {
             console.log(this.t('version.upToDate'));
             if (this.isManualCheck) {

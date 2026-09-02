@@ -1259,7 +1259,6 @@
   "media.searchTitle": "🔍 Platform search",
   "media.searchPlatform": "Platforms",
   "media.platBilibili": "Bilibili",
-  "media.platBililive": "Bilibili Live",
   "media.platQqmusic": "QQ Music",
   "media.platNetease": "NetEase",
   "media.platYoutube": "YouTube",
@@ -1275,5 +1274,13 @@
   "media.downloadDirHint": "Saved to MEDIA_DOWNLOAD_DIR; applies to all downloads after the service restarts.",
   "media.originalHint": "ORIGINAL keeps the original audio without conversion.",
   "media.browserTitle": "🖥️ Built-in browser (QR login)",
-  "media.browserOpenNew": "🖥️ Open in new window"
+  "media.browserOpenNew": "🖥️ Open in new window",
+  "media.hintBilibili": "Suche & Download erfordern Anmeldung (QR-Code)",
+  "media.hintQqmusic": "Suche ohne Anmeldung; für Downloads Anmeldung empfohlen",
+  "media.hintNetease": "Suche ohne Anmeldung; für Downloads Anmeldung empfohlen",
+  "media.hintYoutube": "Für hohe Qualität / Altersbeschränkungen anmelden",
+  "media.loggedIn": "✅ Angemeldet",
+  "media.notLoggedIn": "⚠️ Nicht angemeldet",
+  "media.scanLogin": "🛩️ QR-Anmeldung",
+  "media.vip": "VIP"
 }
