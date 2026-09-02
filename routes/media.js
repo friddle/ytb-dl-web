@@ -15,28 +15,46 @@ const COOKIES_FILE =
   String(process.env.YTDLP_COOKIES || "").trim() ||
   path.join(BASE_DIR, "cookies", "cookies.txt");
 
-const CD_URL = String(process.env.CHROME_DRIVERLESS_URL || "").trim().replace(/\/+$/, "");
+const cdUrl = () => String(process.env.CHROME_DRIVERLESS_URL || "").trim().replace(/\/+$/, "");
 // Internal (interface) address, e.g. https://browser.internal.example/ — used
 // by the media tab to reach the built-in browser panel from the same network.
-const BROWSER_INTERNAL_URL = String(process.env.CHROME_DRIVERLESS_INTERNAL_URL || "").trim();
+// Read dynamically so Settings changes apply without a restart.
+const browserInternalUrl = () => String(process.env.CHROME_DRIVERLESS_INTERNAL_URL || "").trim();
 // External (public) address, e.g. https://browser.public.example/ — what
 // logins / the embedded browser panel resolve to for end users.
-const BROWSER_EXTERNAL_URL = String(process.env.CHROME_DRIVERLESS_EXTERNAL_URL || "").trim();
+const browserExternalUrl = () => String(process.env.CHROME_DRIVERLESS_EXTERNAL_URL || "").trim();
+
+// True when running the bundled image variant (chrome-driverless baked into
+// the same image); the settings UI then locks the remote browser config.
+const browserBundled = () =>
+  ["1", "true", "yes", "on"].includes(String(process.env.CHROME_DRIVERLESS_BUNDLED || "").toLowerCase());
 
 // User-configurable download folder (saved via Settings → MEDIA_DOWNLOAD_DIR).
 // Falls back to the default <data>/outputs directory.
-const MEDIA_DOWNLOAD_DIR = String(process.env.MEDIA_DOWNLOAD_DIR || "").trim()
-  ? path.resolve(process.env.MEDIA_DOWNLOAD_DIR)
-  : path.join(BASE_DIR, "outputs");
+const mediaDownloadDir = () => {
+  const configured = String(process.env.MEDIA_DOWNLOAD_DIR || "").trim();
+  return configured ? path.resolve(configured) : path.join(BASE_DIR, "outputs");
+};
 
 // Deep-link targets: clicking a platform login button opens this page inside
 // the embedded browser. For the China platforms these are the QR-code login
-// pages (Bilibili/NetEase/QQ), YouTube goes straight to the sign-in page.
+// pages (Bilibili/NetEase/QQ), YouTube/Spotify go to their sign-in pages.
 const PLATFORM_LOGIN_URLS = {
   bilibili: "https://passport.bilibili.com/login",
   qqmusic:
     "https://graph.qq.com/oauth2.0/show?which=Login&display=pc&client_id=100460100&response_type=code&redirect_uri=https%3A%2F%2Fy.qq.com%2Fportal%2Fplayer.html",
-  youtube: "https://www.youtube.com/signin"
+  netease: "https://music.163.com/#/login",
+  youtube: "https://www.youtube.com/signin",
+  spotify: "https://accounts.spotify.com/login"
+};
+
+// Web players per platform, opened in a new browser tab from the home page.
+const PLATFORM_PLAYER_URLS = {
+  bilibili: "https://www.bilibili.com/",
+  qqmusic: "https://y.qq.com/n/ryqq/player",
+  netease: "https://music.163.com/",
+  youtube: "https://music.youtube.com/",
+  spotify: "https://open.spotify.com/"
 };
 
 const UA =
@@ -66,8 +84,8 @@ function curlJson(url, { headers = {}, method = "GET", data = null, timeoutMs = 
 
 // Calls the embedded chrome-driverless MCP endpoint (same container, no proxy needed).
 async function cdCall(method, params = {}, timeoutMs = 45000) {
-  if (!CD_URL) throw new Error("CHROME_DRIVERLESS_URL not configured");
-  const resp = await fetch(`${CD_URL}/mcp`, {
+  if (!cdUrl()) throw new Error("CHROME_DRIVERLESS_URL not configured");
+  const resp = await fetch(`${cdUrl()}/mcp`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ method, params }),
@@ -118,6 +136,7 @@ async function searchQqMusic(keyword, limit) {
     return {
       id: songmid,
       platform: "qqmusic",
+      type: "song",
       title: stripHtml(s.songname || s.name || ""),
       artist: singers,
       album: stripHtml(s.albumname || ""),
@@ -125,6 +144,64 @@ async function searchQqMusic(keyword, limit) {
       url: `https://y.qq.com/n/ryqq/songDetail/${songmid}`
     };
   }).filter((it) => it.id && it.title);
+}
+
+// Playlist (歌单) search — NetEase uses search type 1000.
+async function searchNeteasePlaylists(keyword, limit) {
+  const data = await curlJson("https://music.163.com/api/search/get", {
+    method: "POST",
+    headers: {
+      "User-Agent": UA,
+      Referer: "https://music.163.com/",
+      Cookie: "os=pc"
+    },
+    data: `s=${encodeURIComponent(keyword)}&type=1000&offset=0&total=true&limit=${limit}`
+  });
+  const lists = data?.result?.playlists || [];
+  return lists.map((p) => ({
+    id: String(p.id),
+    platform: "netease",
+    type: "playlist",
+    title: stripHtml(p.name || ""),
+    artist: stripHtml(p.creator?.nickname || ""),
+    trackCount: Number(p.trackCount) || null,
+    durationSec: null,
+    url: `https://music.163.com/#/playlist?id=${p.id}`
+  })).filter((it) => it.id && it.title && it.url);
+}
+
+// Playlist (歌单) search — QQ Music desktop search CGI, search_type 2 = playlist.
+async function searchQqMusicPlaylists(keyword, limit) {
+  const data = await curlJson("https://u.y.qq.com/cgi-bin/musicu.fcg", {
+    method: "POST",
+    headers: {
+      "User-Agent": UA,
+      Referer: "https://y.qq.com/",
+      "Content-Type": "application/json"
+    },
+    data: JSON.stringify({
+      comm: { ct: 19, cv: 1873 },
+      req: {
+        module: "music.search.SearchCgiService",
+        method: "DoSearchForQQMusicDesktop",
+        param: { search_type: 2, query: keyword, page_num: 1, num_per_page: limit }
+      }
+    })
+  });
+  const list = data?.req?.data?.body?.playlist?.list || [];
+  return list.map((p) => {
+    const pid = String(p.mid || p.disstid || p.id || "");
+    return {
+      id: pid,
+      platform: "qqmusic",
+      type: "playlist",
+      title: stripHtml(p.title || p.dissname || p.name || ""),
+      artist: stripHtml(p.creator?.nick || p.nickname || ""),
+      trackCount: Number(p.song_cnt ?? p.songcnt ?? p.songnum) || null,
+      durationSec: null,
+      url: pid ? `https://y.qq.com/n/ryqq/playlist/${pid}` : ""
+    };
+  }).filter((it) => it.id && it.title && it.url);
 }
 
 async function searchNetease(keyword, limit) {
@@ -141,6 +218,7 @@ async function searchNetease(keyword, limit) {
   return songs.map((s) => ({
     id: String(s.id),
     platform: "netease",
+    type: "song",
     title: stripHtml(s.name || s.title || ""),
     artist: (s.artists || []).map((a) => a.name).join(" / "),
     album: stripHtml(s.album?.name || s.albumname || ""),
@@ -156,6 +234,7 @@ async function searchYoutube(keyword, limit) {
   return entries.map((e) => ({
     id: String(e.id || ""),
     platform: "youtube",
+    type: "song",
     title: stripHtml(e.title || ""),
     artist: stripHtml(e.uploader || e.channel || ""),
     album: "",
@@ -187,6 +266,7 @@ async function searchBilibili(keyword, limit) {
   return data.data.result.slice(0, limit).map((v) => ({
     id: v.bvid,
     platform: "bilibili",
+    type: "song",
     title: stripHtml(v.title),
     artist: stripHtml(v.author || ""),
     album: "",
@@ -308,6 +388,22 @@ const PLATFORM_PROBES = {
         return { loggedIn, vip: false, vipLabel: '', uname: '' };
       } catch (e) { return { loggedIn: false, vip: false, vipLabel: '', error: String(e).slice(0, 100) }; }
     }`
+  },
+  spotify: {
+    url: "https://open.spotify.com/",
+    js: `async () => {
+      try {
+        let loggedIn = /(?:^|;\\s*)sp_dc=/.test(document.cookie || '');
+        if (!loggedIn) {
+          try {
+            const r = await fetch('https://open.spotify.com/get_access_token?reason=transport&productType=web_player', { credentials: 'include' });
+            const j = await r.json();
+            if (j && j.accessToken && j.isAnonymous === false) loggedIn = true;
+          } catch (e) {}
+        }
+        return { loggedIn: !!loggedIn, vip: false, vipLabel: '', uname: '' };
+      } catch (e) { return { loggedIn: false, vip: false, vipLabel: '', error: String(e).slice(0, 100) }; }
+    }`
   }
 };
 
@@ -386,9 +482,12 @@ router.get("/api/media/config", rateLimit(60, 60_000), (_req, res) => {
     ok: true,
     platforms: loginStatus().platforms,
     loginUrls: PLATFORM_LOGIN_URLS,
-    browserExternalUrl: BROWSER_EXTERNAL_URL || null,
-    browserInternalUrl: BROWSER_INTERNAL_URL || null,
-    downloadDir: MEDIA_DOWNLOAD_DIR
+    playerUrls: PLATFORM_PLAYER_URLS,
+    browserUrl: cdUrl() || null,
+    browserExternalUrl: browserExternalUrl() || null,
+    browserInternalUrl: browserInternalUrl() || null,
+    browserBundled: browserBundled(),
+    downloadDir: mediaDownloadDir()
   });
 });
 
@@ -407,6 +506,7 @@ router.get("/api/media/login-status", rateLimit(120, 60_000), async (req, res) =
 router.get("/api/media/search", rateLimit(30, 60_000), async (req, res) => {
   const platform = String(req.query.platform || "").toLowerCase();
   const keyword = String(req.query.keyword || "").trim();
+  const type = String(req.query.type || "song").trim().toLowerCase() === "playlist" ? "playlist" : "song";
   const limit = clampLimit(req.query.limit);
   if (!keyword) return res.status(400).json({ error: { code: "KEYWORD_REQUIRED", message: "keyword is required" } });
 
@@ -423,18 +523,30 @@ router.get("/api/media/search", rateLimit(30, 60_000), async (req, res) => {
     };
     if (platform === "qqmusic") {
       // QQ Music search works without login (public search API).
-      items = await searchQqMusic(keyword, limit);
+      items = type === "playlist"
+        ? await searchQqMusicPlaylists(keyword, limit)
+        : await searchQqMusic(keyword, limit);
     } else if (platform === "netease") {
-      items = await searchNetease(keyword, limit);
+      items = type === "playlist"
+        ? await searchNeteasePlaylists(keyword, limit)
+        : await searchNetease(keyword, limit);
     } else if (platform === "youtube") {
-      items = await searchYoutube(keyword, limit);
+      if (type === "playlist") {
+        items = []; // YouTube playlist search is not supported in aggregated search.
+      } else {
+        items = await searchYoutube(keyword, limit);
+      }
     } else if (platform === "bilibili") {
-      if (!loginGate("Bilibili（哔哩哔哩）")) return;
-      items = await searchBilibili(keyword, limit);
+      if (type === "playlist") {
+        items = []; // Bilibili has no playlist search; use 链接解析 for collections.
+      } else {
+        if (!loginGate("Bilibili（哔哩哔哩）")) return;
+        items = await searchBilibili(keyword, limit);
+      }
     } else {
       return res.status(400).json({ error: { code: "UNKNOWN_PLATFORM", message: "platform must be qqmusic | netease | bilibili | youtube" } });
     }
-    res.json({ ok: true, platform, keyword, count: items.length, items });
+    res.json({ ok: true, platform, type, keyword, count: items.length, items });
   } catch (err) {
     console.warn(`[media] search ${platform} failed:`, err?.message || err);
     res.status(502).json({ error: { code: "SEARCH_FAILED", message: err?.message || "search failed" } });
