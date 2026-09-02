@@ -31,6 +31,7 @@ services:
       - OUTPUTS_DISPLAY_DIR=/opt/gharmonize/outputs
       - RETAG_ROOTS=/music
       # 中国平台下载代理（bilibili / 网易云 / QQ音乐），留空则直连
+            # TEMP proxy (proxy.internal) while proxy.internal is down — revert to .8 later.
       - HTTP_PROXY=${HTTP_PROXY:-http://proxy.internal:7890}
       - HTTPS_PROXY=${HTTPS_PROXY:-http://proxy.internal:7890}
       - http_proxy=${HTTP_PROXY:-http://proxy.internal:7890}
