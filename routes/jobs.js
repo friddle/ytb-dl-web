@@ -1117,7 +1117,7 @@ router.post('/api/upload/chunk', rateLimit(600, 60_000), concurrencyLimit(4), up
 });
 
 // Custom Gharmonize rateLimit middleware is applied on this route.
-router.post("/api/jobs", rateLimit(10, 60_000), upload.single("file"), async (req, res) => {
+router.post("/api/jobs", rateLimit(60, 60_000), upload.single("file"), async (req, res) => {
   try {
     const body = req.body || {};
     // User-controlled log fields are normalized by sanitizeLogValue before reaching the sink.

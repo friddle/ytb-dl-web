@@ -617,6 +617,9 @@ router.get("/api/media/resolve", rateLimit(20, 60_000), async (req, res) => {
     const entries = Array.isArray(data?.entries) ? data.entries : null;
     if (entries) {
       const playlistTitle = stripHtml(data.title || "");
+      let host = "";
+      try { host = new URL(url).hostname.toLowerCase(); } catch { /* fallthrough */ }
+      const isQq = host.includes("qq.com");
       const items = entries.map((e, i) => {
         const pagePart = e.playlist_index || (i + 1);
         if (isNetease) {
@@ -628,6 +631,17 @@ router.get("/api/media/resolve", rateLimit(20, 60_000), async (req, res) => {
             artist: stripHtml(e.uploader || e.artist || ""),
             durationSec: Number(e.duration) || null,
             url: e.id ? `https://music.163.com/song?id=${e.id}` : url
+          };
+        }
+        if (isQq) {
+          // QQ Music playlist entries are individual songs.
+          return {
+            id: e.id || String(i + 1),
+            index: pagePart,
+            title: stripHtml(e.title || `Track ${pagePart}`),
+            artist: stripHtml(e.uploader || e.artist || ""),
+            durationSec: Number(e.duration) || null,
+            url: e.id ? `https://y.qq.com/n/ryqq/songDetail/${e.id}` : url
           };
         }
         // yt-dlp flat-playlist entries for Bilibili collections often carry an
