@@ -174,6 +174,12 @@ async function searchNeteasePlaylists(keyword, limit) {
 // Playlist (歌单) search — QQ Music desktop search CGI runs inside the embedded
 // browser (its cookies satisfy the login-gated CGI); search_type 3 = playlist.
 async function searchQqMusicPlaylists(keyword, limit) {
+  // The fetch must run on a y.qq.com page (same-origin + cookies).
+  const currentUrl = String(await cdEvaluate("location.href", 20000) || "");
+  if (!/y\.qq\.com/.test(currentUrl)) {
+    await cdCall("pw/navigate", { url: "https://y.qq.com/" }, 45000);
+    await sleep(2_000);
+  }
   const expression = `(async () => {
     try {
       const r = await fetch("https://u.y.qq.com/cgi-bin/musicu.fcg", {
