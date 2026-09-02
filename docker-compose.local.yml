@@ -40,6 +40,7 @@ services:
       - /opt/gharmonize/local-inputs:/usr/src/app/local-inputs
       - ${MUSIC_DIR:-/opt/gharmonize/local-inputs}:/music
       - /opt/gharmonize/cookies:/usr/src/app/cookies
+      - /opt/gharmonize/db:/usr/src/app/data/db
       - /opt/gharmonize/.env:/usr/src/app/.env
       - chrome_driver_data:/data/driverless
       - /home:/home:ro

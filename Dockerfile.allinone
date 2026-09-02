@@ -31,6 +31,10 @@ COPY package*.json ./
 RUN set -eux; \
     export NPM_CONFIG_LOGLEVEL=warn NPM_CONFIG_IGNORE_SCRIPTS=true NPM_CONFIG_UPDATE_NOTIFIER=false; \
     if [ -f package-lock.json ]; then npm ci --omit=dev; else npm install --omit=dev; fi; \
+    # ignore-scripts skips lifecycle scripts, so better-sqlite3's native
+    # prebuild is never fetched; rebuild that one package with scripts on.
+    npm rebuild better-sqlite3 --ignore-scripts=false; \
+    node -e "require('better-sqlite3'); console.log('better-sqlite3 native binding OK')"; \
     rm -rf /root/.npm
 
 COPY . .
@@ -48,10 +52,14 @@ ENV NODE_ENV=production PORT=5174 GHARMONIZE_HOST=0.0.0.0 \
     BROWSER_DATA_DIR=/opt/gharmonize/browser-data \
     PROFILE_NAME=default
 
+# Only the runtime-writable dirs get their own tiny layer; chmod -R on the
+# whole app tree would duplicate every file's metadata into this layer.
 RUN mkdir -p /usr/src/app/uploads /usr/src/app/outputs /usr/src/app/temp \
-             /usr/src/app/local-inputs /usr/src/app/cookies \
+             /usr/src/app/local-inputs /usr/src/app/cookies /usr/src/app/data/db \
              /opt/gharmonize/cache/binaries /opt/gharmonize/browser-data \
-    && chmod -R 0775 /usr/src/app /opt/gharmonize
+    && chmod -R 0775 /usr/src/app/uploads /usr/src/app/outputs /usr/src/app/temp \
+                     /usr/src/app/local-inputs /usr/src/app/cookies /usr/src/app/data \
+                     /opt/gharmonize
 
 COPY docker-entrypoint.sh /usr/src/app/docker-entrypoint.sh
 RUN chmod +x /usr/src/app/docker-entrypoint.sh
