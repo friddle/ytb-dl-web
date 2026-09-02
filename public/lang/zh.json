@@ -1247,8 +1247,7 @@
   "trackExtractor.type.chapters": "Chapters",
   "btn.openOutputFolder": "Open output folder",
   "media.loginTitle": "🔐 平台登录状态",
-  "media.loginHint": "点击平台卡片上的登录按钮，会在下方内置浏览器中打开对应的扫码登录页。Bilibili / B 站直播需要登录才能搜索下载；QQ音乐、网易云、YouTube 搜索无需登录。",
-  "media.refreshLogin": "🔄 刷新登录状态",
+  "media.loginHint": "点击各平台的“检测”按钮单独判断登录与 VIP 状态；“登录”按钮会在下方内置浏览器中打开对应的扫码登录页。Bilibili 需要登录才能搜索下载；QQ音乐、网易云、YouTube 搜索无需登录。",
   "media.resolveTitle": "🔗 链接解析（各种平台）",
   "media.resolveMode": "解析模式",
   "media.modeAuto": "自动判断（单视频 / 合集）",
@@ -1283,5 +1282,6 @@
   "media.loggedIn": "✅ 已登录",
   "media.notLoggedIn": "⚠️ 未登录",
   "media.scanLogin": "🛩️ 扫码登录",
-  "media.vip": "VIP"
+  "media.vip": "VIP",
+  "media.check": "🔄 检测"
 }

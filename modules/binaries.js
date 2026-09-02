@@ -9,6 +9,12 @@ import { assertPathWithinAny } from "./security.js";
 import { proxyFetch } from "./proxyFetch.js";
 import { promisify } from "node:util";
 import { fileURLToPath } from "node:url";
+import {
+  isSameYtDlpRelease,
+  normalizeYtDlpVersion,
+  isSameDenoRelease,
+  normalizeDenoVersion
+} from "./toolVersion.js";
 
 const execFileAsync = promisify(execFileSafe);
 const __filename = fileURLToPath(import.meta.url);
@@ -233,10 +239,18 @@ function resolveManagedCacheBin(baseName) {
     meta && typeof meta === "object" && !Array.isArray(meta)
       ? meta[toolKey]
       : null;
+  const fixedManagedPath = path.join(WEB_CACHE_DIR, pickExeName(baseName));
+  const usesFixedWindowsMkvToolPath =
+    process.platform === "win32" &&
+    (baseName === "mkvmerge" || baseName === "mkvpropedit");
   const candidates = [
-    path.join(WEB_CACHE_DIR, pickExeName(baseName)),
-    metaEntry?.path ? path.resolve(String(metaEntry.path)) : null,
-    toolKey === "mkvpropedit" && meta?.mkvmerge?.helperPath
+    fixedManagedPath,
+    !usesFixedWindowsMkvToolPath && metaEntry?.path
+      ? path.resolve(String(metaEntry.path))
+      : null,
+    !usesFixedWindowsMkvToolPath &&
+    toolKey === "mkvpropedit" &&
+    meta?.mkvmerge?.helperPath
       ? path.resolve(String(meta.mkvmerge.helperPath))
       : null
   ].filter(Boolean);
@@ -925,6 +939,49 @@ function pairPathsDiffer(a, b) {
     path.resolve(String(a.ffprobePath)) !== path.resolve(String(b.ffprobePath));
 }
 
+
+function fixedFfmpegPair(kind = "active") {
+  const suffix = kind === "active" ? "" : `-${kind}`;
+  return {
+    ffmpegPath: path.join(WEB_CACHE_DIR, pickExeName(`ffmpeg${suffix}`)),
+    ffprobePath: path.join(WEB_CACHE_DIR, pickExeName(`ffprobe${suffix}`))
+  };
+}
+
+function pairUsesPaths(pair, expected) {
+  if (!pair?.ffmpegPath || !pair?.ffprobePath) return false;
+  return path.resolve(String(pair.ffmpegPath)) === path.resolve(expected.ffmpegPath) &&
+    path.resolve(String(pair.ffprobePath)) === path.resolve(expected.ffprobePath);
+}
+
+function pairLivesInManagedCache(pair) {
+  if (!pair?.ffmpegPath || !pair?.ffprobePath) return false;
+  return path.dirname(path.resolve(String(pair.ffmpegPath))) === path.resolve(WEB_CACHE_DIR) &&
+    path.dirname(path.resolve(String(pair.ffprobePath))) === path.resolve(WEB_CACHE_DIR);
+}
+
+async function migrateManagedFfmpegPair(pair, kind) {
+  if (!pair || !pairLivesInManagedCache(pair)) return pair;
+  const target = fixedFfmpegPair(kind);
+  if (pairUsesPaths(pair, target)) return pair;
+  if (!isExecutable(pair.ffmpegPath) || !isExecutable(pair.ffprobePath)) return pair;
+  await copyExecutable(pair.ffmpegPath, target.ffmpegPath);
+  await copyExecutable(pair.ffprobePath, target.ffprobePath);
+  return { ...pair, ...target };
+}
+
+async function persistLastKnownGoodPair(meta, pair, validation) {
+  if (!pair?.ffmpegPath || !pair?.ffprobePath || !validation?.basic) return null;
+  const target = fixedFfmpegPair("lkg");
+  if (!pairUsesPaths(pair, target)) {
+    await copyExecutable(pair.ffmpegPath, target.ffmpegPath);
+    await copyExecutable(pair.ffprobePath, target.ffprobePath);
+  }
+  const saved = { ...pair, ...target };
+  setLastKnownGoodMetadata(meta, saved, validation);
+  return saved;
+}
+
 function validationAllowsActivation(candidateValidation, baselineValidation = null) {
   if (!candidateValidation?.basic) {
     return { ok: false, reason: candidateValidation?.basicError || "basic FFmpeg validation failed" };
@@ -1139,16 +1196,43 @@ async function writeMkvToolNixLinuxWrapper(wrapperPath, appImagePath, binaryName
   await writeExecutableFile(wrapperPath, `${content}\n`);
 }
 
+// Reads the installed yt-dlp stable version from its version command.
+async function readYtDlpVersion(binaryPath) {
+  const { stdout, stderr } = await execFileAsync(binaryPath, ["--version"], {
+    timeout: 8000,
+    windowsHide: true,
+    env: getBinaryRuntimeEnv()
+  });
+  return normalizeYtDlpVersion(`${stdout || ""}\n${stderr || ""}`);
+}
+
 // Ensures latest yt-dlp binary from web cache.
 async function ensureLatestYtDlp(meta, options = {}) {
   const force = !!options.force;
   const asset = pickReleaseAsset(YTDLP_ASSETS);
   if (!asset) return null;
 
-  const current = meta?.ytdlp;
+  let current = meta?.ytdlp;
+  const fixedYtDlpPath = path.join(WEB_CACHE_DIR, pickExeName("yt-dlp"));
+  if (current?.path && path.resolve(String(current.path)) !== path.resolve(fixedYtDlpPath) && isExecutable(current.path)) {
+    await copyExecutable(current.path, fixedYtDlpPath);
+    setMetaEntry(meta, "ytdlp", { ...current, path: fixedYtDlpPath });
+    current = meta.ytdlp;
+  }
+
   if (!force && current?.path && isExecutable(current.path) && isFresh(current)) {
-    await pruneVersionedFiles("yt-dlp-", current.path);
-    return current.path;
+    try {
+      const installedVersion = await readYtDlpVersion(current.path);
+      if (isSameYtDlpRelease(installedVersion, current.tag)) {
+        await pruneVersionedFiles("yt-dlp-", []);
+        return current.path;
+      }
+      console.warn(
+        `[binaries] yt-dlp cache metadata mismatch: installed=${installedVersion || "unknown"} metadata=${current.tag || "unknown"}; refreshing`
+      );
+    } catch {
+      // Continue to the release check when the cached binary cannot be verified.
+    }
   }
 
   const release = await fetchLatestRelease("yt-dlp/yt-dlp");
@@ -1156,44 +1240,69 @@ async function ensureLatestYtDlp(meta, options = {}) {
   if (!tag) throw new Error("yt-dlp release tag is missing");
   const releaseAsset = resolveReleaseAsset(release, asset);
   if (!releaseAsset?.browser_download_url) throw new Error(`yt-dlp release asset not found: ${asset}`);
-  const safeTag = sanitizeTag(tag);
-  const outName = process.platform === "win32"
-    ? `yt-dlp-${safeTag}.exe`
-    : `yt-dlp-${safeTag}`;
-  const finalPath = path.join(WEB_CACHE_DIR, outName);
+  const finalPath = fixedYtDlpPath;
 
   if (isExecutable(finalPath)) {
     try {
-      await verifyBinary(finalPath, ["--version"]);
-      setMetaEntry(meta, "ytdlp", { tag, path: finalPath });
-      await pruneVersionedFiles("yt-dlp-", finalPath);
-      return finalPath;
+      const installedVersion = await readYtDlpVersion(finalPath);
+      if (isSameYtDlpRelease(installedVersion, tag)) {
+        setMetaEntry(meta, "ytdlp", { tag, path: finalPath });
+        await pruneVersionedFiles("yt-dlp-", []);
+        return finalPath;
+      }
+      console.log(
+        `[binaries] yt-dlp update available: ${installedVersion || "unknown"} -> ${normalizeYtDlpVersion(tag) || tag}`
+      );
     } catch {
-      await fs.promises.rm(finalPath, { force: true }).catch(() => {});
+      // A broken cached binary is replaced only after the new download verifies.
     }
   }
 
-  const tmpPath = `${finalPath}.download`;
+  // Verify downloaded executables under their real allowlisted basename. The
+  // safe process layer intentionally dispatches only fixed executable tokens,
+  // so names such as "yt-dlp.download" must never be executed directly.
+  const verifyDir = path.join(
+    WEB_CACHE_DIR,
+    `yt-dlp-verify-${Date.now()}-${crypto.randomBytes(6).toString("hex")}`
+  );
+  const tmpPath = path.join(verifyDir, pickExeName("yt-dlp"));
   const url = releaseAsset.browser_download_url;
 
-  await fs.promises.rm(tmpPath, { force: true }).catch(() => {});
+  await fs.promises.rm(verifyDir, { recursive: true, force: true }).catch(() => {});
+  await fs.promises.mkdir(verifyDir, { recursive: true, mode: 0o700 });
   try {
     startDynamicBinaryTask("ytdlp", "downloading", "Downloading yt-dlp");
     await downloadToFile(url, tmpPath, HTTP_HEADERS, releaseAsset.digest);
-    await fs.promises.rename(tmpPath, finalPath);
     if (process.platform !== "win32") {
-      await fs.promises.chmod(finalPath, 0o755).catch(() => {});
+      await fs.promises.chmod(tmpPath, 0o755).catch(() => {});
     }
-    await verifyBinary(finalPath, ["--version"]);
+    const downloadedVersion = await readYtDlpVersion(tmpPath);
+    if (!isSameYtDlpRelease(downloadedVersion, tag)) {
+      throw new Error(
+        `Downloaded yt-dlp version mismatch: expected ${normalizeYtDlpVersion(tag) || tag}, got ${downloadedVersion || "unknown"}`
+      );
+    }
+
+    if (process.platform === "win32") {
+      await fs.promises.rm(finalPath, { force: true }).catch(() => {});
+    }
+    await fs.promises.rename(tmpPath, finalPath);
     setMetaEntry(meta, "ytdlp", { tag, path: finalPath });
-    await pruneVersionedFiles("yt-dlp-", finalPath);
+    await pruneVersionedFiles("yt-dlp-", []);
     return finalPath;
-  } catch (err) {
-    await fs.promises.rm(finalPath, { force: true }).catch(() => {});
-    throw err;
   } finally {
-    await fs.promises.rm(tmpPath, { force: true }).catch(() => {});
+    await fs.promises.rm(verifyDir, { recursive: true, force: true }).catch(() => {});
   }
+}
+
+// Reads the installed Deno stable version from its version command.
+async function readDenoVersion(binaryPath) {
+  const { stdout, stderr } = await execFileAsync(binaryPath, ["--version"], {
+    timeout: 8000,
+    windowsHide: true,
+    env: getBinaryRuntimeEnv()
+  });
+  return normalizeDenoVersion(`${stdout || ""}\n${stderr || ""}`);
 }
 
 // Ensures latest deno binary from web cache.
@@ -1202,10 +1311,27 @@ async function ensureLatestDeno(meta, options = {}) {
   const asset = pickReleaseAsset(DENO_ASSETS);
   if (!asset) return null;
 
-  const current = meta?.deno;
+  let current = meta?.deno;
+  const fixedDenoPath = path.join(WEB_CACHE_DIR, pickExeName("deno"));
+  if (current?.path && path.resolve(String(current.path)) !== path.resolve(fixedDenoPath) && isExecutable(current.path)) {
+    await copyExecutable(current.path, fixedDenoPath);
+    setMetaEntry(meta, "deno", { ...current, path: fixedDenoPath });
+    current = meta.deno;
+  }
+
   if (!force && current?.path && isExecutable(current.path) && isFresh(current)) {
-    await pruneVersionedFiles("deno-", current.path);
-    return current.path;
+    try {
+      const installedVersion = await readDenoVersion(current.path);
+      if (isSameDenoRelease(installedVersion, current.tag)) {
+        await pruneVersionedFiles("deno-", []);
+        return current.path;
+      }
+      console.warn(
+        `[binaries] deno cache metadata mismatch: installed=${installedVersion || "unknown"} metadata=${current.tag || "unknown"}; refreshing`
+      );
+    } catch {
+      // Continue to the release check when the cached binary cannot be verified.
+    }
   }
 
   const release = await fetchLatestRelease("denoland/deno");
@@ -1214,51 +1340,70 @@ async function ensureLatestDeno(meta, options = {}) {
   const releaseAsset = resolveReleaseAsset(release, asset);
   if (!releaseAsset?.browser_download_url) throw new Error(`Deno release asset not found: ${asset}`);
   const safeTag = sanitizeTag(tag);
-  const outName = process.platform === "win32"
-    ? `deno-${safeTag}.exe`
-    : `deno-${safeTag}`;
-  const finalPath = path.join(WEB_CACHE_DIR, outName);
+  const finalPath = fixedDenoPath;
 
   if (isExecutable(finalPath)) {
     try {
-      await verifyBinary(finalPath, ["--version"]);
-      setMetaEntry(meta, "deno", { tag, path: finalPath });
-      await pruneVersionedFiles("deno-", finalPath);
-      return finalPath;
+      const installedVersion = await readDenoVersion(finalPath);
+      if (isSameDenoRelease(installedVersion, tag)) {
+        setMetaEntry(meta, "deno", { tag, path: finalPath });
+        await pruneVersionedFiles("deno-", []);
+        return finalPath;
+      }
+      console.log(
+        `[binaries] deno update available: ${installedVersion || "unknown"} -> ${normalizeDenoVersion(tag) || tag}`
+      );
     } catch {
-      await fs.promises.rm(finalPath, { force: true }).catch(() => {});
+      // A broken cached binary is replaced only after the new download verifies.
     }
   }
 
   const zipPath = path.join(WEB_CACHE_DIR, `deno-${safeTag}.zip`);
   const tmpZipPath = `${zipPath}.download`;
   const extractDir = path.join(WEB_CACHE_DIR, `deno-extract-${Date.now()}-${Math.random().toString(16).slice(2)}`);
+  // As with yt-dlp, Deno is verified using its real allowlisted basename in a
+  // private staging directory instead of trying to execute "deno.download".
+  const verifyDir = path.join(
+    WEB_CACHE_DIR,
+    `deno-verify-${Date.now()}-${crypto.randomBytes(6).toString("hex")}`
+  );
+  const tmpExecutablePath = path.join(verifyDir, pickExeName("deno"));
   const url = releaseAsset.browser_download_url;
 
   await fs.promises.rm(tmpZipPath, { force: true }).catch(() => {});
   await fs.promises.rm(extractDir, { recursive: true, force: true }).catch(() => {});
+  await fs.promises.rm(verifyDir, { recursive: true, force: true }).catch(() => {});
 
   try {
     startDynamicBinaryTask("deno", "downloading", "Downloading deno");
     await downloadToFile(url, tmpZipPath, HTTP_HEADERS, releaseAsset.digest);
     await fs.promises.rename(tmpZipPath, zipPath);
     await fs.promises.mkdir(extractDir, { recursive: true });
+    await fs.promises.mkdir(verifyDir, { recursive: true, mode: 0o700 });
     await extractZip(zipPath, extractDir);
 
     const exeName = pickExeName("deno");
     const extractedPath = await findFileRecursive(extractDir, exeName);
-    await copyExecutable(extractedPath, finalPath);
-    await verifyBinary(finalPath, ["--version"]);
+    await copyExecutable(extractedPath, tmpExecutablePath);
+    const downloadedVersion = await readDenoVersion(tmpExecutablePath);
+    if (!isSameDenoRelease(downloadedVersion, tag)) {
+      throw new Error(
+        `Downloaded Deno version mismatch: expected ${normalizeDenoVersion(tag) || tag}, got ${downloadedVersion || "unknown"}`
+      );
+    }
+
+    if (process.platform === "win32") {
+      await fs.promises.rm(finalPath, { force: true }).catch(() => {});
+    }
+    await fs.promises.rename(tmpExecutablePath, finalPath);
     setMetaEntry(meta, "deno", { tag, path: finalPath });
-    await pruneVersionedFiles("deno-", finalPath);
+    await pruneVersionedFiles("deno-", []);
     return finalPath;
-  } catch (err) {
-    await fs.promises.rm(finalPath, { force: true }).catch(() => {});
-    throw err;
   } finally {
     await fs.promises.rm(tmpZipPath, { force: true }).catch(() => {});
     await fs.promises.rm(zipPath, { force: true }).catch(() => {});
     await fs.promises.rm(extractDir, { recursive: true, force: true }).catch(() => {});
+    await fs.promises.rm(verifyDir, { recursive: true, force: true }).catch(() => {});
   }
 }
 
@@ -1266,8 +1411,21 @@ async function ensureLatestDeno(meta, options = {}) {
 async function ensureLatestFfmpegTools(meta, options = {}) {
   const force = !!options.force;
   const ffmpegChannel = getFfmpegChannel();
-  const currentPair = activeFfmpegPairFromMeta(meta);
-  const lkgPair = lastKnownGoodPairFromMeta(meta);
+  let currentPair = activeFfmpegPairFromMeta(meta);
+  let lkgPair = lastKnownGoodPairFromMeta(meta);
+
+  const migratedCurrent = await migrateManagedFfmpegPair(currentPair, "active");
+  if (migratedCurrent && currentPair && pairPathsDiffer(migratedCurrent, currentPair)) {
+    setActiveFfmpegMetadata(meta, migratedCurrent, currentPair.validation || meta?.ffmpeg?.validation || null, {
+      channel: meta?.ffmpeg?.channel || meta?.ffmpeg?.source || migratedCurrent.source || "legacy-migrated"
+    });
+    currentPair = migratedCurrent;
+  }
+  const migratedLkg = await migrateManagedFfmpegPair(lkgPair, "lkg");
+  if (migratedLkg && lkgPair && pairPathsDiffer(migratedLkg, lkgPair)) {
+    setLastKnownGoodMetadata(meta, migratedLkg, lkgPair.validation || meta?.ffmpegLastKnownGood?.validation || null);
+    lkgPair = migratedLkg;
+  }
 
   const currentInspected = currentPair && isExecutable(currentPair.ffmpegPath) && isExecutable(currentPair.ffprobePath)
     ? await inspectPairMaybe(currentPair)
@@ -1349,14 +1507,9 @@ async function ensureLatestFfmpegTools(meta, options = {}) {
   const branchName = assetName.match(/^ffmpeg-(n[0-9.]+|master)-latest-/i)?.[1] || ffmpegChannel;
   const releaseStamp = release?.published_at || asset?.updated_at || release?.tag_name || Date.now();
   const versionTag = sanitizeTag(`${branchName}-${releaseStamp}`);
-  const ffmpegFinalPath = path.join(
-    WEB_CACHE_DIR,
-    process.platform === "win32" ? `ffmpeg-${versionTag}.exe` : `ffmpeg-${versionTag}`
-  );
-  const ffprobeFinalPath = path.join(
-    WEB_CACHE_DIR,
-    process.platform === "win32" ? `ffprobe-${versionTag}.exe` : `ffprobe-${versionTag}`
-  );
+  const candidatePaths = fixedFfmpegPair("candidate");
+  const ffmpegFinalPath = candidatePaths.ffmpegPath;
+  const ffprobeFinalPath = candidatePaths.ffprobePath;
 
   const candidatePair = {
     ffmpegPath: ffmpegFinalPath,
@@ -1424,15 +1577,10 @@ async function ensureLatestFfmpegTools(meta, options = {}) {
         checkedAt: Date.now()
       };
 
-      // Remove only a newly staged candidate. If this exact pair is already
-      // active (for example after a driver downgrade), deleting it would leave
-      // the degraded fallback metadata pointing at missing files.
-      const candidateIsCurrent = currentPair && !pairPathsDiffer(candidatePair, currentPair);
-      const candidateIsLkg = lkgPair && !pairPathsDiffer(candidatePair, lkgPair);
-      if (!candidateIsCurrent && !candidateIsLkg) {
-        await fs.promises.rm(ffmpegFinalPath, { force: true }).catch(() => {});
-        await fs.promises.rm(ffprobeFinalPath, { force: true }).catch(() => {});
-      }
+      // Candidate binaries live in a dedicated fixed slot, so rejecting them
+      // can never delete the active or last-known-good pair.
+      await fs.promises.rm(ffmpegFinalPath, { force: true }).catch(() => {});
+      await fs.promises.rm(ffprobeFinalPath, { force: true }).catch(() => {});
 
       // Prefer the current working pair, then the saved LKG, then a packaged/
       // system FFmpeg whose NVENC canary is actually healthy on this machine.
@@ -1453,7 +1601,7 @@ async function ensureLatestFfmpegTools(meta, options = {}) {
         setActiveFfmpegMetadata(meta, fallback, fallback.validation, {
           channel: "fallback"
         });
-        setLastKnownGoodMetadata(meta, fallback, fallback.validation);
+        await persistLastKnownGoodPair(meta, fallback, fallback.validation);
         await pruneFfmpegCache(meta);
         return {
           ffmpegPath: fallback.ffmpegPath,
@@ -1492,28 +1640,34 @@ async function ensureLatestFfmpegTools(meta, options = {}) {
         `${currentInspected.validation?.nvenc?.detail || ""}\n${currentInspected.validation?.nvenc?.rawDetail || ""}`
       )
     ) {
-      setLastKnownGoodMetadata(meta, currentInspected, currentInspected.validation);
+      await persistLastKnownGoodPair(meta, currentInspected, currentInspected.validation);
     } else if (lkgInspected?.validation?.basic) {
-      setLastKnownGoodMetadata(meta, lkgInspected, lkgInspected.validation);
+      await persistLastKnownGoodPair(meta, lkgInspected, lkgInspected.validation);
     }
 
-    setActiveFfmpegMetadata(meta, candidatePair, candidateValidation, {
+    const activePaths = fixedFfmpegPair("active");
+    await copyExecutable(candidatePair.ffmpegPath, activePaths.ffmpegPath);
+    await copyExecutable(candidatePair.ffprobePath, activePaths.ffprobePath);
+    const activeCandidate = { ...candidatePair, ...activePaths };
+
+    setActiveFfmpegMetadata(meta, activeCandidate, candidateValidation, {
       channel: ffmpegChannel === "master" ? "master" : "stable"
     });
 
-    // On the first successful managed install the active pair itself is the
-    // first known-good checkpoint. A later successful update will move the old
-    // active pair into this slot before promotion.
+    // On the first successful managed install the promoted active pair itself
+    // becomes the initial rollback checkpoint.
     if (!lastKnownGoodPairFromMeta(meta)) {
-      setLastKnownGoodMetadata(meta, candidatePair, candidateValidation);
+      await persistLastKnownGoodPair(meta, activeCandidate, candidateValidation);
     }
 
+    await fs.promises.rm(candidatePair.ffmpegPath, { force: true }).catch(() => {});
+    await fs.promises.rm(candidatePair.ffprobePath, { force: true }).catch(() => {});
     delete meta.ffmpegRejected;
     await pruneFfmpegCache(meta);
 
     return {
-      ffmpegPath: ffmpegFinalPath,
-      ffprobePath: ffprobeFinalPath,
+      ffmpegPath: activePaths.ffmpegPath,
+      ffprobePath: activePaths.ffprobePath,
       source: candidatePair.source,
       validation: candidateValidation
     };
@@ -1537,11 +1691,16 @@ async function ensureLatestMkvmerge(meta, options = {}) {
   const hasHelper = usesManagedLinuxWrapper
     ? !!current?.helperPath && fs.existsSync(current.helperPath)
     : (!current?.helperPath || fs.existsSync(current.helperPath));
+  const usesManagedWindowsPaths =
+    process.platform !== "win32" ||
+    (path.resolve(String(current?.path || "")) === path.resolve(path.join(WEB_CACHE_DIR, "mkvmerge.exe")) &&
+      path.resolve(String(current?.helperPath || "")) === path.resolve(path.join(WEB_CACHE_DIR, "mkvpropedit.exe")));
   if (
     !force &&
     current?.path &&
     hasBacking &&
     hasHelper &&
+    usesManagedWindowsPaths &&
     isExecutable(current.path) &&
     isFresh(current)
   ) {
@@ -1667,8 +1826,11 @@ async function ensureLatestMkvmerge(meta, options = {}) {
     const archivePath = path.join(WEB_CACHE_DIR, `mkvtoolnix-${safeVersion}.zip`);
     const tmpArchivePath = `${archivePath}.download`;
     const extractDir = path.join(WEB_CACHE_DIR, `mkvmerge-extract-${Date.now()}-${Math.random().toString(16).slice(2)}`);
-    const finalPath = path.join(WEB_CACHE_DIR, `mkvmerge-${safeVersion}.exe`);
-    const helperPath = path.join(WEB_CACHE_DIR, `mkvpropedit-${safeVersion}.exe`);
+    // Keep executable paths independent from the remotely supplied release version.
+    // The version is still used for the download URL/archive metadata, but managed
+    // command paths are fixed names under Gharmonize's private binary cache.
+    const finalPath = path.join(WEB_CACHE_DIR, "mkvmerge.exe");
+    const helperPath = path.join(WEB_CACHE_DIR, "mkvpropedit.exe");
     const url = `https://mkvtoolnix.download/windows/releases/${version}/mkvtoolnix-${bitLabel}-${version}.zip`;
 
     if (isExecutable(finalPath) && isExecutable(helperPath)) {

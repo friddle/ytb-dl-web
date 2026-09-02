@@ -171,14 +171,21 @@ test('sandboxed Electron preload uses CommonJS and stays bridged', () => {
   assert.equal(fs.existsSync(path.join('electron', 'preload.mjs')), false);
 });
 
-test('Linux tray stays on Electron 42 and fails safe on broken Electron 43 runtime', () => {
+test('Linux tray blocks the known-broken Electron 43 runtime', () => {
   const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
   const lock = JSON.parse(fs.readFileSync('package-lock.json', 'utf8'));
   const main = fs.readFileSync(path.join('electron', 'main.mjs'), 'utf8');
   const dependabot = fs.readFileSync(path.join('.github', 'dependabot.yml'), 'utf8');
 
-  assert.equal(pkg.devDependencies.electron, '^42.5.0');
-  assert.equal(lock.packages['node_modules/electron'].version, '42.9.3');
+  const declaredElectron = String(pkg.devDependencies.electron || '');
+  const lockedElectron = String(lock.packages['node_modules/electron']?.version || '');
+  const declaredMajor = Number(declaredElectron.match(/\d+/)?.[0]);
+  const lockedMajor = Number(lockedElectron.split('.')[0]);
+
+  assert.ok(Number.isInteger(declaredMajor));
+  assert.ok(Number.isInteger(lockedMajor));
+  assert.equal(lockedMajor, declaredMajor);
+  assert.notEqual(declaredMajor, 43);
   assert.ok(main.includes('function hasKnownBrokenLinuxTrayRuntime()'));
   assert.ok(main.includes("return major === 43;"));
   assert.ok(main.includes("[tray] unavailable; closing Gharmonize instead of leaving a hidden background process"));
@@ -186,6 +193,15 @@ test('Linux tray stays on Electron 42 and fails safe on broken Electron 43 runti
   assert.ok(dependabot.includes('versions: ["43.x"]'));
 });
 
+
+test('managed Windows MKVToolNix command paths do not depend on remote version text', () => {
+  const binaries = fs.readFileSync(path.join('modules', 'binaries.js'), 'utf8');
+
+  assert.ok(binaries.includes('path.join(WEB_CACHE_DIR, "mkvmerge.exe")'));
+  assert.ok(binaries.includes('path.join(WEB_CACHE_DIR, "mkvpropedit.exe")'));
+  assert.ok(!binaries.includes('`mkvmerge-${safeVersion}.exe`'));
+  assert.ok(!binaries.includes('`mkvpropedit-${safeVersion}.exe`'));
+});
 
 test('release workflow preserves Linux artifact name for publish collection', () => {
   const workflow = fs.readFileSync(path.join('.github', 'workflows', 'release.yml'), 'utf8');
@@ -231,6 +247,15 @@ test('rate limiter allows the configured quota and rejects the next request', as
 
 test('safe process layer rejects dangerous arguments and unknown executables', () => {
   assert.throws(() => assertSafeProcessArgs('yt-dlp', ['--exec=touch /tmp/pwned']));
+  assert.doesNotThrow(() => assertSafeProcessArgs('yt-dlp', ['--cookies-from-browser', 'chrome']));
+  assert.doesNotThrow(() => assertSafeProcessArgs('yt-dlp', ['--cookies-from-browser=firefox']));
+  assert.throws(() => assertSafeProcessArgs('yt-dlp', ['--cookies-from-browser', '/tmp/profile']));
+  assert.throws(() => assertSafeProcessArgs('yt-dlp', ['--cookies-from-browser=chrome:../../profile']));
+  assert.doesNotThrow(() => assertSafeProcessArgs('yt-dlp', ['--ffmpeg-location', '/opt/gharmonize/ffmpeg']));
+  assert.doesNotThrow(() => assertSafeProcessArgs('yt-dlp', ['--ffmpeg-location=/opt/gharmonize/ffmpeg']));
+  assert.throws(() => assertSafeProcessArgs('yt-dlp', ['--ffmpeg-location', 'ffmpeg']));
+  assert.throws(() => assertSafeProcessArgs('yt-dlp', ['--ffmpeg-location', '/tmp/curl']));
+  assert.throws(() => assertSafeProcessArgs('yt-dlp', ['--ffmpeg-location=/tmp/ffmpeg/']));
   assert.throws(() => assertSafeProcessArgs('ffmpeg', ['ok\n--evil']));
   assert.throws(() => assertTrustedExecutable('/tmp/not-gharmonize-tool'));
   assert.equal(assertTrustedExecutable('/usr/bin/ffmpeg'), '/usr/bin/ffmpeg');
@@ -239,8 +264,22 @@ test('safe process layer rejects dangerous arguments and unknown executables', (
 test('blank executable settings select managed binaries without weakening process validation', () => {
   assert.equal(normalizeTrustedExecutableSetting(''), '');
   assert.equal(normalizeTrustedExecutableSetting('   '), '');
-  assert.equal(normalizeTrustedExecutableSetting(' /usr/bin/ffmpeg '), '/usr/bin/ffmpeg');
+  assert.equal(normalizeTrustedExecutableSetting(' /usr/bin/ffmpeg ', 'ffmpeg'), '/usr/bin/ffmpeg');
+  assert.throws(() => normalizeTrustedExecutableSetting('/tmp/yt-dlp', 'ffmpeg'));
   assert.throws(() => assertTrustedExecutable(''));
+});
+
+test('safe process dispatches only literal allowlisted executable tokens', () => {
+  const safeProcess = fs.readFileSync('modules/safeProcess.js', 'utf8');
+  const binaries = fs.readFileSync('modules/binaries.js', 'utf8');
+
+  assert.equal(/\bexecFile\(\s*(?:command|executable|token)\b/.test(safeProcess), false);
+  assert.equal(/\bspawn\(\s*(?:command|executable|token)\b/.test(safeProcess), false);
+  assert.ok(safeProcess.includes('case "ffmpeg": return execFile("ffmpeg"'));
+  assert.ok(safeProcess.includes('case "yt-dlp": return execFile("yt-dlp"'));
+  assert.equal(/yt-dlp-\$\{safeTag\}(?:\.exe)?`/.test(binaries), false);
+  assert.equal(/deno-\$\{safeTag\}(?:\.exe)?`/.test(binaries), false);
+  assert.ok(binaries.includes('fixedFfmpegPair("candidate")'));
 });
 
 test('critical process sinks are routed through the safe process layer', () => {
@@ -345,7 +384,7 @@ test('source tree does not hide findings with CodeQL suppression annotations', (
 
   const safeProcess = fs.readFileSync('modules/safeProcess.js', 'utf8');
   assert.ok(safeProcess.includes('assertTrustedExecutable(command)'));
-  assert.ok(safeProcess.includes('assertSafeProcessArgs(executable, args)'));
+  assert.ok(safeProcess.includes('assertSafeProcessArgs(token, args)'));
   assert.ok(safeProcess.includes('shell: false'));
 });
 

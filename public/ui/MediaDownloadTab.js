@@ -29,7 +29,6 @@ export class MediaDownloadTab {
     this.btnMedia = document.getElementById('tabBtnMedia');
 
     this.platformsEl = document.getElementById('mediaPlatforms');
-    this.refreshLoginBtn = document.getElementById('mediaRefreshLoginBtn');
 
     this.biliModeSelect = document.getElementById('biliModeSelect');
     this.biliUrlInput = document.getElementById('biliUrlInput');
@@ -63,7 +62,6 @@ export class MediaDownloadTab {
     if (this.btnMedia) {
       this.btnMedia.addEventListener('click', () => this.switchTab('media'));
     }
-    this.refreshLoginBtn?.addEventListener('click', () => this.loadPlatformStatus({ refresh: true }));
     this.biliResolveBtn?.addEventListener('click', () => this.resolveBilibili());
     this.searchBtn?.addEventListener('click', () => this.runSearch());
     this.searchInput?.addEventListener('keydown', (e) => {
@@ -161,43 +159,67 @@ export class MediaDownloadTab {
     } catch { /* keep the quick snapshot */ }
   }
 
+  // One-shot check for a single channel (login + VIP); updates only that row.
+  async checkPlatform(key, btn) {
+    if (btn) { btn.disabled = true; btn.textContent = '⏳'; }
+    try {
+      const r = await fetch(`/api/media/login-status?platform=${encodeURIComponent(key)}&refresh=1`);
+      const d = await r.json();
+      const info = d?.platforms?.[key];
+      if (info && this._statusData) {
+        this._statusData.live = { ...(this._statusData.live || this._statusData.quick), [key]: info };
+        const row = this.platformsEl?.querySelector(`.media-platform-row[data-platform="${key}"]`);
+        if (row) row.replaceWith(this.buildPlatformRow(key, info));
+      }
+    } catch { /* leave the row as-is */ } finally {
+      if (btn) { btn.disabled = false; btn.textContent = this.tt('media.check', '🔄 检测'); }
+    }
+  }
+
+  buildPlatformRow(key, info) {
+    const { loginUrls, labels, hints, text } = this._statusData;
+    const loggedIn = !!info?.loggedIn;
+    const vip = !!info?.vip;
+    const vipLabel = info?.vipLabel || this.tt('media.vip', 'VIP');
+    const row = document.createElement('div');
+    row.className = 'media-platform-row';
+    row.dataset.platform = key;
+    row.style.cssText = 'display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:8px 10px;border:1px solid rgba(128,128,128,.25);border-radius:8px;';
+    row.innerHTML = `
+      <span style="font-weight:600;min-width:140px;">${labels[key]}</span>
+      <span style="font-size:.85em;color:var(--text-muted,rgba(128,128,128,.8));">${hints[key]}</span>
+      <span class="media-login-badge" style="margin-left:auto;font-size:.85em;padding:2px 10px;border-radius:12px;background:${loggedIn ? 'rgba(46,160,67,.18)' : 'rgba(241,76,12,.18)'};color:${loggedIn ? '#2ea043' : '#f14c0c'};">
+        ${loggedIn ? text.loggedIn : text.notLoggedIn}
+      </span>
+      ${vip ? `<span class="media-vip-badge" title="${vipLabel}" style="font-size:.85em;padding:2px 10px;border-radius:12px;background:rgba(255,193,7,.18);color:#e3a008;">👑 ${vipLabel}</span>` : ''}
+      <button type="button" class="btn-outline media-check-btn" data-platform="${key}" style="padding:4px 12px;font-size:.85em;">
+        ${this.tt('media.check', '🔄 检测')}
+      </button>
+      <button type="button" class="btn-outline media-login-btn" data-platform="${key}" style="padding:4px 12px;font-size:.85em;">
+        ${text.scanLogin}
+      </button>`;
+    row.querySelector('.media-check-btn').addEventListener('click', (e) => this.checkPlatform(key, e.currentTarget));
+    row.querySelector('.media-login-btn').addEventListener('click', () => {
+      // Deep-link straight to the QR/sign-in page inside the embedded browser.
+      const targetUrl = loginUrls[key] || {
+        bilibili: 'https://passport.bilibili.com/login',
+        qqmusic: 'https://graph.qq.com/oauth2.0/show?which=Login&display=pc&client_id=100460100&response_type=code&redirect_uri=https%3A%2F%2Fy.qq.com%2Fportal%2Fplayer.html',
+        netease: 'https://music.163.com/#/login',
+        youtube: 'https://www.youtube.com/signin'
+      }[key];
+      this.openBrowser(targetUrl);
+    });
+    return row;
+  }
+
   renderPlatformRows(platforms) {
     if (!this._statusData) return;
-    const { loginUrls, labels, hints, order, text } = this._statusData;
+    const { order } = this._statusData;
     const container = this.platformsEl;
     container.innerHTML = '';
     for (const key of order) {
-      const info = platforms?.[key] || {};
-      const loggedIn = !!info.loggedIn;
-      const vip = !!info.vip;
-      const vipLabel = info.vipLabel || this.tt('media.vip', 'VIP');
-      const row = document.createElement('div');
-      row.style.cssText = 'display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:8px 10px;border:1px solid rgba(128,128,128,.25);border-radius:8px;';
-      row.innerHTML = `
-        <span style="font-weight:600;min-width:140px;">${labels[key]}</span>
-        <span style="font-size:.85em;color:var(--text-muted,rgba(128,128,128,.8));">${hints[key]}</span>
-        <span class="media-login-badge" style="margin-left:auto;font-size:.85em;padding:2px 10px;border-radius:12px;background:${loggedIn ? 'rgba(46,160,67,.18)' : 'rgba(241,76,12,.18)'};color:${loggedIn ? '#2ea043' : '#f14c0c'};">
-          ${loggedIn ? text.loggedIn : text.notLoggedIn}
-        </span>
-        ${vip ? `<span class="media-vip-badge" title="${vipLabel}" style="font-size:.85em;padding:2px 10px;border-radius:12px;background:rgba(255,193,7,.18);color:#e3a008;">👑 ${vipLabel}</span>` : ''}
-        <button type="button" class="btn-outline media-login-btn" data-platform="${key}" style="padding:4px 12px;font-size:.85em;">
-          ${text.scanLogin}
-        </button>`;
-      container.appendChild(row);
+      container.appendChild(this.buildPlatformRow(key, platforms?.[key] || {}));
     }
-    container.querySelectorAll('.media-login-btn').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        const key = btn.dataset.platform;
-        // Deep-link straight to the QR/sign-in page inside the embedded browser.
-        const targetUrl = loginUrls[key] || {
-          bilibili: 'https://passport.bilibili.com/login',
-          qqmusic: 'https://graph.qq.com/oauth2.0/show?which=Login&display=pc&client_id=100460100&response_type=code&redirect_uri=https%3A%2F%2Fy.qq.com%2Fportal%2Fplayer.html',
-          netease: 'https://music.163.com/#/login',
-          youtube: 'https://www.youtube.com/signin'
-        }[key];
-        this.openBrowser(targetUrl);
-      });
-    });
   }
 
   // Returns the translated string; falls back to the given default.

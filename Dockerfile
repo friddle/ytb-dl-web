@@ -40,10 +40,14 @@ ENV NODE_ENV=production \
     GHARMONIZE_WEB_CACHE_DIR=/opt/gharmonize/cache/binaries \
     CHROME_DRIVERLESS_URL=http://chrome-driverless:9223 \
     CHROME_DRIVERLESS_DATA_DIR=/data/driverless \
+    GHARMONIZE_BINARY_TMP_DIR=/usr/src/app/temp/binary-tmp \
+    TMPDIR=/usr/src/app/temp/binary-tmp \
+    TMP=/usr/src/app/temp/binary-tmp \
+    TEMP=/usr/src/app/temp/binary-tmp \
     DISABLE_QSV_IN_DOCKER=1 \
     DISABLE_VAAPI_IN_DOCKER=1
 
-RUN mkdir -p uploads outputs temp local-inputs cookies && chmod -R 0775 /usr/src/app
+RUN mkdir -p uploads outputs temp/binary-tmp local-inputs cookies && chmod -R 0775 /usr/src/app
 
 EXPOSE 5174
 

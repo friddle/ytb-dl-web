@@ -240,7 +240,6 @@ function ytdlpFlatJson(url) {
 
 const LIVE_STATUS_TTL_MS = 45_000;
 let liveStatusCache = { at: 0, platforms: null };
-let liveStatusInFlight = null;
 
 // Each probe opens a background tab on the platform, runs `js` there (same
 // origin fetch carries the login cookies), then closes the tab.
@@ -338,15 +337,24 @@ async function probePlatform(key, spec) {
 }
 
 // Merges live probes over the cookie-file based status; falls back cleanly.
-async function livePlatformStatus({ refresh = false } = {}) {
+// All probes run through one serial queue: each probe drives the browser's
+// active tab, so concurrent probes would race each other.
+let liveStatusQueue = Promise.resolve();
+function livePlatformStatus({ refresh = false, platform = null } = {}) {
   const base = loginStatus().platforms;
-  const fresh = Date.now() - liveStatusCache.at < LIVE_STATUS_TTL_MS;
-  if (!refresh && fresh && liveStatusCache.platforms) return liveStatusCache.platforms;
-  if (liveStatusInFlight) return liveStatusInFlight;
+  const targets = platform ? [String(platform).toLowerCase()] : Object.keys(PLATFORM_PROBES);
+  const cached = liveStatusCache.platforms;
+  // Full sync serves from cache while fresh (unless refresh); per-platform
+  // checks always run so the channel button gives a genuinely fresh answer.
+  if (!platform && !refresh && cached && Date.now() - liveStatusCache.at < LIVE_STATUS_TTL_MS) {
+    return Promise.resolve(cached);
+  }
 
-  liveStatusInFlight = (async () => {
-    const merged = { ...base };
-    for (const [key, spec] of Object.entries(PLATFORM_PROBES)) {
+  const run = async () => {
+    let merged = { ...(liveStatusCache.platforms || base) };
+    for (const key of targets) {
+      const spec = PLATFORM_PROBES[key];
+      if (!spec) continue;
       try {
         const probe = await probePlatform(key, spec);
         merged[key] = {
@@ -362,13 +370,11 @@ async function livePlatformStatus({ refresh = false } = {}) {
     }
     liveStatusCache = { at: Date.now(), platforms: merged };
     return merged;
-  })();
+  };
 
-  try {
-    return await liveStatusInFlight;
-  } finally {
-    liveStatusInFlight = null;
-  }
+  const job = liveStatusQueue.then(run, run);
+  liveStatusQueue = job.catch(() => {});
+  return job;
 }
 
 // ---------------------------------------------------------------------------
@@ -386,11 +392,12 @@ router.get("/api/media/config", rateLimit(60, 60_000), (_req, res) => {
   });
 });
 
-router.get("/api/media/login-status", rateLimit(60, 60_000), async (req, res) => {
+router.get("/api/media/login-status", rateLimit(120, 60_000), async (req, res) => {
   const refresh = ["1", "true"].includes(String(req.query.refresh || "").toLowerCase());
+  const platform = String(req.query.platform || "").trim().toLowerCase() || null;
   try {
-    const platforms = await livePlatformStatus({ refresh });
-    res.json({ ok: true, platforms });
+    const platforms = await livePlatformStatus({ refresh, platform });
+    res.json({ ok: true, platform, platforms });
   } catch (e) {
     // Never fail the status endpoint; degrade to the cookie-file snapshot.
     res.json({ ok: true, platforms: loginStatus().platforms, degraded: true });

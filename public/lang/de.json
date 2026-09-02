@@ -1246,8 +1246,7 @@
   "settings.chromeDriverlessUrl": "内置浏览器服务地址（http://chrome-driverless:9223）。在其中登录 Bilibili / 网易云 / QQ音乐，登录态会被 yt-dlp 复用。",
   "ph.chromeDriverlessUrl": "http://chrome-driverless:9223",
   "media.loginTitle": "🔐 Platform login status",
-  "media.loginHint": "Click a platform button below to open its QR login page in the built-in browser. Bilibili / Bilibili Live need a login to search & download; QQ Music, NetEase, YouTube search without login.",
-  "media.refreshLogin": "🔄 Refresh login status",
+  "media.loginHint": "Mit „Prüfen“ jede Plattform Anmeldung und VIP-Status einzeln prüfen; „Anmelden“ öffnet die QR-Seite im integrierten Browser. Bilibili benötigt Anmeldung für Suche & Download; QQ Music-, NetEase- und YouTube-Suche funktionieren ohne.",
   "media.resolveTitle": "🔗 Resolve links (any platform)",
   "media.resolveMode": "Resolve mode",
   "media.modeAuto": "Auto (single / collection)",
@@ -1282,5 +1281,6 @@
   "media.loggedIn": "✅ Angemeldet",
   "media.notLoggedIn": "⚠️ Nicht angemeldet",
   "media.scanLogin": "🛩️ QR-Anmeldung",
-  "media.vip": "VIP"
+  "media.vip": "VIP",
+  "media.check": "🔄 Prüfen"
 }

@@ -25,6 +25,10 @@ services:
       - CHROME_DRIVERLESS_URL=http://127.0.0.1:9223
       - CHROME_DRIVERLESS_DATA_DIR=/data/driverless
       - BROWSER_DATA_DIR=/data/driverless
+      - GHARMONIZE_BINARY_TMP_DIR=/usr/src/app/temp/binary-tmp
+      - TMPDIR=/usr/src/app/temp/binary-tmp
+      - TMP=/usr/src/app/temp/binary-tmp
+      - TEMP=/usr/src/app/temp/binary-tmp
       - PUID=${PUID:-1000}
       - PGID=${PGID:-1000}
       - DATA_DIR=/usr/src/app

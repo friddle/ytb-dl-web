@@ -6,6 +6,7 @@ import { initializeDynamicBinaries } from './binaries.js'
 import { rateLimit } from './rateLimit.js'
 import { normalizeTrustedExecutableSetting } from './safeProcess.js'
 import { getBinariesInfo, clearBinariesInfoCache } from './binariesInfo.js'
+import { writeEnvFileSync } from './envFile.js'
 import {
   decryptSecret,
   deriveSessionSecret,
@@ -69,13 +70,13 @@ function applyAllowedEnvValue(key, value) {
     case 'ENRICH_SPOTIFY_FOR_YT': process.env.ENRICH_SPOTIFY_FOR_YT = value; return;
     case 'MEDIA_COMMENT': process.env.MEDIA_COMMENT = value; return;
     case 'YTDLP_BIN': {
-      const executable = normalizeTrustedExecutableSetting(normalized)
+      const executable = normalizeTrustedExecutableSetting(normalized, 'yt-dlp')
       if (executable) process.env.YTDLP_BIN = executable
       else delete process.env.YTDLP_BIN
       return
     }
     case 'FFMPEG_BIN': {
-      const executable = normalizeTrustedExecutableSetting(normalized)
+      const executable = normalizeTrustedExecutableSetting(normalized, 'ffmpeg')
       if (executable) process.env.FFMPEG_BIN = executable
       else delete process.env.FFMPEG_BIN
       return
@@ -187,16 +188,8 @@ function writeEnv(updates, extraAllowed = []) {
     }
   }
   const clean = out.filter((line, idx, arr) => idx === 0 || line.trim() !== '' || arr[idx - 1].trim() !== '')
-  const envDir = path.dirname(ENV_PATH)
-  fs.mkdirSync(envDir, { recursive: true, mode: 0o700 })
-  const tmpPath = path.join(envDir, `.gharmonize-env.${process.pid}.${crypto.randomBytes(8).toString('hex')}.tmp`)
-  try {
-    fs.writeFileSync(tmpPath, clean.join('\n').trim() + '\n', { encoding: 'utf8', mode: 0o600, flag: 'wx' })
-    fs.renameSync(tmpPath, ENV_PATH)
-    try { fs.chmodSync(ENV_PATH, 0o600) } catch {}
-  } finally {
-    try { fs.rmSync(tmpPath, { force: true }) } catch {}
-  }
+  const contents = clean.join('\n').trim() + '\n'
+  writeEnvFileSync(ENV_PATH, contents)
 }
 
 function getEnv(key) {
@@ -407,7 +400,7 @@ router.post('/settings', authMiddleware, rateLimit(30, 60_000), express.json(), 
   try {
     for (const key of EXECUTABLE_SETTING_KEYS) {
       if (Object.prototype.hasOwnProperty.call(updates, key)) {
-        updates[key] = normalizeTrustedExecutableSetting(updates[key])
+        updates[key] = normalizeTrustedExecutableSetting(updates[key], key === 'YTDLP_BIN' ? 'yt-dlp' : 'ffmpeg')
       }
     }
     if (Object.prototype.hasOwnProperty.call(updates, 'YTDLP_EXTRA')) {
