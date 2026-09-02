@@ -4,7 +4,10 @@ import fs from "fs";
 import path from "path";
 import { spawnSafe } from "../modules/safeProcess.js";
 import { rateLimit } from "../modules/rateLimit.js";
+import { requireAuth } from "../modules/settings.js";
 import { loginStatus, isPlatformLoggedIn, exportCookiesTxt } from "../modules/chromeDriverless.js";
+import { adaptSearchItem } from "../modules/searchAdapter.js";
+import { recordSearch, listSearches, listMusicFiles, getStats, upsertPlatformStatus } from "../modules/db.js";
 import { getJob } from "../modules/store.js";
 import { YTDLP_BIN, getBinaryRuntimeEnv } from "../modules/binaries.js";
 import { getExtraArgs } from "../modules/config.js";
@@ -126,7 +129,13 @@ async function searchQqMusic(keyword, limit) {
       artist: singers,
       album: stripHtml(s.albumname || ""),
       durationSec: Number(s.interval) || null,
-      url: `https://y.qq.com/n/ryqq/songDetail/${songmid}`
+      url: `https://y.qq.com/n/ryqq/songDetail/${songmid}`,
+      // raw fields for the search adapter (vip / quality hints)
+      pay: s.pay || null,
+      size_flac: s.size_flac,
+      size_320: s.size_320,
+      size_128: s.size_128,
+      albummid: s.albummid || null
     };
   }).filter((it) => it.id && it.title);
 }
@@ -222,6 +231,9 @@ async function searchNetease(keyword, limit) {
     artist: (s.artists || []).map((a) => a.name).join(" / "),
     album: stripHtml(s.album?.name || s.albumname || ""),
     durationSec: Math.round((Number(s.duration) || 0) / 1000) || null,
+    // raw fields for the search adapter (vip hint) + cover
+    fee: s.fee,
+    albumPic: s.album?.picUrl || null,
     // Plain path (no "/#/") — the hash part never reaches yt-dlp / the server.
     url: `https://music.163.com/song?id=${s.id}`
   })).filter((it) => it.id && it.title);
@@ -239,7 +251,11 @@ async function searchYoutube(keyword, limit) {
     artist: stripHtml(e.uploader || e.channel || ""),
     album: "",
     durationSec: Number(e.duration) || null,
-    url: e.id ? `https://www.youtube.com/watch?v=${e.id}` : ""
+    url: e.id ? `https://www.youtube.com/watch?v=${e.id}` : "",
+    // raw fields for the search adapter
+    uploader_id: e.uploader_id || null,
+    view_count: e.view_count || null,
+    thumbnails: Array.isArray(e.thumbnails) ? e.thumbnails : null
   })).filter((it) => it.id && it.title && it.url);
 }
 
@@ -269,7 +285,11 @@ async function searchBilibili(keyword, limit) {
       artist: stripHtml(v.author || ""),
       album: "",
       durationSec: parseDurationToSec(v.duration),
-      url: `https://www.bilibili.com/video/${v.bvid}/`
+      url: `https://www.bilibili.com/video/${v.bvid}/`,
+      // raw fields for the search adapter
+      desc: v.description || v.desc || null,
+      play: v.play || null,
+      pic: v.pic || null
     })).filter((it) => it.id && it.title);
   });
 }
@@ -379,12 +399,75 @@ const PLATFORM_PROBES = {
   },
   youtube: {
     url: "https://www.youtube.com/",
-    js: `() => {
+    js: `async () => {
       try {
         const ck = document.cookie || '';
         const has = (re) => re.test(ck);
         const loggedIn = has(/(?:^|;\\s*)SID=/) || has(/(?:^|;\\s*)SAPISID=/) || has(/(?:^|;\\s*)__Secure-[13]PAPISID=/);
-        return { loggedIn, vip: false, vipLabel: '', uname: '' };
+        let uname = '', vip = false, vipLabel = '', premiumTitles = [];
+        // Account name via innertube accounts_list (robust against DOM changes).
+        try {
+          const get = (k) => window.ytcfg ? (typeof window.ytcfg.get === 'function' ? window.ytcfg.get(k) : (window.ytcfg.data_ || {})[k]) : undefined;
+          const ctx = get('INNERTUBE_CONTEXT');
+          const key = get('INNERTUBE_API_KEY');
+          if (ctx && key) {
+            const r = await fetch('https://www.youtube.com/youtubei/v1/account/accounts_list?key=' + encodeURIComponent(key) + '&prettyPrint=false', {
+              method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ context: ctx })
+            });
+            const j = await r.json();
+            const cards = ((((j || {}).contents || [])[0] || {}).accountPickerSectionRenderer || {}).contents || [];
+            const items = (((cards[0] || {}).accountItemSectionRenderer || {}).contents) || [];
+            for (const c of items) {
+              const air = (c || {}).accountItemRenderer;
+              if (!air) continue;
+              const nm = (air.accountName && (air.accountName.simpleText || (air.accountName.runs || []).map((x) => x.text).join(''))) || '';
+              if (nm && (air.isSelected || !uname)) uname = nm;
+              if (air.isSelected && nm) break;
+            }
+          }
+        } catch (e) {}
+        // Premium best-effort: the sidebar guide carries a /premium entry.
+        // Non-members always see an upsell CTA (Get/Try/Free, 获取/开通/试用);
+        // members see benefits/manage wording instead.
+        try {
+          const visit = (node, depth) => {
+            if (!node || typeof node !== 'object' || depth > 24) return;
+            if (Array.isArray(node)) { for (const n of node) visit(n, depth + 1); return; }
+            if (node.guideEntryRenderer) {
+              const nav = node.guideEntryRenderer.navigationEndpoint || {};
+              const url = ((nav.urlEndpoint || {}).url) || (((nav.commandMetadata || {}).webCommandMetadata || {}).url) || '';
+              if (/(^|=|\\/)premium($|\\?|&)/.test(String(url))) {
+                const t = node.guideEntryRenderer.formatedTitle || node.guideEntryRenderer.title || {};
+                const txt = t.simpleText || (t.runs || []).map((x) => x.text).join('') || '';
+                if (txt) premiumTitles.push(txt);
+              }
+            }
+            for (const k of Object.keys(node)) visit(node[k], depth + 1);
+          };
+          let data = window.ytInitialData;
+          if (!data) {
+            const get = (k) => window.ytcfg ? (typeof window.ytcfg.get === 'function' ? window.ytcfg.get(k) : (window.ytcfg.data_ || {})[k]) : undefined;
+            const ctx = get('INNERTUBE_CONTEXT');
+            const key = get('INNERTUBE_API_KEY');
+            if (ctx && key) {
+              const r = await fetch('https://www.youtube.com/youtubei/v1/guide?key=' + encodeURIComponent(key) + '&prettyPrint=false', {
+                method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ context: ctx })
+              });
+              data = await r.json();
+            }
+          }
+          visit(data, 0);
+          const upsell = /(get|try|free|trial|upgrade|join|obtener|prueba|gratis|probar|essai|essayer|gratuit|kostenlos|testen|ücretsiz|deneme|dene|katıl|yükselt|获取|獲取|开通|開通|免费|免費|试用|試用|加入|体验|體驗|升级|升級)/i;
+          const member = /(benefits|manage|member|your premium|权益|權益|权限|權限|管理|会员|會員|已加入|已开通|已開通|已购买|已購買)/i;
+          for (const t of premiumTitles) {
+            if (member.test(t)) { vip = true; break; }
+          }
+          if (!vip && premiumTitles.length) vip = !premiumTitles.every((t) => upsell.test(t));
+          if (vip) vipLabel = 'Premium';
+        } catch (e) {}
+        return { loggedIn, vip, vipLabel, uname };
       } catch (e) { return { loggedIn: false, vip: false, vipLabel: '', error: String(e).slice(0, 100) }; }
     }`
   },
@@ -392,15 +475,30 @@ const PLATFORM_PROBES = {
     url: "https://open.spotify.com/",
     js: `async () => {
       try {
-        let loggedIn = /(?:^|;\\s*)sp_dc=/.test(document.cookie || '');
-        if (!loggedIn) {
+        let loggedIn = false, uname = '', product = '', token = '';
+        try {
+          const r = await fetch('https://open.spotify.com/get_access_token?reason=transport&productType=web_player', { credentials: 'include' });
+          const j = await r.json();
+          if (j && j.accessToken) {
+            token = j.accessToken;
+            if (j.isAnonymous === false) loggedIn = true;
+            product = String(j.product || '').toLowerCase();
+          }
+        } catch (e) {}
+        if (!loggedIn && /(?:^|;\\s*)sp_dc=/.test(document.cookie || '')) loggedIn = true;
+        if (token) {
           try {
-            const r = await fetch('https://open.spotify.com/get_access_token?reason=transport&productType=web_player', { credentials: 'include' });
-            const j = await r.json();
-            if (j && j.accessToken && j.isAnonymous === false) loggedIn = true;
+            const me = await fetch('https://api.spotify.com/v1/me', { headers: { Authorization: 'Bearer ' + token } });
+            if (me.ok) {
+              const m = await me.json();
+              uname = m.display_name || m.email || '';
+              if (m.product) product = String(m.product).toLowerCase();
+              if (m.product && m.product !== 'free' && m.product !== 'open') loggedIn = true;
+            }
           } catch (e) {}
         }
-        return { loggedIn: !!loggedIn, vip: false, vipLabel: '', uname: '' };
+        const vip = product === 'premium';
+        return { loggedIn, vip, vipLabel: vip ? 'Premium' : '', uname, product };
       } catch (e) { return { loggedIn: false, vip: false, vipLabel: '', error: String(e).slice(0, 100) }; }
     }`
   }
@@ -451,6 +549,10 @@ function livePlatformStatus({ refresh = false, platform = null } = {}) {
       }
     }
     liveStatusCache = { at: Date.now(), platforms: merged };
+    // Persist the latest probe snapshot into SQLite (platform_status table).
+    for (const key of targets) {
+      if (merged[key]) upsertPlatformStatus(key, merged[key]);
+    }
     // Refresh the yt-dlp cookie exports alongside every status probe so fresh
     // logins in the embedded browser are usable by downloads immediately.
     try { exportCookiesTxt(); } catch { /* non-fatal */ }
@@ -502,6 +604,17 @@ router.get("/api/media/jobs-status", rateLimit(240, 60_000), (req, res) => {
     };
   });
   res.json({ ok: true, jobs });
+});
+
+// SQLite-backed history: recent searches, finished music library, counters.
+router.get("/api/media/history", requireAuth, rateLimit(60, 60_000), (req, res) => {
+  const limit = Math.max(1, Math.min(200, Number(req.query.limit) || 50));
+  res.json({
+    ok: true,
+    searches: listSearches({ limit }),
+    musicFiles: listMusicFiles({ limit }),
+    stats: getStats()
+  });
 });
 
 router.get("/api/media/login-status", rateLimit(120, 60_000), async (req, res) => {
@@ -559,6 +672,11 @@ router.get("/api/media/search", rateLimit(30, 60_000), async (req, res) => {
     } else {
       return res.status(400).json({ error: { code: "UNKNOWN_PLATFORM", message: "platform must be qqmusic | netease | bilibili | youtube" } });
     }
+    // Adapter pass: normalize every platform's raw payload into the rich
+    // common shape (vip / fileFormat / quality / creators / description…).
+    items = items.map((it) => adaptSearchItem(it));
+    // Durable history in SQLite (searches + search_items tables).
+    recordSearch({ keyword, platform, searchType: type, items });
     res.json({ ok: true, platform, type, keyword, count: items.length, items });
   } catch (err) {
     console.warn(`[media] search ${platform} failed:`, err?.message || err);

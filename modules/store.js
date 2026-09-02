@@ -390,8 +390,60 @@ export function cleanupCompletedJobsWithoutOutputs() {
 
 loadPersistedJobs();
 
+// Durable SQLite sync: mirrors every in-memory job (any status) into the jobs
+// table on the same 5s cadence as the JSON snapshot. Best-effort — a DB
+// problem must never affect downloads.
+let dbSync = null;
+async function syncJobsToDb() {
+  try {
+    if (!dbSync) dbSync = await import("./db.js");
+    const { upsertJob, insertMusicFile } = dbSync;
+    for (const job of jobs.values()) {
+      upsertJob({
+        id: job.id,
+        url: job.url || null,
+        platform: job.metadata?.platform || job.mediaPlatform || null,
+        mediaKind: job.metadata?.spotifyKind || (job.isPlaylist ? "playlist" : "song"),
+        title: job.title || job.metadata?.frozenTitle || job.metadata?.extracted?.title || null,
+        artist: job.artist || null,
+        album: job.album || null,
+        format: job.format || null,
+        bitrate: job.bitrate || null,
+        sampleRate: job.sampleRate,
+        status: job.status,
+        progress: job.progress,
+        currentPhase: job.currentPhase,
+        error: job.error,
+        resultPath: job.resultPath,
+        resultSizeBytes: job.resultSizeBytes,
+        isPlaylist: job.isPlaylist,
+        selectedIndices: job.selectedIndices,
+        clientBatch: job.clientBatch,
+        batchTotal: job.batchTotal,
+        meta: job.metadata,
+        createdAt: job.createdAt instanceof Date ? job.createdAt.toISOString() : job.createdAt
+      });
+      if (job.status === "completed" && job.resultPath) {
+        insertMusicFile({
+          jobId: job.id,
+          title: job.title || job.metadata?.frozenTitle || null,
+          artist: job.artist || null,
+          platform: job.metadata?.platform || job.mediaPlatform || null,
+          sourceUrl: job.url || null,
+          filePath: job.resultPath,
+          sizeBytes: job.resultSizeBytes,
+          meta: { format: job.format, bitrate: job.bitrate }
+        });
+      }
+    }
+  } catch (e) {
+    console.warn("[store] sqlite sync skipped:", e?.message || e);
+  }
+}
+
 const persistInterval = setInterval(() => {
   writePersistedJobs();
+  syncJobsToDb();
 }, PERSIST_INTERVAL_MS);
 persistInterval.unref?.();
 
