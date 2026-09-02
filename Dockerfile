@@ -10,6 +10,7 @@ RUN set -eux; \
     apt-get install -y --no-install-recommends \
         ca-certificates \
         tzdata \
+        ffmpeg \
         intel-media-va-driver \
         libva-drm2 \
         vainfo \
