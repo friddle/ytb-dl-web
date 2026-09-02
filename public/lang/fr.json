@@ -1375,5 +1375,8 @@
   "home.jobFailed": "Échoué",
   "home.jobCanceled": "Annulé",
   "home.expandPlaylists": "Playliste développée",
-  "home.expandFailed": "Échec de résolution de la playlist"
+  "home.expandFailed": "Échec de résolution de la playlist",
+  "nav.upload": "⬆️ Téléverser",
+  "nav.ytlive": "✨ YTLive",
+  "nav.disc": "📀 Disc"
 }

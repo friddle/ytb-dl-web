@@ -1348,5 +1348,8 @@
   "home.jobFailed": "失败",
   "home.jobCanceled": "已取消",
   "home.expandPlaylists": "歌单已展开",
-  "home.expandFailed": "歌单解析失败"
+  "home.expandFailed": "歌单解析失败",
+  "nav.upload": "⬆️ 上传",
+  "nav.ytlive": "✨ YTLive",
+  "nav.disc": "📀 Disc"
 }

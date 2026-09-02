@@ -1,6 +1,9 @@
+import { MediaConverterApp } from './MediaConverterApp.js';
 import { settingsManager } from './SettingsManager.js';
 import { jobsPanelManager } from './JobsPanelManager.js';
+import { initDiscRipperPanel } from './discRipperPanel.js';
 import { versionManager } from './VersionManager.js';
+import { TrackExtractorManager } from './TrackExtractorManager.js';
 import { HomeApp } from './HomeApp.js';
 
 async function waitForRuntimeBinariesReady() {
@@ -62,9 +65,51 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.versionManager = versionManager;
     window.settingsManager = settingsManager;
 
+    // Upload / convert view (classic pane restored as its own tab).
+    try {
+        const app = new MediaConverterApp();
+        await app.initialize();
+        const trackExtractorManager = new TrackExtractorManager(app);
+        await trackExtractorManager.initialize();
+        window.trackExtractorManager = trackExtractorManager;
+        window.mediaConverterApp = app;
+    } catch (err) {
+        console.error('MediaConverterApp init failed:', err);
+    }
+
+    // Home view (platform status + aggregated search + downloads).
     const homeApp = new HomeApp();
     homeApp.initialize();
     window.homeApp = homeApp;
 
+    initDiscRipperPanel();
+    setupCollapsibleSections();
+
     hideRuntimeBinariesOverlay();
 });
+
+window.versionManager = versionManager;
+
+// Collapsible cards inside the restored upload view.
+function setupCollapsibleSections() {
+    function setupCollapsible(headerId, contentId) {
+        const header = document.getElementById(headerId);
+        const content = document.getElementById(contentId);
+        if (header && content) {
+            header.addEventListener('click', function() {
+                header.classList.toggle('collapsed');
+                content.classList.toggle('collapsed');
+            });
+        }
+    }
+
+    setupCollapsible('spotifyPreviewHeader', 'spotifyPreviewContent');
+    setupCollapsible('playlistPreviewHeader', 'playlistPreviewContent');
+    setupCollapsible('jobsHeader', 'jobsContent');
+    const jobsHeader = document.getElementById('jobsHeader');
+    const jobsContent = document.getElementById('jobsContent');
+    if (jobsHeader && jobsContent) {
+        jobsHeader.classList.remove('collapsed');
+        jobsContent.classList.remove('collapsed');
+    }
+}

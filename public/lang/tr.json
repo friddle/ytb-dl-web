@@ -1376,5 +1376,8 @@
   "home.jobFailed": "Başarısız",
   "home.jobCanceled": "İptal edildi",
   "home.expandPlaylists": "Çalma listesi genişletildi",
-  "home.expandFailed": "Çalma listesi çözümleme hatası"
+  "home.expandFailed": "Çalma listesi çözümleme hatası",
+  "nav.upload": "⬆️ Yükle",
+  "nav.ytlive": "✨ YTLive",
+  "nav.disc": "📀 Disc"
 }

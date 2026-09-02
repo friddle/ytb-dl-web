@@ -83,19 +83,13 @@ export class HomeApp {
     this.formatSelect?.addEventListener('change', () => { this.syncBitrateOptions(); this.persistDlPrefs(); });
     this.bitrateSelect?.addEventListener('change', () => this.persistDlPrefs());
 
-    // Top tabs: 首页 / 设置
-    this.topTabsEl?.querySelectorAll('.top-tab').forEach((tab) => {
+    // Top tabs: 首页 / 上传 / Disc / 设置 (YTLive is a plain link)
+    this.topTabsEl?.querySelectorAll('.top-tab[data-view]').forEach((tab) => {
       tab.addEventListener('click', () => this.showView(tab.dataset.view));
     });
     document.getElementById('settingsBackBtn')?.addEventListener('click', () => this.showView('home'));
     document.getElementById('settingsSaveBtn')?.addEventListener('click', () => this.saveSettings());
     this.settingsBundledCheckbox?.addEventListener('change', () => this.syncSettingsLockUi());
-    document.getElementById('settingsCheckUpdateBtn')?.addEventListener('click', async (btn) => {
-      const vm = window.versionManager;
-      if (!vm) return;
-      btn.currentTarget?.setAttribute('disabled', '1');
-      try { await vm.checkNow(); } finally { btn.currentTarget?.removeAttribute('disabled'); this.fillSettings(); }
-    });
 
     document.getElementById('chromeBrowserOpenBtn')?.addEventListener('click', () => {
       window.open(this.browserBase(), '_blank', 'noopener,noreferrer');
@@ -648,22 +642,22 @@ export class HomeApp {
   }
 
   // ------------------------------------------------------------------
-  // Views: home / settings (top tabs)
+  // Views: home / upload / disc / settings (top tabs)
   // ------------------------------------------------------------------
 
   showView(view) {
-    const isSettings = view === 'settings';
-    if (this.settingsPage) this.settingsPage.hidden = !isSettings;
-    document.getElementById('homeMain')?.toggleAttribute('hidden', isSettings);
-    this.topTabsEl?.querySelectorAll('.top-tab').forEach((tab) => {
-      const active = (tab.dataset.view === 'settings') === isSettings;
+    const views = { home: 'homeMain', upload: 'uploadView', disc: 'discView', settings: 'settingsPage' };
+    for (const [name, id] of Object.entries(views)) {
+      const el = document.getElementById(id);
+      if (el) el.hidden = name !== view;
+    }
+    this.topTabsEl?.querySelectorAll('.top-tab[data-view]').forEach((tab) => {
+      const active = tab.dataset.view === view;
       tab.classList.toggle('active', active);
       tab.setAttribute('aria-selected', active ? 'true' : 'false');
     });
-    if (isSettings) {
-      this.fillSettings();
-      window.scrollTo({ top: 0 });
-    }
+    if (view === 'settings') this.fillSettings();
+    window.scrollTo({ top: 0 });
   }
 
   fillSettings() {
