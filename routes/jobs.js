@@ -1626,6 +1626,7 @@ router.post("/api/jobs", rateLimit(60, 60_000), upload.single("file"), async (re
     }
 
     const job = createJob({
+      url: url || null,
       status: "queued",
       progress: 0,
       format,
@@ -1863,7 +1864,9 @@ setTimeout(cleanupOldChunks, 5000);
     for (const row of rows) {
       let meta = {};
       try { meta = row.meta_json ? JSON.parse(row.meta_json) : {}; } catch { /* tolerate */ }
-      const resumable = !!row.url
+      // jobs created before the url column was populated carry it in metadata
+      const rowUrl = row.url || meta.url || meta.originalUrl || meta.webpage_url || null;
+      const resumable = !!rowUrl
         && !meta.spotifyMapId
         && meta.source !== "file"
         && meta.source !== "retag";
@@ -1874,7 +1877,7 @@ setTimeout(cleanupOldChunks, 5000);
       }
       const job = createJob({
         id: row.id,
-        url: row.url,
+        url: rowUrl,
         format: row.format || "original",
         bitrate: row.bitrate || "auto",
         sampleRate: row.sample_rate || 48000,
