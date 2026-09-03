@@ -206,7 +206,6 @@
 
         <!-- library pane: finished downloads, playable straight from disk -->
         <div id="dlLibraryPane" hidden>
-          <div class="dl-filter"><small class="comment" data-i18n="home.libraryHint">已完成的歌曲存在服务器本地，点 ▶ 直接播放本地文件。</small></div>
           <div id="dlLibraryList" class="home-results-list"></div>
           <div id="dlLibraryEmpty" class="comment" data-i18n="home.libraryEmpty" style="padding:8px 2px;">还没有已完成的下载。</div>
         </div>
@@ -232,7 +231,16 @@
               <button type="button" id="dqNextBtn" class="btn-outline">→</button>
             </div>
           </div>
-          <small class="comment" data-i18n="home.libraryHint">提示：下载完成后可直接用 Infuse / Jellyfin / Navidrome 等播放器扫描媒体库。</small>
+
+          <!-- Downloaded List: finished files, click ▶ to play from local disk -->
+          <div class="home-dl-queue" id="dlDownloadedSection" style="margin-top:10px;">
+            <div class="home-dl-queue__head">
+              <span data-i18n="home.dlDownloadedTitle">📥 下载完成列表</span>
+              <span id="dlDownloadedCount" class="comment"></span>
+            </div>
+            <div id="dlDownloadedList" class="home-results-list" style="max-height:300px;"></div>
+            <div id="dlDownloadedEmpty" class="comment" data-i18n="home.libraryEmpty" style="padding:6px 2px;display:none;">还没有已完成的下载。</div>
+          </div>
         </div>
 
         <!-- config pane: song-scope and playlist-scope download settings -->

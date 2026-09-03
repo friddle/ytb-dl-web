@@ -1461,5 +1461,6 @@
   },
   "ui": {
     "close": "Close"
-  }
+  },
+  "home.dlDownloadedTitle": "📥 Liste téléchargée"
 }

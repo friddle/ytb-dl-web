@@ -117,6 +117,10 @@ export class HomeApp {
     this.dlConfigPane = document.getElementById('dlConfigPane');
     this.dlLibraryPane = document.getElementById('dlLibraryPane');
     this.dlLibraryList = document.getElementById('dlLibraryList');
+    // Downloaded List (sibling of the progress queue, always visible)
+    this.dlDownloadedList = document.getElementById('dlDownloadedList');
+    this.dlDownloadedEmpty = document.getElementById('dlDownloadedEmpty');
+    this.dlDownloadedCount = document.getElementById('dlDownloadedCount');
     this.dlLibraryEmpty = document.getElementById('dlLibraryEmpty');
     this.dlStatusFilterEl = document.getElementById('dlStatusFilter');
     this.dlStatusFilter = 'all';
@@ -927,7 +931,7 @@ export class HomeApp {
     if (this.dlConfigPane) this.dlConfigPane.hidden = this.dlTab !== 'config';
     if (this.dlLibraryPane) this.dlLibraryPane.hidden = this.dlTab !== 'library';
     if (this.dlTab === 'config') this.populateScopeConfig();
-    if (this.dlTab === 'library') this.loadLibrary();
+    if (this.dlTab === 'library' || this.dlTab === 'status') this.loadLibrary();
   }
 
   // 音乐库: scans the server's download directory on disk and groups files by
@@ -945,11 +949,21 @@ export class HomeApp {
   }
 
   renderLibrary() {
-    if (!this.dlLibraryList) return;
-    this.dlLibraryList.innerHTML = '';
-    const groups = this.libraryGroups || [];
-    if (this.dlLibraryEmpty) this.dlLibraryEmpty.style.display = groups.length ? 'none' : '';
-    for (const g of groups) this.dlLibraryList.appendChild(this.libraryGroup(g));
+    if (this.dlLibraryList) {
+      this.dlLibraryList.innerHTML = '';
+      const groups = this.libraryGroups || [];
+      if (this.dlLibraryEmpty) this.dlLibraryEmpty.style.display = groups.length ? 'none' : '';
+      for (const g of groups) this.dlLibraryList.appendChild(this.libraryGroup(g));
+    }
+    // Downloaded List (next to the progress queue): flat, newest first, playable
+    if (this.dlDownloadedList) {
+      this.dlDownloadedList.innerHTML = '';
+      const files = (this.libraryGroups || []).flatMap((g) => g.files || [])
+        .sort((a, b) => String(b.created_at || b.mtime || '').localeCompare(String(a.created_at || a.mtime || '')));
+      for (const f of files.slice(0, 120)) this.dlDownloadedList.appendChild(this.libraryRow(f));
+      if (this.dlDownloadedEmpty) this.dlDownloadedEmpty.style.display = files.length ? 'none' : '';
+      if (this.dlDownloadedCount) this.dlDownloadedCount.textContent = files.length ? `${files.length}` : '';
+    }
   }
 
   libraryGroup(g) {
@@ -1351,6 +1365,11 @@ export class HomeApp {
           if (!terminal) active += 1;
         }
         this.renderQueue();
+        const doneNow = rows.filter((r) => r.status === 'completed').length;
+        if (doneNow !== this._pollDoneCount) {
+          this._pollDoneCount = doneNow;
+          this.loadLibrary(); // refresh the Downloaded List
+        }
         if (!active) { clearInterval(this._queuePollTimer); this._queuePollTimer = null; }
       } catch { /* transient network error; retry on next tick */ }
     };
@@ -1710,6 +1729,7 @@ export class HomeApp {
     if (view === 'download') {
       this.loadToolsLine(this.dlToolsText);
       this.populateScopeConfig();
+      this.loadLibrary(); // refresh the Downloaded List
     }
     if (view === 'upload') this.loadToolsLine(this.uploadToolsText);
     // Disc progress SSE only runs while the Disc tab is visible.

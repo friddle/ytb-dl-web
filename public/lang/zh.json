@@ -1434,5 +1434,6 @@
   },
   "ui": {
     "close": "关闭"
-  }
+  },
+  "home.dlDownloadedTitle": "📥 下载完成列表"
 }

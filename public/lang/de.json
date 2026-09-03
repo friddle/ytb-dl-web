@@ -1433,5 +1433,6 @@
   },
   "ui": {
     "close": "Close"
-  }
+  },
+  "home.dlDownloadedTitle": "📥 Download-Liste"
 }
