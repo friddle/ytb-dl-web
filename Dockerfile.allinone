@@ -60,13 +60,24 @@ ENV NODE_ENV=production PORT=5174 GHARMONIZE_HOST=0.0.0.0 \
     PROFILE_NAME=default
 
 # Only the runtime-writable dirs get their own tiny layer; chmod -R on the
-# whole app tree would duplicate every file's metadata into this layer.
+# whole app would duplicate every file's metadata into this layer.
 RUN mkdir -p /usr/src/app/uploads /usr/src/app/outputs /usr/src/app/temp \
              /usr/src/app/local-inputs /usr/src/app/cookies /usr/src/app/data/db \
              /opt/gharmonize/cache/binaries /opt/gharmonize/browser-data \
     && chmod -R 0775 /usr/src/app/uploads /usr/src/app/outputs /usr/src/app/temp \
                      /usr/src/app/local-inputs /usr/src/app/cookies /usr/src/app/data \
                      /opt/gharmonize
+
+# Bake the runtime binaries (yt-dlp / deno / mkvmerge / ffmpeg) at BUILD time by
+# running the very same manager the app uses at runtime. Containers then start
+# with zero runtime downloads. On GH Actions the network is fast and reliable;
+# if a single optional tool fails here the build fails, so the image is honest.
+RUN set -eux; \
+    export GHARMONIZE_WEB_BINARIES=1 \
+           GHARMONIZE_WEB_CACHE_DIR=/opt/gharmonize/cache/binaries \
+           HOME=/root; \
+    node --input-type=module -e "import('/usr/src/app/modules/binaries.js').then(m => m.initializeDynamicBinaries()).then(() => console.log('[bake] runtime binaries ready')).catch(e => { console.error('[bake] failed:', e && e.message); process.exit(1); })"; \
+    ls -la /opt/gharmonize/cache/binaries
 
 COPY docker-entrypoint.sh /usr/src/app/docker-entrypoint.sh
 RUN chmod +x /usr/src/app/docker-entrypoint.sh
