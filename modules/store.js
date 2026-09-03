@@ -390,6 +390,39 @@ export function cleanupCompletedJobsWithoutOutputs() {
 
 loadPersistedJobs();
 
+// Durable SQLite sync: mirrors every in-memory job (any status) into the jobs
+// table on the same 5s cadence as the JSON snapshot, in one transaction.
+// Best-effort — a DB problem must never affect downloads.
+let dbSync = null;
+async function syncJobsToDb() {
+  try {
+    if (!dbSync) dbSync = await import("./db.js");
+    const { upsertJob, insertMusicFile, getDb } = dbSync;
+    const rows = [...jobs.values()].map(jobToDbRow);
+    if (!rows.length) return;
+    getDb().transaction(() => {
+      for (const r of rows) {
+        upsertJob(r);
+        if (r.status === "completed" && r.resultPath) {
+          insertMusicFile({
+            jobId: r.id,
+            title: r.title,
+            artist: r.artist,
+            album: r.album,
+            platform: r.platform,
+            sourceUrl: r.url,
+            filePath: r.resultPath,
+            sizeBytes: r.resultSizeBytes,
+            meta: { format: r.format, bitrate: r.bitrate }
+          });
+        }
+      }
+    })();
+  } catch (e) {
+    console.warn("[store] sqlite sync skipped:", e?.message || e);
+  }
+}
+
 const persistInterval = setInterval(() => {
   writePersistedJobs();
   syncJobsToDb();
