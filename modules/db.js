@@ -10,6 +10,7 @@
 import fs from "fs";
 import path from "path";
 import Database from "better-sqlite3";
+import { resolveDownloadPathToAbs } from "./outputPaths.js";
 
 const BASE_DIR = process.env.DATA_DIR || process.cwd();
 const DB_DIR = process.env.GHARMONIZE_DB_DIR || path.join(BASE_DIR, "db");
@@ -210,14 +211,26 @@ export function upsertJob(job) {
 // ---------------------------------------------------------------------------
 
 export function insertMusicFile(entry) {
-  if (!entry?.filePath) return;
-  // job.resultPath sometimes arrives as a JSON blob ({"outputPath":"/download/…"})
-  let fp = String(entry.filePath);
+  // job.resultPath comes in many shapes: a plain "/download/…" string, a
+  // {outputPath} object, an array of result objects, or a JSON blob string.
+  let fp = entry?.filePath;
+  if (Array.isArray(fp)) fp = fp[0];
+  if (fp && typeof fp === "object") fp = fp.outputPath || fp.path || null;
+  fp = fp == null ? "" : String(fp);
   if (fp.startsWith("{")) {
-    try { fp = String(JSON.parse(fp).outputPath || fp); } catch {}
-    try { fp = decodeURIComponent(fp); } catch {}
+    try { fp = String(JSON.parse(fp).outputPath || fp); } catch { /* keep raw */ }
   }
+  try { fp = decodeURIComponent(fp); } catch { /* already decoded */ }
+  if (!fp.startsWith("/download/")) return; // reject garbage like "[object Object]"
   entry = { ...entry, filePath: fp };
+  // Derive a sane format token ("mp3", "flac", …); processor values may be objects.
+  const ffRaw = entry.fileFormat != null ? String(entry.fileFormat) : (fp.split(".").pop() || "");
+  const fileFormat = /^[a-z0-9]{1,5}$/i.test(ffRaw.trim()) ? ffRaw.trim().toLowerCase() : null;
+  // Fill in the real size from disk when the job doesn't carry one.
+  let sizeBytes = entry.sizeBytes;
+  if (sizeBytes == null) {
+    try { sizeBytes = fs.statSync(resolveDownloadPathToAbs(fp) || fp).size; } catch { /* best-effort */ }
+  }
   safe(() => {
     const p = Object.fromEntries(Object.entries({
       job_id: entry.jobId || null,
@@ -227,8 +240,8 @@ export function insertMusicFile(entry) {
       platform: entry.platform || null,
       source_url: entry.sourceUrl || null,
       file_path: entry.filePath,
-      file_format: entry.fileFormat || (String(entry.filePath).split(".").pop() || "").toLowerCase() || null,
-      size_bytes: entry.sizeBytes ?? null,
+      file_format: fileFormat,
+      size_bytes: sizeBytes ?? null,
       duration_sec: entry.durationSec ?? null,
       meta_json: entry.meta ? JSON.stringify(entry.meta).slice(0, 8000) : null,
       created_at: nowIso()
