@@ -8,8 +8,8 @@ On current builds, runtime tools such as **ffmpeg**, **ffprobe**, **mkvmerge**, 
 
 ## Supported Sources
 
-* YouTube / YouTube Music
-* Spotify
+* 油管 / 油管 Music
+* 声破天
 * Apple Music
 * Deezer
 * X (Twitter)
@@ -23,16 +23,16 @@ On current builds, runtime tools such as **ffmpeg**, **ffprobe**, **mkvmerge**, 
 
 ## Music Mapping and Collections
 
-* Spotify, Apple Music, and Deezer support **track / playlist / album** workflows
+* 声破天, Apple Music, and Deezer support **track / playlist / album** workflows
 * Deezer supports personalized, locale-prefixed or locale-free **`inspired-by-*` smart tracklists** through an encrypted `DEEZER_ARL` setting
-* Automatic mapping from supported music-service items to YouTube / YouTube Music sources
-* Optional preference for Spotify metadata during tagging (`PREFER_SPOTIFY_TAGS`, see [CONFIGURATION.md](CONFIGURATION.md))
+* Automatic mapping from supported music-service items to 油管 / 油管 Music sources
+* Optional preference for 声破天 metadata during tagging (`PREFER_SPOTIFY_TAGS`, see [CONFIGURATION.md](CONFIGURATION.md))
 
 ---
 
 ## Dedicated YTLive Interface
 
-A music-first interface for YouTube and YouTube Music workflows, including search tabs, discovery presets, embedded playback, and a shared job queue with the classic UI.
+A music-first interface for 油管 and 油管 Music workflows, including search tabs, discovery presets, embedded playback, and a shared job queue with the classic UI.
 
 Full guide: [YTLIVE.md](YTLIVE.md)
 

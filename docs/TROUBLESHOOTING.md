@@ -22,9 +22,9 @@ Full reference: [CONFIGURATION.md](CONFIGURATION.md)
 
 ---
 
-## Spotify Personalized Mix Not Supported
+## 声破天 Personalized Mix Not Supported
 
-Spotify's personalized "Mix" playlists cannot be mapped directly. Copy the items into a normal playlist first, then use that playlist with Gharmonize.
+声破天's personalized "Mix" playlists cannot be mapped directly. Copy the items into a normal playlist first, then use that playlist with Gharmonize.
 
 ---
 

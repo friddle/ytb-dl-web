@@ -92,13 +92,13 @@ The override contains all NVIDIA-specific settings (`gpus: all`, `runtime: nvidi
 
 ---
 
-## Embedded browser + Chinese platforms (Bilibili / NetEase / QQ Music)
+## Embedded browser + Chinese platforms (小破站 / NetEase / QQ Music)
 
 A `chrome-driverless` submodule provides a headed embedded browser (port `9223`) for logging into
-Bilibili, NetEase (music.163.com) and QQ Music. Login state is saved and exported as per-platform
+小破站, NetEase (music.163.com) and QQ Music. Login state is saved and exported as per-platform
 `*-cookies.txt` files inside the cookies mount, which yt-dlp reuses during downloads.
 
-Open the web UI, click the **🛩️ 内置浏览器** nav button, log in to Bilibili / NetEase / QQ Music
+Open the web UI, click the **🛩️ 内置浏览器** nav button, log in to 小破站 / NetEase / QQ Music
 once, then download. The login status and browser page are also reachable via `/api/chromebrowser`.
 These platforms are detected in `modules/platform.js` and downloaded via yt-dlp with the
 embedded-browser cookies as fallback.

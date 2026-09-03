@@ -57,7 +57,7 @@ If you set these variables to explicit host paths, Gharmonize will prefer those 
 
 ---
 
-## Age-Restricted YouTube Content
+## Age-Restricted 油管 Content
 
 To download age-restricted content you need:
 

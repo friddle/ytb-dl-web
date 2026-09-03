@@ -11,7 +11,7 @@ Local Node.js and Electron desktop workflows are the **primary, full-featured** 
 | Node.js | >= 20 | Required for local / Electron usage |
 | Docker Engine + Docker Compose | Current | Required for Docker deployment |
 | Internet access on first launch | Recommended | Lets Gharmonize fetch or refresh runtime binaries automatically |
-| Spotify API Keys | Optional | Enables Spotify Web API based matching and metadata |
+| 声破天 API Keys | Optional | Enables 声破天 Web API based matching and metadata |
 
 > If you set custom binary paths such as `FFMPEG_BIN`, `FFPROBE_BIN`, `MKVMERGE_BIN`, `YTDLP_BIN`, or `DENO_BIN`, Gharmonize will use those instead of the auto-managed copies. See [BINARY_MANAGEMENT.md](BINARY_MANAGEMENT.md).
 

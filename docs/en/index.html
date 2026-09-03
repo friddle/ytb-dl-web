@@ -3,9 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Gharmonize - Self-hosted Multi-platform Music Downloader | Bilibili / NetEase / QQ Music / YouTube / Spotify</title>
-<meta name="description" content="Gharmonize (ytb-dl-web) is a self-hosted music downloader: sign in to Bilibili, NetEase Cloud Music, QQ Music, YouTube and Spotify through a built-in anti-detection browser, auto-detect login &amp; VIP status, search, parse playlists, batch download and convert to MP3/FLAC. Deploys with one Docker command.">
-<meta name="keywords" content="music downloader,self-hosted,NAS,Bilibili,NetEase,QQ Music,YouTube,Spotify,yt-dlp,Docker,Navidrome,music library,VIP,QR login">
+<title>Gharmonize - Self-hosted Multi-platform Music Downloader | B-Site / Cloud Village / Penguin Music / Oil Tube / Broken Sound</title>
+<meta name="description" content="Gharmonize (ytb-dl-web) is a self-hosted music downloader: sign in to B-Site, Cloud Village Music, Penguin Music, Oil Tube and Broken Sound through a built-in anti-detection browser, auto-detect login &amp; VIP status, search, parse playlists, batch download and convert to MP3/FLAC. Deploys with one Docker command.">
+<meta name="keywords" content="music downloader,self-hosted,NAS,B-Site,Cloud Village,Penguin Music,Oil Tube,Broken Sound,yt-dlp,Docker,Navidrome,music library,VIP,QR login">
 <link rel="canonical" href="https://friddle.github.io/ytb-dl-web/en/">
 <link rel="alternate" hreflang="zh-CN" href="https://friddle.github.io/ytb-dl-web/">
 <link rel="alternate" hreflang="en" href="https://friddle.github.io/ytb-dl-web/en/">
@@ -13,7 +13,7 @@
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Gharmonize">
 <meta property="og:title" content="Gharmonize - Self-hosted Multi-platform Music Downloader">
-<meta property="og:description" content="Sign in via built-in browser to Bilibili/NetEase/QQ Music/YouTube/Spotify, auto VIP detection, batch download &amp; convert, one-command Docker deploy.">
+<meta property="og:description" content="Sign in via built-in browser to B-Site/Cloud Village/Penguin Music/Oil Tube/Broken Sound, auto VIP detection, batch download &amp; convert, one-command Docker deploy.">
 <meta property="og:url" content="https://friddle.github.io/ytb-dl-web/en/">
 <meta property="og:image" content="https://friddle.github.io/ytb-dl-web/img/home.webp">
 <meta name="twitter:card" content="summary_large_image">
@@ -21,12 +21,12 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎵</text></svg>">
 <link rel="stylesheet" href="../assets/style.css">
 <script type="application/ld+json">
-{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Gharmonize (ytb-dl-web)","applicationCategory":"MultimediaApplication","operatingSystem":"Docker, Linux, NAS","description":"Self-hosted multi-platform music downloader with built-in anti-detection browser for Bilibili/NetEase/QQ Music/YouTube/Spotify, VIP detection, batch download and format conversion.","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"featureList":["Multi-platform search","Playlist/link parsing","QR login & VIP detection","Batch download & MP3/FLAC conversion","Lyrics & cover metadata","One-command Docker deploy"]}
+{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Gharmonize (ytb-dl-web)","applicationCategory":"MultimediaApplication","operatingSystem":"Docker, Linux, NAS","description":"Self-hosted multi-platform music downloader with built-in anti-detection browser for B-Site/Cloud Village/Penguin Music/Oil Tube/Broken Sound, VIP detection, batch download and format conversion.","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"featureList":["Multi-platform search","Playlist/link parsing","QR login & VIP detection","Batch download & MP3/FLAC conversion","Lyrics & cover metadata","One-command Docker deploy"]}
 </script>
 <script type="application/ld+json">
 {"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
 {"@type":"Question","name":"How is this different from other downloaders?","acceptedAnswer":{"@type":"Answer","text":"The biggest difference is that you sign in with your own account: no third-party parsing APIs, no shared account pools. You log in inside the built-in browser, VIP privileges are your account's own, and sessions stay local. Everything else is normal logic."}},
-{"@type":"Question","name":"Do I need to sign in to download music?","acceptedAnswer":{"@type":"Answer","text":"Chinese platforms (QQ Music / NetEase / Bilibili) can be searched without signing in; VIP sources require signing in to the corresponding platform. YouTube and Spotify require sign-in."}},
+{"@type":"Question","name":"Do I need to sign in to download music?","acceptedAnswer":{"@type":"Answer","text":"Chinese platforms (Penguin Music / Cloud Village / B-Site) can be searched without signing in; VIP sources require signing in to the corresponding platform. Oil Tube and Broken Sound require sign-in."}},
 {"@type":"Question","name":"Can I download VIP songs?","acceptedAnswer":{"@type":"Answer","text":"Yes. Sign in with your VIP membership (VIP / Premium / Black Vinyl) in the built-in browser; once VIP status is detected the corresponding sources become downloadable."}},
 {"@type":"Question","name":"How do I install it?","acceptedAnswer":{"@type":"Answer","text":"Install Docker and run docker compose up -d. The image is hosted on ghcr.io with the browser bundled; default port is 5174."}},
 {"@type":"Question","name":"Where is my music stored?","acceptedAnswer":{"@type":"Answer","text":"Entirely on your own NAS / server (configured via volume mounts). It can be scanned directly by Navidrome, Jellyfin or Infuse."}}]}
@@ -51,12 +51,11 @@
 
 <header class="hero container">
   <h1>Self-hosted<br><span class="accent">Multi-platform Music Downloader</span></h1>
-  <p class="sub">Built-in anti-detection browser for signing in to Bilibili / NetEase / QQ Music / YouTube / Spotify, live login &amp; VIP detection, search · playlist parsing · batch download · auto tagging — one command on your NAS.</p>
+  <p class="sub">Built-in anti-detection browser for signing in to B-Site / Cloud Village / Penguin Music / Oil Tube / Broken Sound, live login &amp; VIP detection, search · playlist parsing · batch download · auto tagging — one command on your NAS.</p>
   <div class="cta">
     <a class="btn primary" href="#install">🚀 Get started</a>
     <a class="btn ghost" href="https://github.com/friddle/ytb-dl-web" target="_blank" rel="noopener">⭐ Source on GitHub</a>
   </div>
-  <div class="badges"><span>5 platforms</span><span>QR login + VIP detection</span><span>Your own account · no third-party APIs</span><span>One-command Docker deploy</span><span>6 UI languages</span><span>100% local data</span></div>
 </header>
 
 <section id="why" style="padding-top:10px">
@@ -77,11 +76,10 @@
       <div class="card"><div class="icon">🧭</div><h3>Platform dashboard</h3><p>Live login status and VIP badges (VIP / Premium / Black Vinyl) for every platform, with a per-channel refresh button.</p></div>
       <div class="card"><div class="icon">🛩️</div><h3>Anti-detection browser</h3><p>chrome-driverless hides automation fingerprints: scan QR codes, sign in, solve challenges in a real browser; cookies are exported automatically.</p></div>
       <div class="card"><div class="icon">🔎</div><h3>Search &amp; link parsing</h3><p>Multi-platform search for songs and playlists; paste any track/playlist/collection/video link and expand it into per-item tasks.</p></div>
-      <div class="card"><div class="icon">⬇️</div><h3>Batch download &amp; retry</h3><p>Per-task progress, readable failure reasons, one-click retry. QQ Music uses browser vkey direct links; other platforms fall back to yt-dlp + cookies.</p></div>
+      <div class="card"><div class="icon">⬇️</div><h3>Batch download &amp; retry</h3><p>Per-task progress, readable failure reasons, one-click retry. Penguin Music uses browser vkey direct links; other platforms fall back to yt-dlp + cookies.</p></div>
       <div class="card"><div class="icon">🎵</div><h3>Auto convert &amp; tag</h3><p>Convert to MP3 / FLAC / M4A after download and write cover art and lyrics tags; override format and subfolder per batch.</p></div>
       <div class="card"><div class="icon">🐳</div><h3>One-command Docker</h3><p>Image bundles the download engine and headless browser — docker compose up -d and you're done. PUID/PGID and read-only container supported.</p></div>
       <div class="card"><div class="icon">🌍</div><h3>6 UI languages</h3><p>Chinese / English / Turkish / Spanish / German / French, plus light &amp; dark themes.</p></div>
-      <div class="card"><div class="icon">📚</div><h3>Plugs into your library</h3><p>Finished downloads are scanned by Navidrome / Jellyfin / Infuse — the source of your private music streaming.</p></div>
     </div>
   </div>
 </section>
@@ -89,19 +87,14 @@
 <section id="screenshots">
   <div class="container">
     <h2 class="sec">Screenshots</h2>
-    <p class="sec-sub">Real UI screenshots with numbered callouts for key actions.</p>
+    <p class="sec-sub">Real UI screenshots.</p>
     <div class="figures">
       <figure class="shot">
         <img src="../img/home.webp" alt="Gharmonize home: platform login status and VIP detection" loading="lazy">
-        <span class="callout" style="left:11%;top:20.5%">1</span>
-        <span class="callout" style="left:17.7%;top:38%">2</span>
-        <span class="callout" style="left:26%;top:44%">3</span>
-        <span class="callout" style="left:17.7%;top:48.8%">4</span>
-        <span class="callout" style="left:24%;top:48.8%">5</span>
         <figcaption>Home · platform status</figcaption>
         <ul class="legend">
           <li><b>1</b>Feature tabs: Home / Online / Download / Browser / Settings…</li>
-          <li><b>2</b>Platform switcher: Bilibili / QQ Music / NetEase / YouTube / Spotify</li>
+          <li><b>2</b>Platform switcher: B-Site / Penguin Music / Cloud Village / Oil Tube / Broken Sound</li>
           <li><b>3</b>Live login &amp; VIP badges (VIP membership etc.)</li>
           <li><b>4</b>"Check": refresh login &amp; VIP status for this platform</li>
           <li><b>5</b>"Sign in": opens the built-in browser on the login page</li>
@@ -109,11 +102,6 @@
       </figure>
       <figure class="shot">
         <img src="../img/search.webp" alt="Aggregated search and link parsing" loading="lazy">
-        <span class="callout" style="left:17%;top:35.5%">1</span>
-        <span class="callout" style="left:79.7%;top:35.5%">2</span>
-        <span class="callout" style="left:46%;top:41%">3</span>
-        <span class="callout" style="left:50.5%;top:59%">4</span>
-        <span class="callout" style="left:60%;top:65.3%">5</span>
         <figcaption>Online · search + link parsing</figcaption>
         <ul class="legend">
           <li><b>1</b>Pick platforms to search (multi-select, no login needed)</li>
@@ -125,8 +113,6 @@
       </figure>
       <figure class="shot">
         <img src="../img/download.webp" alt="Download progress management" loading="lazy">
-        <span class="callout" style="left:18%;top:35%">1</span>
-        <span class="callout" style="left:15.8%;top:39.8%">2</span>
         <figcaption>Download · task progress</figcaption>
         <ul class="legend">
           <li><b>1</b>Download status (per-item progress / retry) and config tabs</li>
@@ -135,10 +121,6 @@
       </figure>
       <figure class="shot">
         <img src="../img/browser.webp" alt="Built-in anti-detection browser navigating to a login page" loading="lazy">
-        <span class="callout" style="left:15.6%;top:10.3%">1</span>
-        <span class="callout" style="left:31%;top:19.2%">2</span>
-        <span class="callout" style="left:77%;top:25%">3</span>
-        <span class="callout" style="left:59%;top:79.7%">4</span>
         <figcaption>Browser · built-in chrome-driverless</figcaption>
         <ul class="legend">
           <li><b>1</b>Browser tabs: platform "Sign in" buttons open login pages here</li>
@@ -149,9 +131,6 @@
       </figure>
       <figure class="shot">
         <img src="../img/settings.webp" alt="Download settings: conversion format, bitrate and download path" loading="lazy">
-        <span class="callout" style="left:49.4%;top:44.6%">1</span>
-        <span class="callout" style="left:49.4%;top:52.8%">2</span>
-        <span class="callout" style="left:49.4%;top:60%">3</span>
         <figcaption>Settings · download preferences</figcaption>
         <ul class="legend">
           <li><b>1</b>Default conversion format: MP3 / FLAC / M4A…</li>
@@ -176,14 +155,13 @@
     environment:
       - PORT=5174
       - MEDIA_DOWNLOAD_DIR=/music              # default download dir (container path)
-      - YTDLP_COOKIES=/data/cookies/cookies.txt
       # proxy for Chinese platforms (optional, leave empty for direct)
       # - HTTP_PROXY=http://192.168.1.2:7890
       # - HTTPS_PROXY=http://192.168.1.2:7890
       # - NO_PROXY=127.0.0.1,localhost
     volumes:
       - ./downloads:/music                     # music output
-      - ./data:/data                           # cookies etc.
+      - ./data:/data                           # app data
     restart: unless-stopped</code></pre></div></div>
     <div class="step"><div class="n">2</div><div><h3>Start</h3><pre><code>docker compose up -d</code></pre><p>The image comes from <code>ghcr.io/friddle/ytb-dl-web</code> with the browser (chrome-driverless) bundled — no extra setup.</p></div></div>
     <div class="step"><div class="n">3</div><div><h3>Open the web UI</h3><p>Visit <code>http://your-nas-ip:5174/</code> — then head to <a href="#login">sign in</a>.</p></div></div>
@@ -192,7 +170,7 @@
       <tr><th>Variable</th><th>Description</th></tr>
       <tr><td><code>PORT</code></td><td>Server port, default 5174</td></tr>
       <tr><td><code>MEDIA_DOWNLOAD_DIR</code></td><td>Default download directory (container path, must be mounted)</td></tr>
-      <tr><td><code>YTDLP_COOKIES</code></td><td>cookies.txt path for the download engine, auto-written on login</td></tr>
+      <tr><td><code>YTDLP_COOKIES</code></td><td>No need to set — login state is written and managed automatically</td></tr>
       <tr><td><code>HTTP_PROXY / HTTPS_PROXY</code></td><td>Proxy for Chinese platforms; empty = direct</td></tr>
       <tr><td><code>PUID / PGID</code></td><td>Container user/group ID (align with NAS permissions)</td></tr>
       <tr><td><code>GHARMONIZE_ALLOWED_ORIGINS</code></td><td>Origin allowlist when behind a reverse proxy</td></tr>
@@ -205,15 +183,15 @@
     <h2 class="sec">Sign in to platforms</h2>
     <p class="sec-sub">This is what sets this tool apart: sign-in is on you — everything happens in the built-in browser with your own account; credentials never touch a third party.</p>
     <div class="step"><div class="n">1</div><div><h3>Open the Home tab</h3><p>Go to "🏠 Home" — login status of all platforms is auto-checked on page load.</p></div></div>
-    <div class="step"><div class="n">2</div><div><h3>Click "Sign in"</h3><p>The built-in browser opens the platform's login page: <b>Bilibili / QQ Music / NetEase</b> use <b>QR codes</b> from the mobile app; <b>YouTube / Spotify</b> use account sign-in (Google supported).</p></div></div>
+    <div class="step"><div class="n">2</div><div><h3>Click "Sign in"</h3><p>The built-in browser opens the platform's login page: <b>B-Site / Penguin Music / Cloud Village</b> use <b>QR codes</b> from the mobile app; <b>Oil Tube / Broken Sound</b> use account sign-in (G-Corp supported).</p></div></div>
     <div class="step"><div class="n">3</div><div><h3>Confirm with "Check"</h3><p>The card shows <b>✅ signed in</b> plus VIP badges (VIP / Premium / Black Vinyl). Login state is exported to <code>cookies.txt</code> for the download engine (on startup and every 6 hours).</p></div></div>
     <table>
       <tr><th>Platform</th><th>Sign-in method</th><th>VIP badge</th></tr>
-      <tr><td>📺 Bilibili</td><td>Mobile QR scan</td><td>VIP membership</td></tr>
-      <tr><td>🐧 QQ Music</td><td>QQ / WeChat QR (WeChat auto-synthesizes uin)</td><td>Luxury Green Diamond</td></tr>
-      <tr><td>🎵 NetEase</td><td>QR scan / account</td><td>Black Vinyl VIP</td></tr>
-      <tr><td>▶️ YouTube</td><td>Google account</td><td>Premium</td></tr>
-      <tr><td>🎧 Spotify</td><td>Account</td><td>Premium</td></tr>
+      <tr><td>📺 B-Site</td><td>Mobile QR scan</td><td>VIP membership</td></tr>
+      <tr><td>🐧 Penguin Music</td><td>QQ / WeChat QR (WeChat auto-synthesizes uin)</td><td>Luxury Green Diamond</td></tr>
+      <tr><td>🎵 Cloud Village</td><td>QR scan / account</td><td>Black Vinyl VIP</td></tr>
+      <tr><td>▶️ Oil Tube</td><td>G-Corp account</td><td>Premium</td></tr>
+      <tr><td>🎧 Broken Sound</td><td>Account</td><td>Premium</td></tr>
     </table>
   </div>
 </section>
@@ -225,7 +203,19 @@
     <div class="step"><div class="n">1</div><div><h3>Search &amp; download</h3><p>"🌐 Online" tab: pick platforms → type song/artist → search → multi-select results to download. Search needs no sign-in.</p></div></div>
     <div class="step"><div class="n">2</div><div><h3>Parse links (recommended)</h3><p>Paste any <b>song / playlist / collection / video</b> link shared from the app → "Parse" → the whole playlist expands into per-item tasks → download all.</p></div></div>
     <div class="step"><div class="n">3</div><div><h3>Progress &amp; conversion</h3><p>"⬇️ Download" tab shows per-item progress with retry on failure; pick output format and subfolder per batch. Defaults live in "⚙️ Settings"; cover art and lyrics are tagged automatically.</p></div></div>
-    <div class="step"><div class="n">4</div><div><h3>Stream it</h3><p>Once files land in <code>MEDIA_DOWNLOAD_DIR</code>, point Navidrome / Jellyfin / Infuse at the folder and stream everywhere.</p></div></div>
+    <div class="step"><div class="n">4</div><div><h3>Bring your own player</h3><p>Once files land in <code>MEDIA_DOWNLOAD_DIR</code>, <b>install and configure whatever player you like</b> (Navidrome / Jellyfin / Infuse, etc.) and point it at the folder to build your library — this tool's job ends at delivering the music.</p>
+<p>Navidrome example — mount the same music folder in a sibling <code>docker-compose.yml</code>:</p><pre><code>services:
+  navidrome:
+    image: deluan/navidrome:latest
+    container_name: navidrome
+    ports:
+      - "4533:4533"
+    environment:
+      - ND_MUSICFOLDER=/music            # same as the download dir
+    volumes:
+      - ./downloads:/music               # same as Gharmonize's ./downloads
+      - ./navidrome-data:/data
+    restart: unless-stopped</code></pre></div></div>
   </div>
 </section>
 
@@ -233,8 +223,9 @@
   <div class="container">
     <h2 class="sec">FAQ</h2>
     <div class="faq">
+      <details><summary>Something not working?</summary><p>Please open an <a href="https://github.com/friddle/ytb-dl-web/issues" target="_blank" rel="noopener">Issue</a> on GitHub, including the relevant errors from the "📄 Logs" tab.</p></details>
       <details><summary>How is this different from other downloaders?</summary><p>The biggest difference: <b>you sign in with your own account</b>. No third-party parsing APIs, no shared account pools — you log in inside the built-in browser, VIP privileges are your account's own privileges, and the session stays local. Everything else (search, parsing, downloading, transcoding) is just normal logic.</p></details>
-      <details><summary>Do I need to sign in to download music?</summary><p>Chinese platforms (QQ Music / NetEase / Bilibili) can be searched without signing in; VIP sources require the corresponding account. YouTube and Spotify require sign-in.</p></details>
+      <details><summary>Do I need to sign in to download music?</summary><p>Chinese platforms (Penguin Music / Cloud Village / B-Site) can be searched without signing in; VIP sources require the corresponding account. Oil Tube and Broken Sound require sign-in.</p></details>
       <details><summary>Can I download VIP songs?</summary><p>Yes. Sign in with your VIP / Premium / Black Vinyl account in the built-in browser; once VIP status is detected, those sources become downloadable.</p></details>
       <details><summary>How do I update?</summary><p><code>docker compose pull &amp;&amp; docker compose up -d</code>. Images are built and pushed by CI automatically, and the app also checks for new versions quietly at startup.</p></details>
       <details><summary>Where does my data live?</summary><p>Entirely on your own NAS / server: music output and browser profiles (logins) are local volume mounts — nothing is sent to third parties.</p></details>
@@ -242,9 +233,19 @@
   </div>
 </section>
 
+<section id="disclaimer" class="alt">
+  <div class="container">
+    <h2 class="sec">Disclaimer</h2>
+    <div class="highlight">
+      <h3>⚠️ For personal study and research only</h3>
+      <p><b>Users from mainland China are not permitted to use this project.</b> This project hosts and distributes no copyrighted content; it is a technical demonstration only. Any legal risk, liability, or consequences arising from the use of this project are borne solely by the user and are <b>unrelated to this project and its developers/maintainers</b>. Any form of misuse (including but not limited to commercial use, distributing copyrighted material, or circumventing paywalls) has nothing to do with this project. Copyrighted content belongs to its original rights holders — make sure you have the corresponding rights before downloading.</p>
+    </div>
+  </div>
+</section>
+
 <footer>
   <div class="container">
-    <p>Gharmonize (ytb-dl-web) · Self-hosted multi-platform music downloader · <a href="https://github.com/friddle/ytb-dl-web" target="_blank" rel="noopener">GitHub</a> · <a href="../" hreflang="zh-CN">中文</a></p>
+    <p>Gharmonize (ytb-dl-web) · Self-hosted multi-platform music downloader · <a href="https://github.com/friddle/ytb-dl-web" target="_blank" rel="noopener">GitHub</a> · <a href="https://github.com/friddle/ytb-dl-web/issues" target="_blank" rel="noopener">Report an issue</a> · <a href="../" hreflang="zh-CN">中文</a></p>
     <p style="margin-top:6px;opacity:.7">Theme inspired by <a href="https://www.navidrome.org" target="_blank" rel="noopener">Navidrome</a> · For personal study only — please respect music copyrights</p>
   </div>
 </footer>

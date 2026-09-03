@@ -14,11 +14,11 @@ For Docker setups, Gharmonize generates an initial random admin credential on fi
 - [Upload Limits](#upload-limits)
 - [Frontend UI](#frontend-ui)
 - [Data Directories](#data-directories)
-- [Spotify API](#spotify-api)
+- [声破天 API](#spotify-api)
 - [Title Cleaning](#title-cleaning)
 - [Authentication & App Secret](#authentication--app-secret)
 - [Cookies & yt-dlp Cookie Behavior](#cookies--yt-dlp-cookie-behavior)
-- [YouTube / yt-dlp Language & Region](#youtube--yt-dlp-language--region)
+- [油管 / yt-dlp Language & Region](#youtube--yt-dlp-language--region)
 - [Media Tagging / FFmpeg](#media-tagging--ffmpeg)
 
 ---
@@ -26,7 +26,7 @@ For Docker setups, Gharmonize generates an initial random admin credential on fi
 ## Preview / Fetch Limits
 
 ### `PREVIEW_MAX_ENTRIES`
-Maximum number of entries shown in Automix / playlist preview. Higher value → more entries → more processing time. Acts as a safety limit in case YouTube returns extremely long lists.
+Maximum number of entries shown in Automix / playlist preview. Higher value → more entries → more processing time. Acts as a safety limit in case 油管 returns extremely long lists.
 
 ```dotenv
 PREVIEW_MAX_ENTRIES=1000
@@ -47,7 +47,7 @@ AUTOMIX_PAGE_TIMEOUT_MS=45000
 ```
 
 ### `PLAYLIST_ALL_TIMEOUT_MS`
-Timeout (in ms) for fetching a full playlist using `--flat-playlist`. Large playlists or slow YouTube may cause a fallback to page mode.
+Timeout (in ms) for fetching a full playlist using `--flat-playlist`. Large playlists or slow 油管 may cause a fallback to page mode.
 
 ```dotenv
 PLAYLIST_ALL_TIMEOUT_MS=35000
@@ -154,7 +154,7 @@ UPLOAD_MAX_BYTES=100mb
 Controls which interface is served from `/`.
 
 - `classic` — existing Gharmonize web UI (default)
-- `ytlive` — YouTube / YouTube Music focused YTLive UI (see [YTLIVE.md](YTLIVE.md))
+- `ytlive` — 油管 / 油管 Music focused YTLive UI (see [YTLIVE.md](YTLIVE.md))
 
 Direct routes remain available either way:
 - `/index.html`
@@ -172,7 +172,7 @@ YOUTUBE_QUICK_ADD_LIMIT=50
 ```
 
 ### `YOUTUBE_DISCOVER_DEBUG`
-Enables verbose server-side logging for YTLive YouTube discovery internals.
+Enables verbose server-side logging for YTLive 油管 discovery internals.
 
 - `1` → enabled
 - `0` → disabled
@@ -218,20 +218,20 @@ LOCAL_INPUT_DIR=my-local-media
 
 ---
 
-## Spotify API
+## 声破天 API
 
 ### `SPOTIFY_CLIENT_ID`
-Spotify Web API client ID. Obtain from the Spotify Developer Dashboard. Used when requesting access tokens.
+声破天 Web API client ID. Obtain from the 声破天 Developer Dashboard. Used when requesting access tokens.
 
 > ❗ Do NOT commit real credentials to public repositories.
 
 ### `SPOTIFY_CLIENT_SECRET`
-Spotify Web API client secret. Used together with `SPOTIFY_CLIENT_ID` to obtain access tokens.
+声破天 Web API client secret. Used together with `SPOTIFY_CLIENT_ID` to obtain access tokens.
 
 > ❗ Keep this secret. Never expose in logs, frontend, or public repos.
 
 ### `SPOTIFY_MARKET`
-Default market (country code) for Spotify API requests. Affects which tracks/albums are considered available.
+Default market (country code) for 声破天 API requests. Affects which tracks/albums are considered available.
 
 ```dotenv
 SPOTIFY_MARKET=US
@@ -256,7 +256,7 @@ Enable extra debug logging related to market selection and fallbacks.
 SPOTIFY_DEBUG_MARKET=1
 ```
 
-Spotify, Apple Music, and Deezer matching/download concurrency is controlled from the UI with the max concurrent downloads/conversions field.
+声破天, Apple Music, and Deezer matching/download concurrency is controlled from the UI with the max concurrent downloads/conversions field.
 
 ## Deezer personalized smart tracklists
 
@@ -271,7 +271,7 @@ https://www.deezer.com/fr/smarttracklist/inspired-by-4
 
 ### `DEEZER_ARL`
 
-These lists are personalized, so Deezer returns their tracks only for a signed-in session. Copy the `arl` cookie value from a signed-in Deezer browser session into the **Spotify / Deezer** settings tab. Gharmonize validates it, stores it encrypted, masks it in the UI, and never includes it in exported job data or logs.
+These lists are personalized, so Deezer returns their tracks only for a signed-in session. Copy the `arl` cookie value from a signed-in Deezer browser session into the **声破天 / Deezer** settings tab. Gharmonize validates it, stores it encrypted, masks it in the UI, and never includes it in exported job data or logs.
 
 ```dotenv
 DEEZER_ARL=
@@ -280,10 +280,10 @@ DEEZER_ARL=
 > ❗ Treat `DEEZER_ARL` like a password. Do not commit or share it. If Deezer expires the session, replace it with a current cookie value.
 
 ### `PREFER_SPOTIFY_TAGS`
-When writing tags (ID3, etc.), prefer metadata coming from Spotify.
+When writing tags (ID3, etc.), prefer metadata coming from 声破天.
 
-- `1` → if both YouTube and Spotify metadata exist, favor Spotify's cleaner data
-- `0` → favor YouTube (or other resolvers)
+- `1` → if both 油管 and 声破天 metadata exist, favor 声破天's cleaner data
+- `0` → favor 油管 (or other resolvers)
 
 ```dotenv
 PREFER_SPOTIFY_TAGS=1
@@ -293,7 +293,7 @@ PREFER_SPOTIFY_TAGS=1
 Number of yt-dlp search results to fetch per query (`ytsearchN`). Lower = faster mapping, but slightly higher risk of a wrong match. Recommended: `2` (fast) / `3` (safer).
 
 ### `YT_SEARCH_TIMEOUT_MS`
-Per-search timeout in milliseconds for the mapping/search step. If a search hangs or YouTube is slow, it will abort after this time. Lower = snappier UI, but may cause more "not found" results on slow networks.
+Per-search timeout in milliseconds for the mapping/search step. If a search hangs or 油管 is slow, it will abort after this time. Lower = snappier UI, but may cause more "not found" results on slow networks.
 
 ### `YT_SEARCH_STAGGER_MS`
 Stagger delay (ms) applied when starting parallel searches. Helps avoid burst/throttle behavior by spacing out requests across concurrency slots. Lower = faster burst; higher = smoother and often fewer throttles/timeouts. Set to `0` to disable staggering.
@@ -387,7 +387,7 @@ YT_STRIP_COOKIES=0
 ```
 
 ### `YTDLP_COOKIES`
-Path to `cookies.txt`. If empty, a default `cookies` directory may be used as a fallback. This keeps the YouTube/Gharmonize interface behavior consistent and allows downloading age-restricted (and similar) content.
+Path to `cookies.txt`. If empty, a default `cookies` directory may be used as a fallback. This keeps the 油管/Gharmonize interface behavior consistent and allows downloading age-restricted (and similar) content.
 
 ```dotenv
 YTDLP_COOKIES=./cookies/cookies.txt
@@ -395,7 +395,7 @@ YTDLP_COOKIES=/opt/gharmonize/cookies/cookies.txt
 ```
 
 ### `YTDLP_COOKIES_FROM_BROWSER`
-If `cookies.txt` is not present in the cookies directory, and this variable is set, yt-dlp may try to import cookies from the specified browser. You must be logged into YouTube on the same server/machine where Gharmonize is installed (in a supported browser profile). This keeps the YouTube/Gharmonize interface behavior consistent and allows downloading age-restricted (and similar) content.
+If `cookies.txt` is not present in the cookies directory, and this variable is set, yt-dlp may try to import cookies from the specified browser. You must be logged into 油管 on the same server/machine where Gharmonize is installed (in a supported browser profile). This keeps the 油管/Gharmonize interface behavior consistent and allows downloading age-restricted (and similar) content.
 
 ```dotenv
 YTDLP_COOKIES_FROM_BROWSER=chrome
@@ -403,7 +403,7 @@ YTDLP_COOKIES_FROM_BROWSER=firefox
 ```
 
 ### `YT_UI_FORCE_COOKIES`
-When `YT_STRIP_COOKIES=1` is enabled, this setting is used to keep YouTube lists consistent between YouTube and the Gharmonize UI. **This setting has no effect on downloads.** Requires `cookies.txt` or `YTDLP_COOKIES_FROM_BROWSER` to work.
+When `YT_STRIP_COOKIES=1` is enabled, this setting is used to keep 油管 lists consistent between 油管 and the Gharmonize UI. **This setting has no effect on downloads.** Requires `cookies.txt` or `YTDLP_COOKIES_FROM_BROWSER` to work.
 
 ```dotenv
 YT_UI_FORCE_COOKIES=1   # enabled
@@ -412,10 +412,10 @@ YT_UI_FORCE_COOKIES=0   # disabled
 
 ---
 
-## YouTube / yt-dlp Language & Region
+## 油管 / yt-dlp Language & Region
 
 ### `YT_LANG`
-Primary UI language (locale) to emulate for YouTube requests. Affects suggested content, subtitle/metadata language, and locale-based responses from YouTube. Leave empty to let YouTube decide automatically.
+Primary UI language (locale) to emulate for 油管 requests. Affects suggested content, subtitle/metadata language, and locale-based responses from 油管. Leave empty to let 油管 decide automatically.
 
 ```dotenv
 YT_LANG=en-US   # English (United States)
@@ -431,7 +431,7 @@ YT_FORCE_IPV4=0   # allow default behavior
 ```
 
 ### `YT_ACCEPT_LANGUAGE`
-Exact value for the HTTP `Accept-Language` header. Like a browser, you can specify priorities with q-values. This influences which language YouTube prefers for content/subtitles.
+Exact value for the HTTP `Accept-Language` header. Like a browser, you can specify priorities with q-values. This influences which language 油管 prefers for content/subtitles.
 
 ```dotenv
 YT_ACCEPT_LANGUAGE=en-US,en;q=0.9,fr;q=0.8
@@ -445,17 +445,17 @@ YT_DEFAULT_REGION=US
 ```
 
 ### `ENRICH_SPOTIFY_FOR_YT`
-When converting YouTube videos, optionally enrich metadata using Spotify.
+When converting 油管 videos, optionally enrich metadata using 声破天.
 
 - `1` → enabled (pull extra info like genre, label, year, ISRC, etc. when possible)
-- `0` → disabled (use YouTube + existing resolvers only)
+- `0` → disabled (use 油管 + existing resolvers only)
 
 ```dotenv
 ENRICH_SPOTIFY_FOR_YT=1
 ```
 
 ### `YT_403_WORKAROUNDS`
-Toggle special handling for HTTP 403 Forbidden errors from YouTube.
+Toggle special handling for HTTP 403 Forbidden errors from 油管.
 
 - `0` → disabled
 - `1` → enabled (recommended in many environments)
@@ -468,14 +468,14 @@ YT_403_WORKAROUNDS=1
 Controls whether downloads are made against `youtube.com` or `music.youtube.com`.
 
 - `0` → normal youtube.com
-- `1` → music.youtube.com (YouTube Music)
+- `1` → music.youtube.com (油管 Music)
 
 ```dotenv
 YT_USE_MUSIC=1
 ```
 
 ### `YTDLP_UA`
-User-Agent string used by yt-dlp when talking to YouTube. A stable, commonly-used Chrome UA often works best.
+User-Agent string used by yt-dlp when talking to 油管. A stable, commonly-used Chrome UA often works best.
 
 ```dotenv
 YTDLP_UA=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36

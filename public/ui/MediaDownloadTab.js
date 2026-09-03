@@ -98,7 +98,7 @@ export class MediaDownloadTab {
   browserFallbackUrl() {
     // When no external URL is configured, derive one from the page address:
     // same hostname + the host-mapped chrome-driverless port.
-    return `${location.protocol}//${location.hostname}:9203/`;
+    return `${location.protocol}//${location.hostname}:9223/`;
   }
 
   async loadPlatformStatus({ refresh = false } = {}) {

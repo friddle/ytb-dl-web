@@ -1,12 +1,16 @@
 # Gharmonize (ytb-dl-web fork)
 
+> **⚠️ 免责声明 / Disclaimer**
+> 本项目仅供个人学习与研究，**中国大陆用户不允许使用**。本项目不托管、不分发任何受版权保护的内容。使用本项目产生的一切法律风险、责任与后果均由使用者本人承担，与本项目及开发者/维护者无关。任何误用皆与本项目无关。
+> This project is for personal study and research only. **Users from mainland China are not permitted to use it.** All legal risks arising from use are borne by the user and are unrelated to this project or its maintainers.
+
 自托管音乐/媒体下载 Web 应用 —— 搜索、歌单解析、平台登录与 VIP 状态检测、一键下载与转换。前端围绕 **10 个标签页** 组织，支持 6 种语言（中/英/土/西/德/法）。
 
 ## 标签页
 
 | Tab | 内容 |
 |-----|------|
-| 🎵 首页 | 平台状态：Bilibili / QQ音乐 / 网易云 / YouTube / Spotify 登录 + VIP 检测（每个渠道独立「检测」按钮；页面打开时自动检测一次） |
+| 🎵 首页 | 平台状态：小破站 / 鹅厂音乐 / 网抑云 / 油管 / 声破天 登录 + VIP 检测（每个渠道独立「检测」按钮；页面打开时自动检测一次） |
 | 🔎 搜索 | 聚合搜索：多平台勾选 + 类型（歌曲 / 歌单），无需分别登录即可搜索；结果可多选下载 |
 | 🔗 解析 | 链接解析：任意平台链接 / 歌单 / 合集展开为逐条项目，可下载 |
 | ⬇️ 下载 | 下载任务与进度：逐条进度、失败原因、重试失败；每次下载可覆盖输出（格式 / 子目录） |
@@ -23,14 +27,14 @@
 
 登录在**内置浏览器**（chrome-driverless，镜像内或远程）中完成：
 
-- 每个平台卡片点击「扫码登录」→ 新窗口打开浏览器并直达登录/扫码页（B站 passport、QQ OAuth、网易云登录、YouTube sign-in、Spotify 登录）。
-- 「检测」通过浏览器内 JS 探测该平台**真实登录态与 VIP**（B站 nav API、QQ musicu、网易 nuser/account、YouTube/Spotify cookie），并同步导出 cookies.txt 供 yt-dlp 下载使用（探测自动 + 启动 + 每 6 小时导出）。
+- 每个平台卡片点击「扫码登录」→ 新窗口打开浏览器并直达登录/扫码页（小破站 passport、QQ OAuth、网抑云登录、油管 sign-in、声破天 登录）。
+- 「检测」通过浏览器内 JS 探测该平台**真实登录态与 VIP**（小破站 nav API、QQ musicu、网易 nuser/account、油管/声破天 cookie），并同步导出 cookies.txt 供 yt-dlp 下载使用（探测自动 + 启动 + 每 6 小时导出）。
 - 微信登录 QQ 时自动合成 `uin` cookie，供 yt-dlp / vkey 鉴权。
 
 ## 下载
 
-- **QQ音乐**：浏览器内 vkey 直链（支持微信登录、VIP 音源），yt-dlp 兜底。
-- **网易云 / B站 / YouTube**：yt-dlp（携带导出 cookies，`YTDLP_COOKIES=/data/cookies/cookies.txt`）。
+- **鹅厂音乐**：浏览器内 vkey 直链（支持微信登录、VIP 音源），yt-dlp 兜底。
+- **网抑云 / 小破站 / 油管**：yt-dlp（携带导出 cookies，`YTDLP_COOKIES=/data/cookies/cookies.txt`）。
 - 播放列表自动展开为逐条任务；每条任务独立进度（下载 / 转换）、失败原因可读；失败可一键重试。
 - 输出目录：默认在设置页配置（`MEDIA_DOWNLOAD_DIR`）；每次下载可指定额外**子目录**（根目录只读，仅可编辑子路径）。
 - 下载后转换：设置页默认格式/码率；下载标签页可按批次覆盖（跟随设置 / 不转换 / 指定格式）。

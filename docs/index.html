@@ -3,9 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Gharmonize - 自托管多平台音乐下载器 | B站 / 网易云 / QQ音乐 / YouTube / Spotify</title>
-<meta name="description" content="Gharmonize (ytb-dl-web) 是一款自托管音乐下载 Web 应用：内置反检测浏览器扫码登录 Bilibili、网易云、QQ音乐、YouTube、Spotify，自动检测登录与 VIP 状态，搜索、解析歌单、批量下载并转换 MP3/FLAC，支持 Docker 一键部署。">
-<meta name="keywords" content="音乐下载,自托管,NAS,Bilibili,网易云,QS音乐,YouTube,Spotify,yt-dlp,Docker,Navidrome,音乐库,VIP下载,扫码登录">
+<title>Gharmonize - 自托管多平台音乐下载器 | 小破站 / 网抑云 / 鹅厂音乐 / 油管 / 声破天</title>
+<meta name="description" content="Gharmonize (ytb-dl-web) 是一款自托管音乐下载 Web 应用：内置反检测浏览器扫码登录 小破站、网抑云、鹅厂音乐、油管、声破天，自动检测登录与 VIP 状态，搜索、解析歌单、批量下载并转换 MP3/FLAC，支持 Docker 一键部署。">
+<meta name="keywords" content="音乐下载,自托管,NAS,小破站,网抑云,QS音乐,油管,声破天,yt-dlp,Docker,Navidrome,音乐库,VIP下载,扫码登录">
 <link rel="canonical" href="https://friddle.github.io/ytb-dl-web/">
 <link rel="alternate" hreflang="zh-CN" href="https://friddle.github.io/ytb-dl-web/">
 <link rel="alternate" hreflang="en" href="https://friddle.github.io/ytb-dl-web/en/">
@@ -13,7 +13,7 @@
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Gharmonize">
 <meta property="og:title" content="Gharmonize - 自托管多平台音乐下载器">
-<meta property="og:description" content="内置浏览器扫码登录 B站/网易云/QQ音乐/YouTube/Spotify，自动检测 VIP，搜索解析批量下载，Docker 一键部署到你的 NAS。">
+<meta property="og:description" content="内置浏览器扫码登录 小破站/网抑云/鹅厂音乐/油管/声破天，自动检测 VIP，搜索解析批量下载，Docker 一键部署到你的 NAS。">
 <meta property="og:url" content="https://friddle.github.io/ytb-dl-web/">
 <meta property="og:image" content="https://friddle.github.io/ytb-dl-web/img/home.webp">
 <meta name="twitter:card" content="summary_large_image">
@@ -21,12 +21,12 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎵</text></svg>">
 <link rel="stylesheet" href="assets/style.css">
 <script type="application/ld+json">
-{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Gharmonize (ytb-dl-web)","applicationCategory":"MultimediaApplication","operatingSystem":"Docker, Linux, NAS","description":"自托管多平台音乐下载器：内置反检测浏览器登录 Bilibili/网易云/QQ音乐/YouTube/Spotify，自动检测 VIP，批量下载与格式转换。","offers":{"@type":"Offer","price":"0","priceCurrency":"CNY"},"featureList":["多平台聚合搜索","歌单/合集链接解析","扫码登录与 VIP 检测","批量下载与 MP3/FLAC 转换","歌词与封面元数据","Docker 一键部署"]}
+{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Gharmonize (ytb-dl-web)","applicationCategory":"MultimediaApplication","operatingSystem":"Docker, Linux, NAS","description":"自托管多平台音乐下载器：内置反检测浏览器登录 小破站/网抑云/鹅厂音乐/油管/声破天，自动检测 VIP，批量下载与格式转换。","offers":{"@type":"Offer","price":"0","priceCurrency":"CNY"},"featureList":["多平台聚合搜索","歌单/合集链接解析","扫码登录与 VIP 检测","批量下载与 MP3/FLAC 转换","歌词与封面元数据","Docker 一键部署"]}
 </script>
 <script type="application/ld+json">
 {"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
 {"@type":"Question","name":"和其他下载工具有什么区别？","acceptedAnswer":{"@type":"Answer","text":"最大的不同是登录需要你自己登录：没有第三方解析接口、没有共享账号池，你在内置浏览器里用自己的账号登录，VIP 权限就是你账号的权限，登录态只保存在本地。其余搜索、解析、下载、转码都是正常的逻辑。"}},
-{"@type":"Question","name":"需要登录才能下载音乐吗？","acceptedAnswer":{"@type":"Answer","text":"中国平台（QQ音乐/网易云/B站）无需登录即可搜索，下载 VIP 音源需要登录对应平台账号；YouTube 与 Spotify 需要登录。"}},
+{"@type":"Question","name":"需要登录才能下载音乐吗？","acceptedAnswer":{"@type":"Answer","text":"中国平台（鹅厂音乐/网抑云/小破站）无需登录即可搜索，下载 VIP 音源需要登录对应平台账号；油管 与 声破天 需要登录。"}},
 {"@type":"Question","name":"VIP 歌曲可以下载吗？","acceptedAnswer":{"@type":"Answer","text":"可以。在内置浏览器中登录你的大会员 / 豪华绿钻 / 黑胶 VIP 账号，系统检测到 VIP 状态后即可下载对应音源，登录态自动导出给下载引擎复用。"}},
 {"@type":"Question","name":"如何安装？","acceptedAnswer":{"@type":"Answer","text":"安装 Docker 后执行 docker compose up -d 即可，镜像托管在 ghcr.io，内置浏览器已打包，默认端口 5174。"}},
 {"@type":"Question","name":"下载的音乐放在哪里？","acceptedAnswer":{"@type":"Answer","text":"保存在你自己的 NAS / 服务器本地目录（通过 volume 挂载配置），可直接被 Navidrome、Jellyfin、Infuse 等播放器扫描为音乐库。"}}]}
@@ -51,12 +51,11 @@
 
 <header class="hero container">
   <h1>自托管<br><span class="accent">多平台音乐下载器</span></h1>
-  <p class="sub">内置反检测浏览器，扫码登录 Bilibili / 网易云 / QQ音乐 / YouTube / Spotify，自动检测登录与 VIP 状态，搜索 · 解析歌单 · 批量下载 · 转码归档，一键跑在你的 NAS 上。</p>
+  <p class="sub">内置反检测浏览器，扫码登录 小破站 / 网抑云 / 鹅厂音乐 / 油管 / 声破天，自动检测登录与 VIP 状态，搜索 · 解析歌单 · 批量下载 · 转码归档，一键跑在你的 NAS 上。</p>
   <div class="cta">
     <a class="btn primary" href="#install">🚀 快速开始</a>
     <a class="btn ghost" href="https://github.com/friddle/ytb-dl-web" target="_blank" rel="noopener">⭐ GitHub 源码</a>
   </div>
-  <div class="badges"><span>5 大平台</span><span>扫码登录 + VIP 检测</span><span>用自己的账号 · 不依赖第三方接口</span><span>Docker 一键部署</span><span>6 种界面语言</span><span>数据 100% 本地</span></div>
 </header>
 
 <section id="why" style="padding-top:10px">
@@ -77,11 +76,10 @@
       <div class="card"><div class="icon">🧭</div><h3>平台状态一屏总览</h3><p>首页实时展示各平台登录态与 VIP 徽标（大会员 / 豪华绿钻 / 黑胶 VIP），每个渠道独立「检测」按钮。</p></div>
       <div class="card"><div class="icon">🛩️</div><h3>内置反检测浏览器</h3><p>chrome-driverless 隐藏自动化特征：扫码、账号登录、过验证码都在真实浏览器里完成，登录态自动导出 cookies。</p></div>
       <div class="card"><div class="icon">🔎</div><h3>聚合搜索与链接解析</h3><p>多平台勾选搜索歌曲/歌单；粘贴任意平台链接（歌曲、歌单、合集、视频）一键展开为逐条下载任务。</p></div>
-      <div class="card"><div class="icon">⬇️</div><h3>批量下载与断点重试</h3><p>逐条任务独立进度、失败原因可读、一键重试；QQ音乐走浏览器 vkey 直链，其余平台 yt-dlp + cookies 兜底。</p></div>
+      <div class="card"><div class="icon">⬇️</div><h3>批量下载与断点重试</h3><p>逐条任务独立进度、失败原因可读、一键重试；鹅厂音乐走浏览器 vkey 直链，其余平台 yt-dlp + cookies 兜底。</p></div>
       <div class="card"><div class="icon">🎵</div><h3>自动转码与元数据</h3><p>下载后自动转换 MP3 / FLAC / M4A 并写入封面、歌词等标签；每次下载可覆盖默认格式与子目录。</p></div>
       <div class="card"><div class="icon">🐳</div><h3>Docker 一键部署</h3><p>镜像内置下载引擎与无头浏览器，docker compose up -d 即用；支持 PUID/PGID 与只读容器等安全加固。</p></div>
       <div class="card"><div class="icon">🌍</div><h3>6 种界面语言</h3><p>中 / 英 / 土 / 西 / 德 / 法 界面即点即切，明暗主题随心换。</p></div>
-      <div class="card"><div class="icon">📚</div><h3>无缝接入音乐库</h3><p>下载完成后可直接被 Navidrome / Jellyfin / Infuse 扫描，成为你私有音乐流的源头。</p></div>
     </div>
   </div>
 </section>
@@ -89,19 +87,14 @@
 <section id="screenshots">
   <div class="container">
     <h2 class="sec">界面一览</h2>
-    <p class="sec-sub">真实界面截图，编号标注了关键操作位置。</p>
+    <p class="sec-sub">真实界面截图。</p>
     <div class="figures">
       <figure class="shot">
         <img src="img/home.webp" alt="Gharmonize 首页：平台登录状态与 VIP 检测" loading="lazy">
-        <span class="callout" style="left:11%;top:20.5%">1</span>
-        <span class="callout" style="left:17.7%;top:38%">2</span>
-        <span class="callout" style="left:26%;top:44%">3</span>
-        <span class="callout" style="left:17.7%;top:48.8%">4</span>
-        <span class="callout" style="left:24%;top:48.8%">5</span>
         <figcaption>首页 · 平台状态</figcaption>
         <ul class="legend">
           <li><b>1</b>功能标签页：首页 / 在线 / 下载 / 浏览器 / 设置…</li>
-          <li><b>2</b>平台切换：Bilibili / QQ音乐 / 网易云 / YouTube / Spotify</li>
+          <li><b>2</b>平台切换：小破站 / 鹅厂音乐 / 网抑云 / 油管 / 声破天</li>
           <li><b>3</b>登录与 VIP 徽标（大会员等）实时显示</li>
           <li><b>4</b>「检测」：刷新该平台登录态与 VIP 状态</li>
           <li><b>5</b>「登录」：打开内置浏览器直达扫码/登录页</li>
@@ -109,11 +102,6 @@
       </figure>
       <figure class="shot">
         <img src="img/search.webp" alt="聚合搜索与链接解析" loading="lazy">
-        <span class="callout" style="left:17%;top:35.5%">1</span>
-        <span class="callout" style="left:79.7%;top:35.5%">2</span>
-        <span class="callout" style="left:46%;top:41%">3</span>
-        <span class="callout" style="left:50.5%;top:59%">4</span>
-        <span class="callout" style="left:60%;top:65.3%">5</span>
         <figcaption>在线 · 聚合搜索 + 链接解析</figcaption>
         <ul class="legend">
           <li><b>1</b>勾选要搜索的平台（可多选，搜索无需登录）</li>
@@ -125,8 +113,6 @@
       </figure>
       <figure class="shot">
         <img src="img/download.webp" alt="下载进度管理" loading="lazy">
-        <span class="callout" style="left:18%;top:35%">1</span>
-        <span class="callout" style="left:15.8%;top:39.8%">2</span>
         <figcaption>下载 · 任务进度</figcaption>
         <ul class="legend">
           <li><b>1</b>下载状态（逐条进度/失败重试）与下载配置切换</li>
@@ -135,10 +121,6 @@
       </figure>
       <figure class="shot">
         <img src="img/browser.webp" alt="内置反检测浏览器：直达平台登录页" loading="lazy">
-        <span class="callout" style="left:15.6%;top:10.3%">1</span>
-        <span class="callout" style="left:31%;top:19.2%">2</span>
-        <span class="callout" style="left:77%;top:25%">3</span>
-        <span class="callout" style="left:59%;top:79.7%">4</span>
         <figcaption>浏览器 · 内置 chrome-driverless</figcaption>
         <ul class="legend">
           <li><b>1</b>浏览器标签页：点平台「登录」时自动新开对应登录页</li>
@@ -149,9 +131,6 @@
       </figure>
       <figure class="shot">
         <img src="img/settings.webp" alt="下载设置：转换格式、码率与下载路径" loading="lazy">
-        <span class="callout" style="left:49.4%;top:44.6%">1</span>
-        <span class="callout" style="left:49.4%;top:52.8%">2</span>
-        <span class="callout" style="left:49.4%;top:60%">3</span>
         <figcaption>设置 · 下载偏好</figcaption>
         <ul class="legend">
           <li><b>1</b>默认转换格式：MP3 / FLAC / M4A…</li>
@@ -166,33 +145,66 @@
 <section id="install" class="alt">
   <div class="container">
     <h2 class="sec">安装</h2>
-    <p class="sec-sub">只需 Docker，一条命令跑起来。</p>
-    <div class="step"><div class="n">1</div><div><h3>准备 docker-compose.yml</h3><p>新建目录并写入以下内容（音乐会下载到 <code>./downloads</code>）：</p><pre><code>services:
+    <p class="sec-sub">只需 Docker。提供两种镜像，compose 配置不同，二选一。</p>
+    <div class="step"><div class="n">1</div><div><h3>选择镜像</h3>
+      <table>
+        <tr><th></th><th>内置版（推荐）</th><th>分离版</th></tr>
+        <tr><td>镜像 tag</td><td><code>main</code> / <code>latest</code></td><td><code>main-slim</code> / <code>latest-slim</code></td></tr>
+        <tr><td>chrome-driverless</td><td>已打包在镜像内，单容器即用</td><td>不包含，需独立部署 <code>ghcr.io/friddle/chrome-driverless</code></td></tr>
+        <tr><td>compose 服务</td><td>1 个（web）</td><td>2 个（web + chrome-driverless）</td></tr>
+        <tr><td>浏览器地址</td><td>无需配置，默认 127.0.0.1:9223</td><td>必须配置 <code>CHROME_DRIVERLESS_URL</code></td></tr>
+      </table>
+    </div></div>
+    <div class="step"><div class="n">2</div><div><h3>方式 A：内置版 docker-compose.yml</h3><p>音乐会下载到 <code>./downloads</code>。9223 是内置浏览器的界面端口，映射后首页「浏览器」标签才能正确跳转：</p><pre><code>services:
   web:
-    image: ghcr.io/friddle/ytb-dl-web:main
+    image: ghcr.io/friddle/ytb-dl-web:main    # 内置 chrome-driverless
+    container_name: gharmonize
+    ports:
+      - "5174:5174"
+      - "9223:9223"                            # 内置浏览器界面（跳转用）
+    environment:
+      - PORT=5174
+      - MEDIA_DOWNLOAD_DIR=/music              # 默认下载目录（容器内路径）
+      # 中国平台下载代理（按需填写，留空直连）
+      # - HTTP_PROXY=http://192.168.1.2:7890
+      # - HTTPS_PROXY=http://192.168.1.2:7890
+    volumes:
+      - ./downloads:/music                     # 音乐输出目录
+      - ./data:/data                           # 应用数据
+    restart: unless-stopped</code></pre></div></div>
+    <div class="step"><div class="n">3</div><div><h3>方式 B：分离版 docker-compose.yml（配置不同）</h3><p>web 使用 slim 镜像，浏览器为独立服务；<code>CHROME_DRIVERLESS_URL</code> 指向服务名，并加入 <code>NO_PROXY</code>：</p><pre><code>services:
+  web:
+    image: ghcr.io/friddle/ytb-dl-web:main-slim  # 不含浏览器
     container_name: gharmonize
     ports:
       - "5174:5174"
     environment:
       - PORT=5174
-      - MEDIA_DOWNLOAD_DIR=/music              # 默认下载目录（容器内路径）
-      - YTDLP_COOKIES=/data/cookies/cookies.txt
-      # 中国平台下载代理（按需填写，留空直连）
-      # - HTTP_PROXY=http://192.168.1.2:7890
-      # - HTTPS_PROXY=http://192.168.1.2:7890
-      # - NO_PROXY=127.0.0.1,localhost
+      - MEDIA_DOWNLOAD_DIR=/music
+      - CHROME_DRIVERLESS_URL=http://chrome-driverless:9223
+      - CHROME_DRIVERLESS_EXTERNAL_URL=http://192.168.1.2:9223  # 浏览器界面地址，供跳转
+      - NO_PROXY=127.0.0.1,localhost,chrome-driverless
     volumes:
-      - ./downloads:/music                     # 音乐输出目录
-      - ./data:/data                           # cookies 等数据
+      - ./downloads:/music
+      - ./data:/data
+    depends_on:
+      - chrome-driverless
+    restart: unless-stopped
+  chrome-driverless:
+    image: ghcr.io/friddle/chrome-driverless:latest
+    container_name: chrome-driverless
+    ports:
+      - "9223:9223"
+    volumes:
+      - ./browser-data:/data
     restart: unless-stopped</code></pre></div></div>
-    <div class="step"><div class="n">2</div><div><h3>启动</h3><pre><code>docker compose up -d</code></pre><p>镜像来自 <code>ghcr.io/friddle/ytb-dl-web</code>，内置浏览器（chrome-driverless）已打包，无需额外配置。</p></div></div>
-    <div class="step"><div class="n">3</div><div><h3>打开网页</h3><p>浏览器访问 <code>http://你的NAS的IP:5174/</code>，完成 —— 下一步去<a href="#login">登录平台</a>。</p></div></div>
+    <div class="step"><div class="n">4</div><div><h3>启动并打开</h3><pre><code>docker compose up -d</code></pre><p>访问 <code>http://你的NAS的IP:5174/</code>，下一步去<a href="#login">登录平台</a>。</p></div></div>
     <h3 style="margin:30px 0 4px">常用环境变量</h3>
     <table>
       <tr><th>变量</th><th>说明</th></tr>
       <tr><td><code>PORT</code></td><td>服务端口，默认 5174</td></tr>
       <tr><td><code>MEDIA_DOWNLOAD_DIR</code></td><td>默认下载目录（容器内路径，需挂载）</td></tr>
-      <tr><td><code>YTDLP_COOKIES</code></td><td>下载用 cookies.txt 路径，登录态自动写入</td></tr>
+      <tr><td><code>YTDLP_COOKIES</code></td><td>不需要设置 —— 登录态由应用自动写入与管理</td></tr>
       <tr><td><code>HTTP_PROXY / HTTPS_PROXY</code></td><td>中国平台下载代理，留空直连</td></tr>
       <tr><td><code>PUID / PGID</code></td><td>容器内用户/组 ID（NAS 权限对齐）</td></tr>
       <tr><td><code>GHARMONIZE_ALLOWED_ORIGINS</code></td><td>反向代理场景下的 Origin 白名单</td></tr>
@@ -205,15 +217,15 @@
     <h2 class="sec">登录各平台</h2>
     <p class="sec-sub">这是本工具与其他工具最大的不同：账号需要你自己登录 —— 所有登录都在内置浏览器中用你自己的账号完成，密码不经过第三方。</p>
     <div class="step"><div class="n">1</div><div><h3>打开首页平台卡片</h3><p>进入「🏠 首页」，页面会自动检测一次所有平台的登录状态。</p></div></div>
-    <div class="step"><div class="n">2</div><div><h3>点击「登录」</h3><p>内置浏览器自动打开对应平台的登录页：<b>Bilibili / QQ音乐 / 网易云</b> 用手机 App <b>扫码</b>；<b>YouTube / Spotify</b> 直接输入账号（支持 Google 登录）。</p></div></div>
+    <div class="step"><div class="n">2</div><div><h3>点击「登录」</h3><p>内置浏览器自动打开对应平台的登录页：<b>小破站 / 鹅厂音乐 / 网抑云</b> 用手机 App <b>扫码</b>；<b>油管 / 声破天</b> 直接输入账号（支持 G家 登录）。</p></div></div>
     <div class="step"><div class="n">3</div><div><h3>回来点「检测」确认</h3><p>卡片显示 <b>✅ 已登录</b> 与 VIP 徽标（大会员 / 豪华绿钻 / 黑胶VIP）即成功。登录态会自动导出 <code>cookies.txt</code> 供下载引擎复用（启动时与每 6 小时同步）。</p></div></div>
     <table>
       <tr><th>平台</th><th>登录方式</th><th>VIP 标识</th></tr>
-      <tr><td>📺 Bilibili</td><td>手机扫码</td><td>大会员</td></tr>
-      <tr><td>🐧 QQ音乐</td><td>QQ / 微信扫码（微信自动合成 uin）</td><td>豪华绿钻</td></tr>
-      <tr><td>🎵 网易云</td><td>扫码 / 账号</td><td>黑胶 VIP</td></tr>
-      <tr><td>▶️ YouTube</td><td>Google 账号登录</td><td>Premium</td></tr>
-      <tr><td>🎧 Spotify</td><td>账号登录</td><td>Premium</td></tr>
+      <tr><td>📺 小破站</td><td>手机扫码</td><td>大会员</td></tr>
+      <tr><td>🐧 鹅厂音乐</td><td>QQ / 微信扫码（微信自动合成 uin）</td><td>豪华绿钻</td></tr>
+      <tr><td>🎵 网抑云</td><td>扫码 / 账号</td><td>黑胶 VIP</td></tr>
+      <tr><td>▶️ 油管</td><td>G家 账号登录</td><td>Premium</td></tr>
+      <tr><td>🎧 声破天</td><td>账号登录</td><td>Premium</td></tr>
     </table>
   </div>
 </section>
@@ -225,7 +237,19 @@
     <div class="step"><div class="n">1</div><div><h3>搜索下载</h3><p>「🌐 在线」页勾选平台 → 输入歌名/歌手 → 搜索 → 勾选结果批量下载。搜索无需登录。</p></div></div>
     <div class="step"><div class="n">2</div><div><h3>链接解析（推荐）</h3><p>把 App 里分享的<b>歌曲 / 歌单 / 合集 / 视频</b>链接粘进「链接解析」→ 点「解析」→ 整张歌单自动展开为逐条任务 → 一键全部下载。</p></div></div>
     <div class="step"><div class="n">3</div><div><h3>进度与转码</h3><p>「⬇️ 下载」页查看逐条进度，失败可重试；每次下载可指定输出格式与子目录。默认格式/码率/路径在「⚙️ 设置」配置，下载完成后自动写入封面与歌词标签。</p></div></div>
-    <div class="step"><div class="n">4</div><div><h3>入库播放</h3><p>音乐在 <code>MEDIA_DOWNLOAD_DIR</code> 目录就绪后，直接用 Navidrome / Jellyfin / Infuse 扫描为音乐库，全屋串流。</p></div></div>
+    <div class="step"><div class="n">4</div><div><h3>配一个播放器（自行安装）</h3><p>音乐在 <code>MEDIA_DOWNLOAD_DIR</code> 目录就绪后，<b>自己安装并配置你喜欢的播放器</b>（如 Navidrome / Jellyfin / Infuse）指向该目录扫描音乐库，即可全屋串流 —— 本工具只负责把音乐下载好。</p>
+<p>以 Navidrome 为例，<code>docker-compose.yml</code> 与本应用挂载同一音乐目录即可：</p><pre><code>services:
+  navidrome:
+    image: deluan/navidrome:latest
+    container_name: navidrome
+    ports:
+      - "4533:4533"
+    environment:
+      - ND_MUSICFOLDER=/music            # 与下载目录一致
+    volumes:
+      - ./downloads:/music               # 同 Gharmonize 的 ./downloads
+      - ./navidrome-data:/data
+    restart: unless-stopped</code></pre></div></div>
   </div>
 </section>
 
@@ -233,8 +257,9 @@
   <div class="container">
     <h2 class="sec">常见问题</h2>
     <div class="faq">
+      <details><summary>遇到问题怎么办？</summary><p>请到 GitHub 提交 <a href="https://github.com/friddle/ytb-dl-web/issues" target="_blank" rel="noopener">Issue</a>，并附上「📄 日志」页的相关错误信息。</p></details>
       <details><summary>和其他下载工具的区别是什么？</summary><p>最大的不同：<b>登录需要你自己登录</b>。没有第三方解析接口、没有共享账号池 —— 你在内置浏览器里登录自己的账号，VIP 权限就是你账号的权限，登录态只存在本地。其余的搜索、解析、下载、转码都是正常的逻辑。</p></details>
-      <details><summary>需要登录才能下载音乐吗？</summary><p>中国平台（QQ音乐/网易云/B站）无需登录即可搜索；下载 VIP 音源需要登录对应平台账号。YouTube 与 Spotify 需要登录。</p></details>
+      <details><summary>需要登录才能下载音乐吗？</summary><p>中国平台（鹅厂音乐/网抑云/小破站）无需登录即可搜索；下载 VIP 音源需要登录对应平台账号。油管 与 声破天 需要登录。</p></details>
       <details><summary>VIP 歌曲可以下载吗？</summary><p>可以。在内置浏览器中登录你的大会员 / 豪华绿钻 / 黑胶 VIP 账号，系统检测到 VIP 状态后即可下载对应音源。</p></details>
       <details><summary>如何更新版本？</summary><p><code>docker compose pull && docker compose up -d</code>。镜像由 CI 自动构建推送，应用启动时也会静默检查新版本并提示。</p></details>
       <details><summary>我的数据在哪里？</summary><p>全部在你自己的 NAS / 服务器：音乐输出目录与浏览器 Profile（登录态）都通过本地 volume 挂载，不上传任何第三方。</p></details>
@@ -242,9 +267,19 @@
   </div>
 </section>
 
+<section id="disclaimer" class="alt">
+  <div class="container">
+    <h2 class="sec">免责声明</h2>
+    <div class="highlight">
+      <h3>⚠️ 仅供个人学习与研究</h3>
+      <p><b>中国大陆用户不允许使用本项目。</b>本项目不托管、不分发任何受版权保护的内容，仅作为技术演示。使用本项目所产生的一切法律风险、责任与后果，均由使用者本人承担，<b>与本项目、开发者及维护者无关</b>。任何形式的误用（包括但不限于商业用途、传播受版权保护的内容、绕过付费限制）皆与本项目无关。下载内容的版权归原权利人所有，请在下载前确认你拥有相应权利。</p>
+    </div>
+  </div>
+</section>
+
 <footer>
   <div class="container">
-    <p>Gharmonize (ytb-dl-web) · 自托管多平台音乐下载器 · <a href="https://github.com/friddle/ytb-dl-web" target="_blank" rel="noopener">GitHub</a> · <a href="en/" hreflang="en">English</a></p>
+    <p>Gharmonize (ytb-dl-web) · 自托管多平台音乐下载器 · <a href="https://github.com/friddle/ytb-dl-web" target="_blank" rel="noopener">GitHub</a> · <a href="https://github.com/friddle/ytb-dl-web/issues" target="_blank" rel="noopener">问题反馈</a> · <a href="en/" hreflang="en">English</a></p>
     <p style="margin-top:6px;opacity:.7">灵感来自 <a href="https://www.navidrome.org" target="_blank" rel="noopener">Navidrome</a> · 仅供个人学习使用，请尊重音乐版权</p>
   </div>
 </footer>

@@ -1362,7 +1362,7 @@ export class HomeApp {
   browserBase() {
     return this.config?.browserExternalUrl
       || this.config?.browserInternalUrl
-      || `${location.protocol}//${location.hostname}:9203/`;
+      || `${location.protocol}//${location.hostname}:9223/`;
   }
 
   openInBrowser(targetUrl) {

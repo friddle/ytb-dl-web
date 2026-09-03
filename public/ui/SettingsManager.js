@@ -517,8 +517,8 @@ export class SettingsManager {
 
                 <div class="form-group">
                 <label for="f_CHROME_DRIVERLESS_EXTERNAL_URL" class="settings-field-label">CHROME_DRIVERLESS_EXTERNAL_URL（内置浏览器对外地址）</label>
-                <div class="settings-field-hint muted">浏览器登录页对外访问地址；留空时前端使用 当前页面主机名:9203</div>
-                <input id="f_CHROME_DRIVERLESS_EXTERNAL_URL" type="text" placeholder="http://100.100.100.100:9203" autocomplete="off" autocapitalize="none" spellcheck="false">
+                <div class="settings-field-hint muted">浏览器登录页对外访问地址；留空时前端使用 当前页面主机名:9223</div>
+                <input id="f_CHROME_DRIVERLESS_EXTERNAL_URL" type="text" placeholder="http://100.100.100.100:9223" autocomplete="off" autocapitalize="none" spellcheck="false">
                 </div>
 
                 <div class="form-group">

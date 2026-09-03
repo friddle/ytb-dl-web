@@ -1,6 +1,6 @@
 # YTLive Music UI
 
-YTLive is a dedicated music interface for YouTube and YouTube Music. It is available alongside the classic Gharmonize UI and focuses on search, playback, playlist inspection, and fast queueing into the existing conversion pipeline.
+YTLive is a dedicated music interface for 油管 and 油管 Music. It is available alongside the classic Gharmonize UI and focuses on search, playback, playlist inspection, and fast queueing into the existing conversion pipeline.
 
 <img width="1684" height="934" alt="YTLive Screenshot" src="https://github.com/user-attachments/assets/34945652-9c72-4bc6-9c78-b01302aba81b" />
 
@@ -24,13 +24,13 @@ FRONTEND_UI=ytlive
 
 ## What YTLive Supports
 
-- YouTube search with track / playlist / album filters
+- 油管 search with track / playlist / album filters
 - Discovery presets and infinite loading
-- Quick play or queue by pasted YouTube / YouTube Music URL
-- Embedded playback plus an "Open on YouTube" fallback for videos that block embeds
+- Quick play or queue by pasted 油管 / 油管 Music URL
+- Embedded playback plus an "Open on 油管" fallback for videos that block embeds
 - Output controls for format, quality, sample rate, lyrics, ZIP creation, and playlist concurrency
 - Playlist preview with individual track add buttons
-- YouTube Music home shelves when cookies are available
+- 油管 Music home shelves when cookies are available
 - Live queue status through `/api/queue/status`
 
 ---
@@ -41,9 +41,9 @@ Playlist quick-add is capped by `YOUTUBE_QUICK_ADD_LIMIT`. Set it between `1` an
 
 ---
 
-## YouTube Music Home Shelves
+## 油管 Music Home Shelves
 
-Personal YouTube Music shelves require a usable cookie source — either `cookies.txt` or browser cookie extraction on a local / desktop install.
+Personal 油管 Music shelves require a usable cookie source — either `cookies.txt` or browser cookie extraction on a local / desktop install.
 
 - Docker can use `cookies.txt`, but **cannot** extract cookies from a host browser profile inside the container.
 
