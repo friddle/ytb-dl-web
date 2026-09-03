@@ -1400,5 +1400,8 @@
   "home.plDetail": "Playlist aufklappen",
   "home.plLoading": "Titel werden geladen…",
   "home.plFailed": "Playlist konnte nicht geladen werden",
-  "home.plHint": "Zum Aufklappen klicken"
+  "home.plHint": "Zum Aufklappen klicken",
+  "home.dlTabLibrary": "🎵 Bibliothek",
+  "home.libraryEmpty": "Noch keine fertigen Downloads.",
+  "home.retry": "Erneut versuchen"
 }

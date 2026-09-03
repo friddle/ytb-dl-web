@@ -390,76 +390,6 @@ export function cleanupCompletedJobsWithoutOutputs() {
 
 loadPersistedJobs();
 
-// Boot hygiene: any non-terminal rows left in SQLite belong to jobs that died
-// with the previous process — mark them so the UI restores a truthful state.
-(async () => {
-  try {
-    const db = await import("./db.js");
-    const n = db.markInterruptedJobs();
-    if (n) console.log(`[store] marked ${n} interrupted job(s) from previous run as error`);
-  } catch { /* DB not critical for boot */ }
-})();
-
-// Durable SQLite sync: mirrors every in-memory job (any status) into the jobs
-// table on the same 5s cadence as the JSON snapshot. Best-effort — a DB
-// problem must never affect downloads. Rows are written in one transaction
-// (single fsync per tick, cheap even for hundreds of queued jobs).
-let dbSync = null;
-async function syncJobsToDb() {
-  try {
-    if (!dbSync) dbSync = await import("./db.js");
-    const { upsertJob, insertMusicFile, getDb } = dbSync;
-    const rows = [];
-    for (const job of jobs.values()) {
-      rows.push({
-        id: job.id,
-        url: job.url || null,
-        platform: job.metadata?.platform || job.mediaPlatform || null,
-        mediaKind: job.metadata?.spotifyKind || (job.isPlaylist ? "playlist" : "song"),
-        title: job.title || job.metadata?.frozenTitle || job.metadata?.extracted?.title || null,
-        artist: job.artist || null,
-        album: job.album || null,
-        format: job.format || null,
-        bitrate: job.bitrate || null,
-        sampleRate: job.sampleRate,
-        status: job.status,
-        progress: job.progress,
-        currentPhase: job.currentPhase,
-        error: job.error,
-        resultPath: job.resultPath,
-        resultSizeBytes: job.resultSizeBytes,
-        isPlaylist: job.isPlaylist,
-        selectedIndices: job.selectedIndices,
-        clientBatch: job.clientBatch,
-        batchTotal: job.batchTotal,
-        meta: job.metadata,
-        createdAt: job.createdAt instanceof Date ? job.createdAt.toISOString() : job.createdAt
-      });
-    }
-    if (!rows.length) return;
-    getDb().transaction(() => {
-      for (const r of rows) {
-        upsertJob(r);
-        if (r.status === "completed" && r.resultPath) {
-          insertMusicFile({
-            jobId: r.id,
-            title: r.title,
-            artist: r.artist,
-            album: r.album,
-            platform: r.platform,
-            sourceUrl: r.url,
-            filePath: r.resultPath,
-            sizeBytes: r.resultSizeBytes,
-            meta: { format: r.format, bitrate: r.bitrate }
-          });
-        }
-      }
-    })();
-  } catch (e) {
-    console.warn("[store] sqlite sync skipped:", e?.message || e);
-  }
-}
-
 const persistInterval = setInterval(() => {
   writePersistedJobs();
   syncJobsToDb();
@@ -476,7 +406,7 @@ process.once("exit", () => {
 
 // Creates job state for core application logic.
 export function createJob(initial = {}) {
-  const id = uniqueId("job");
+  const id = initial.id || uniqueId("job");
   const job = {
     id,
     status: "queued",
@@ -494,7 +424,45 @@ export function createJob(initial = {}) {
     createdAt: initial.createdAt || new Date(),
   };
   jobs.set(id, job);
+  // Durable immediately (not on the 5s tick) so a restart right after a
+  // submit never loses the job — it is resumed from SQLite on boot.
+  dbp().then((m) => m.upsertJob(jobToDbRow(job))).catch(() => {});
   return job;
+}
+
+// Lazily resolves the SQLite module (undefined when unavailable).
+let _dbPromise = null;
+function dbp() {
+  if (!_dbPromise) _dbPromise = import("./db.js");
+  return _dbPromise;
+}
+
+// Maps an in-memory job onto the SQLite jobs-table row shape.
+function jobToDbRow(job) {
+  return {
+    id: job.id,
+    url: job.url || null,
+    platform: job.metadata?.platform || job.mediaPlatform || null,
+    mediaKind: job.metadata?.spotifyKind || (job.isPlaylist ? "playlist" : "song"),
+    title: job.title || job.metadata?.frozenTitle || job.metadata?.extracted?.title || null,
+    artist: job.artist || null,
+    album: job.album || null,
+    format: job.format || null,
+    bitrate: job.bitrate || null,
+    sampleRate: job.sampleRate,
+    status: job.status,
+    progress: job.progress,
+    currentPhase: job.currentPhase,
+    error: job.error,
+    resultPath: job.resultPath,
+    resultSizeBytes: job.resultSizeBytes,
+    isPlaylist: job.isPlaylist,
+    selectedIndices: job.selectedIndices,
+    clientBatch: job.clientBatch,
+    batchTotal: job.batchTotal,
+    meta: job.metadata,
+    createdAt: job.createdAt instanceof Date ? job.createdAt.toISOString() : job.createdAt
+  };
 }
 
 // Returns job state used for core application logic.

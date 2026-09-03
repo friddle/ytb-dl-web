@@ -179,3 +179,9 @@
 .view-tools{background:color-mix(in oklab,var(--bg-elev) 94%,var(--primary-lighter) 6%);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text-muted);font-size:12px;margin-top:12px;padding:8px 12px}
 .log-box{background:color-mix(in oklab,#000 78%,var(--bg));border:1px solid var(--border);border-radius:var(--radius-sm);color:#d7e0ea;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:11.5px;height:min(60vh,560px);line-height:1.5;margin-top:10px;overflow:auto;padding:12px 14px;white-space:pre-wrap;word-break:break-all}
 .view-section{display:grid;gap:14px;margin:14px 0 0}
+
+/* per-row retry + library rows */
+.dq-retry{background:color-mix(in oklab,var(--bg-elev) 80%,var(--primary-lighter) 20%);border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:14px;min-height:26px;padding:2px 8px}
+.dq-retry:hover{border-color:var(--primary);color:var(--primary)}
+.lib-play{background:color-mix(in oklab,var(--primary-lighter) 40%,var(--bg));border:1px solid var(--border);border-radius:50%;cursor:pointer;font-size:13px;height:30px;width:30px;flex:0 0 30px}
+.lib-play.playing{border-color:var(--primary);color:var(--primary)}

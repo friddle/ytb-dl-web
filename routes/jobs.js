@@ -1848,4 +1848,55 @@ function cleanupOldChunks() {
 setInterval(cleanupOldChunks, 30 * 60 * 1000);
 setTimeout(cleanupOldChunks, 5000);
 
+// ---------------------------------------------------------------------------
+// Restart-resilient queue: jobs left queued/processing by a previous process
+// are re-enqueued from SQLite (URL platform jobs only — uploads/retag/
+// spotify-map jobs carry non-restorable local state and are marked failed).
+// createJob() also persists immediately, so a restart right after a submit
+// no longer loses the task.
+// ---------------------------------------------------------------------------
+(async () => {
+  try {
+    const db = await import("../modules/db.js");
+    const rows = db.listResumableJobs();
+    let resumed = 0, dropped = 0;
+    for (const row of rows) {
+      let meta = {};
+      try { meta = row.meta_json ? JSON.parse(row.meta_json) : {}; } catch { /* tolerate */ }
+      const resumable = !!row.url
+        && !meta.spotifyMapId
+        && meta.source !== "file"
+        && meta.source !== "retag";
+      if (!resumable) {
+        db.markJobError(row.id, "service restarted before this job ran (upload/retag/map jobs cannot resume)");
+        dropped++;
+        continue;
+      }
+      const job = createJob({
+        id: row.id,
+        url: row.url,
+        format: row.format || "original",
+        bitrate: row.bitrate || "auto",
+        sampleRate: row.sample_rate || 48000,
+        title: row.title || "",
+        artist: row.artist || "",
+        album: row.album || "",
+        isPlaylist: !!row.is_playlist,
+        metadata: meta,
+        createdAt: row.created_at || undefined,
+        status: "queued",
+        currentPhase: "queued",
+        progress: 0
+      });
+      enqueueJob(job.id, () => processJob(job.id, null, job.format, job.bitrate));
+      resumed++;
+    }
+    if (resumed || dropped) {
+      console.log(`[jobs] restart-resume: re-enqueued ${resumed} job(s), dropped ${dropped} unresumable`);
+    }
+  } catch (e) {
+    console.warn("[jobs] restart-resume skipped:", e?.message || e);
+  }
+})();
+
 export default router;

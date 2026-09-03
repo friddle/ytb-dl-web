@@ -1428,5 +1428,8 @@
   "home.plDetail": "Desplegar playlist",
   "home.plLoading": "Cargando pistas…",
   "home.plFailed": "Error al cargar la playlist",
-  "home.plHint": "Haz clic para ver las pistas"
+  "home.plHint": "Haz clic para ver las pistas",
+  "home.dlTabLibrary": "🎵 Biblioteca",
+  "home.libraryEmpty": "Aún no hay descargas completadas.",
+  "home.retry": "Reintentar"
 }

@@ -211,6 +211,13 @@ export function upsertJob(job) {
 
 export function insertMusicFile(entry) {
   if (!entry?.filePath) return;
+  // job.resultPath sometimes arrives as a JSON blob ({"outputPath":"/download/…"})
+  let fp = String(entry.filePath);
+  if (fp.startsWith("{")) {
+    try { fp = String(JSON.parse(fp).outputPath || fp); } catch {}
+    try { fp = decodeURIComponent(fp); } catch {}
+  }
+  entry = { ...entry, filePath: fp };
   safe(() => {
     const p = Object.fromEntries(Object.entries({
       job_id: entry.jobId || null,
@@ -345,15 +352,23 @@ export function getStats() {
   }, {});
 }
 
-// Called once at boot: every non-terminal row left over from a previous
-// process is dead (the in-memory queue is gone) — mark it so the UI shows a
-// real failure reason instead of a frozen fake progress.
-export function markInterruptedJobs() {
+// Called once at boot: jobs left non-terminal by a previous process are
+// resumed by store.js (URL jobs re-enqueue); only genuinely unresumable ones
+// (uploads/retag with no source URL, broken spotify-map state) get marked.
+export function listResumableJobs() {
   return safe(() => getDb().prepare(`
-    UPDATE jobs SET status='error', error='service restarted while the job was running',
-      updated_at=?, finished_at=?
-    WHERE status IN ('queued','processing')
-  `).run(nowIso(), nowIso()).changes, 0);
+    SELECT id, url, platform, media_kind, title, artist, album, format, bitrate,
+           sample_rate, status, progress, is_playlist, selected_indices, meta_json, created_at
+    FROM jobs WHERE status IN ('queued','processing')
+    ORDER BY created_at ASC
+  `).all(), []);
+}
+
+export function markJobError(id, message) {
+  return safe(() => getDb().prepare(`
+    UPDATE jobs SET status='error', error=?, updated_at=?, finished_at=?
+    WHERE id=?
+  `).run(String(message || "error").slice(0, 1000), nowIso(), nowIso(), id).changes, 0);
 }
 
 // Recent jobs for UI queue restore after a page refresh.
@@ -385,7 +400,8 @@ export default {
   upsertPlatformStatus,
   getPlatformStatuses,
   getStats,
-  markInterruptedJobs,
+  listResumableJobs,
+  markJobError,
   listRecentJobs,
   clearAllJobs
 };

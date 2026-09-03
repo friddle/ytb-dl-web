@@ -1428,5 +1428,8 @@
   "home.plDetail": "Déplier la playlist",
   "home.plLoading": "Chargement des titres…",
   "home.plFailed": "Échec du chargement de la playlist",
-  "home.plHint": "Cliquez pour voir les titres"
+  "home.plHint": "Cliquez pour voir les titres",
+  "home.dlTabLibrary": "🎵 Bibliothèque",
+  "home.libraryEmpty": "Aucun téléchargement terminé.",
+  "home.retry": "Réessayer"
 }

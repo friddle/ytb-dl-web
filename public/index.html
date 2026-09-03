@@ -201,6 +201,14 @@
         <div class="dl-subtabs" id="dlSubTabs" role="tablist">
           <button type="button" class="dl-subtab active" data-dltab="status" role="tab" aria-selected="true"><span data-i18n="home.dlTabStatus">📋 下载状态</span></button>
           <button type="button" class="dl-subtab" data-dltab="config" role="tab" aria-selected="false"><span data-i18n="home.dlTabConfig">⚙️ 下载配置</span></button>
+          <button type="button" class="dl-subtab" data-dltab="library" role="tab" aria-selected="false"><span data-i18n="home.dlTabLibrary">🎵 音乐库</span></button>
+        </div>
+
+        <!-- library pane: finished downloads, playable straight from disk -->
+        <div id="dlLibraryPane" hidden>
+          <div class="dl-filter"><small class="comment" data-i18n="home.libraryHint">已完成的歌曲存在服务器本地，点 ▶ 直接播放本地文件。</small></div>
+          <div id="dlLibraryList" class="home-results-list"></div>
+          <div id="dlLibraryEmpty" class="comment" data-i18n="home.libraryEmpty" style="padding:8px 2px;">还没有已完成的下载。</div>
         </div>
 
         <!-- status pane: song / playlist download progress -->

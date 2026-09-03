@@ -1429,5 +1429,8 @@
   "home.plDetail": "Expand playlist",
   "home.plLoading": "Loading tracks…",
   "home.plFailed": "Failed to load playlist",
-  "home.plHint": "Click to expand tracks"
+  "home.plHint": "Click to expand tracks",
+  "home.dlTabLibrary": "🎵 Library",
+  "home.libraryEmpty": "No finished downloads yet.",
+  "home.retry": "Retry"
 }

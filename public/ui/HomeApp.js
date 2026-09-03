@@ -61,6 +61,9 @@ export class HomeApp {
           title: j.title || '',
           artist: j.artist || '',
           album: j.album || '',
+          format: j.format || 'original',
+          bitrate: j.bitrate || 'auto',
+          outputSubdir: j.outputSubdir || null,
           status: j.status === 'processing' ? 'processing' : (j.status || 'queued'),
           progress: Number(j.progress) || 0,
           currentPhase: j.current_phase || null,
@@ -95,10 +98,13 @@ export class HomeApp {
     this.downloadQueueEl = document.getElementById('downloadQueue');
     this.downloadQueueList = document.getElementById('downloadQueueList');
     this.downloadQueueSummary = document.getElementById('downloadQueueSummary');
-    // Download module sub-tabs (status / config) + status filter (all/song/playlist)
+    // Download module sub-tabs (status / config / library) + status filter
     this.dlSubTabsEl = document.getElementById('dlSubTabs');
     this.dlStatusPane = document.getElementById('dlStatusPane');
     this.dlConfigPane = document.getElementById('dlConfigPane');
+    this.dlLibraryPane = document.getElementById('dlLibraryPane');
+    this.dlLibraryList = document.getElementById('dlLibraryList');
+    this.dlLibraryEmpty = document.getElementById('dlLibraryEmpty');
     this.dlStatusFilterEl = document.getElementById('dlStatusFilter');
     this.dlStatusFilter = 'all';
     this.dlTab = 'status';
@@ -883,7 +889,7 @@ export class HomeApp {
   // ------------------------------------------------------------------
 
   setDlTab(tab) {
-    this.dlTab = tab === 'config' ? 'config' : 'status';
+    this.dlTab = ['config', 'library'].includes(tab) ? tab : 'status';
     this.dlSubTabsEl?.querySelectorAll('.dl-subtab').forEach((t) => {
       const active = t.dataset.dltab === this.dlTab;
       t.classList.toggle('active', active);
@@ -891,7 +897,68 @@ export class HomeApp {
     });
     if (this.dlStatusPane) this.dlStatusPane.hidden = this.dlTab !== 'status';
     if (this.dlConfigPane) this.dlConfigPane.hidden = this.dlTab !== 'config';
+    if (this.dlLibraryPane) this.dlLibraryPane.hidden = this.dlTab !== 'library';
     if (this.dlTab === 'config') this.populateScopeConfig();
+    if (this.dlTab === 'library') this.loadLibrary();
+  }
+
+  // 音乐库: finished downloads from SQLite, played straight from the server's
+  // local disk (/download/... resolves to the media download dir).
+  async loadLibrary() {
+    try {
+      const r = await fetch('/api/media/library?limit=300');
+      const d = await r.json();
+      this.libraryFiles = Array.isArray(d?.files) ? d.files : [];
+      this.renderLibrary();
+    } catch {
+      this.libraryFiles = [];
+      this.renderLibrary();
+    }
+  }
+
+  renderLibrary() {
+    if (!this.dlLibraryList) return;
+    this.dlLibraryList.innerHTML = '';
+    const files = this.libraryFiles || [];
+    if (this.dlLibraryEmpty) this.dlLibraryEmpty.style.display = files.length ? 'none' : '';
+    for (const f of files) {
+      const row = document.createElement('div');
+      row.className = 'media-row lib-row';
+      const sizeTxt = f.size_bytes ? ` · ${(f.size_bytes / 1048576).toFixed(1)}MB` : '';
+      row.innerHTML = `
+        <button type="button" class="media-play lib-play" aria-label="Play">▶</button>
+        <span class="media-row-body">
+          <span class="media-row-main">
+            <span class="media-item-platform">${this.platTag(f.platform || '')}</span>
+            <span class="media-item-title"></span>
+          </span>
+          <span class="media-row-meta"><span class="media-chip fmt">${f.file_format || ''}${sizeTxt}</span></span>
+        </span>`;
+      row.querySelector('.media-item-title').textContent = [f.title, f.artist].filter(Boolean).join(' — ') || (f.file_path || '').split('/').pop() || '未命名';
+      const btn = row.querySelector('.lib-play');
+      btn?.addEventListener('click', () => this.playLocal(f, btn));
+      this.dlLibraryList.appendChild(row);
+    }
+  }
+
+  // Plays a finished LOCAL file through the mini player (default source is
+  // the server's own copy — no remote stream involved).
+  playLocal(file, btn) {
+    const key = `local:${file.id}`;
+    if (this.playingKey === key) { this.closePreview(); return; }
+    this.closePreview();
+    const bar = document.getElementById('miniPlayer');
+    if (!bar || !file.file_path) return;
+    const body = bar.querySelector('.mini-player__body');
+    body.innerHTML = `<audio class="mini-player__audio" controls autoplay src="${encodeURI(file.file_path)}"></audio>`;
+    bar.querySelector('.mini-player__title').textContent =
+      [file.title, file.artist].filter(Boolean).join(' — ') || '本地播放';
+    bar.hidden = false;
+    this.setPlayingUi(key, btn);
+    body.querySelector('audio')?.addEventListener('error', () => {
+      this.notify(this.tt('home.previewUnavailable', '该平台暂不支持试听'), 'error');
+      this.closePreview();
+    });
   }
 
   rowKind(row) {
@@ -1128,6 +1195,50 @@ export class HomeApp {
     return `<span class="dq-badge">⋯ ${t('home.jobPending', '等待')}</span>`;
   }
 
+  // Re-submits ONE failed row (per-row ↻ button), keeping format/bitrate and
+  // the original output subfolder.
+  async retryOne(row) {
+    if (!row?.url || this.submitting) return;
+    const divs = [...(this.downloadQueueList?.querySelectorAll('.dq-retry') || [])];
+    const btn = divs.find((b) => b.dataset.rowid === (row.jobId || row.url));
+    btn?.setAttribute('disabled', '1');
+    try {
+      const resp = await fetch('/api/jobs', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          url: row.url,
+          format: row.format || 'original',
+          bitrate: row.bitrate || 'auto',
+          isPlaylist: false,
+          sampleRate: row.sampleRate || 48000,
+          autoCreateZip: false,
+          title: row.title || '',
+          artist: row.artist || '',
+          ...(row.outputSubdir ? { outputSubdir: row.outputSubdir } : {})
+        })
+      });
+      const data = await resp.json().catch(() => ({}));
+      if (resp.ok && (data.id || data.ok || data.data?.id)) {
+        const oldId = row.jobId;
+        row.jobId = data.id || data.data?.id;
+        row.status = 'queued';
+        row.progress = 0;
+        row.error = null;
+        if (oldId && this.retryIdMap) this.retryIdMap[oldId] = row.jobId;
+        this.renderQueue();
+        this.pollQueueStatuses();
+      } else {
+        row.error = data?.error?.message || `HTTP ${resp.status}`;
+        this.renderQueue();
+      }
+    } catch (err) {
+      row.error = err.message;
+      this.renderQueue();
+    }
+  }
+
   renderQueue() {
     if (!this.downloadQueueList) return;
     this.downloadQueueList.innerHTML = '';
@@ -1139,14 +1250,22 @@ export class HomeApp {
       const kindTag = this.rowKind(row) === 'playlist' ? '📃 ' : '';
       const fmtChip = row.fileFormat ? `<span class="media-chip fmt">${row.fileFormat}${row.quality ? ' · ' + row.quality : ''}</span>` : '';
       const vipChip = row.vip ? `<span class="media-chip vip">👑 ${this.tt('home.vipRequired', 'VIP')}</span>` : '';
+      const retryBtn = ['failed', 'error', 'missing'].includes(row.status)
+        ? `<button type="button" class="dq-retry icon-btn" title="${this.tt('home.retry', '重试')}">↻</button>` : '';
       div.innerHTML = `
         <span class="media-item-platform">${this.platTag(row.platform)}</span>
         <span class="dq-title"></span>
         <span class="dq-artist">${fmtChip}${vipChip}</span>
         ${row.durationSec ? `<span class="dq-dur">${this.fmtDuration(row.durationSec)}</span>` : ''}
-        <span class="dq-status">${this.queueStatusBadge(row)}</span>`;
+        <span class="dq-status">${this.queueStatusBadge(row)}</span>
+        ${retryBtn}`;
       div.querySelector('.dq-title').textContent = kindTag + (row.title || '');
       div.querySelector('.dq-artist').textContent = row.artist || '';
+      const rbtn = div.querySelector('.dq-retry');
+      if (rbtn) {
+        rbtn.dataset.rowid = row.jobId || row.url || '';
+        rbtn.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); this.retryOne(row); });
+      }
       this.downloadQueueList.appendChild(div);
     }
     if (this.downloadQueueEl) this.downloadQueueEl.style.display = rows.length ? '' : 'none';

@@ -821,10 +821,23 @@ router.get("/api/media/jobs-status", rateLimit(240, 60_000), (req, res) => {
 });
 
 // Queue restore for the Download view: survives page refreshes. Read-only,
-// so it stays public like /api/media/jobs-status.
+// so it stays public like /api/media/jobs-status. Also carries the fields a
+// single-job retry needs (format/bitrate/outputSubdir).
 router.get("/api/media/jobs-recent", rateLimit(120, 60_000), (req, res) => {
   const limit = Math.max(1, Math.min(300, Number(req.query.limit) || 120));
-  res.json({ ok: true, jobs: listRecentJobs({ limit }) });
+  const jobs = listRecentJobs({ limit }).map((j) => {
+    let subdir = null;
+    try { subdir = j.meta_json ? (JSON.parse(j.meta_json) || {}).outputSubdir || null : null; } catch { /* tolerate */ }
+    return { ...j, outputSubdir: subdir };
+  });
+  res.json({ ok: true, jobs });
+});
+
+// Finished-music library (one row per produced file) for the 音乐库 tab —
+// file_path is the /download/… URL the <audio> element can stream directly.
+router.get("/api/media/library", rateLimit(120, 60_000), (req, res) => {
+  const limit = Math.max(1, Math.min(500, Number(req.query.limit) || 200));
+  res.json({ ok: true, files: listMusicFiles({ limit }) });
 });
 
 // Clears the whole download history (destructive → admin only).

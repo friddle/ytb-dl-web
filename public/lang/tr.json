@@ -1429,5 +1429,8 @@
   "home.plDetail": "Listeyi aç",
   "home.plLoading": "Parçalar yükleniyor…",
   "home.plFailed": "Liste yüklenemedi",
-  "home.plHint": "Parçaları görmek için tıkla"
+  "home.plHint": "Parçaları görmek için tıkla",
+  "home.dlTabLibrary": "🎵 Kitaplık",
+  "home.libraryEmpty": "Henüz tamamlanan indirme yok.",
+  "home.retry": "Yeniden dene"
 }

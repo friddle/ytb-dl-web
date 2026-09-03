@@ -1401,5 +1401,8 @@
   "home.plDetail": "展开歌单",
   "home.plLoading": "加载曲目…",
   "home.plFailed": "歌单加载失败",
-  "home.plHint": "点击展开查看曲目"
+  "home.plHint": "点击展开查看曲目",
+  "home.dlTabLibrary": "🎵 音乐库",
+  "home.libraryEmpty": "还没有已完成的下载。",
+  "home.retry": "重试"
 }
