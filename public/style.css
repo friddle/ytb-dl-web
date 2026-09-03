@@ -185,3 +185,32 @@
 .dq-retry:hover{border-color:var(--primary);color:var(--primary)}
 .lib-play{background:color-mix(in oklab,var(--primary-lighter) 40%,var(--bg));border:1px solid var(--border);border-radius:50%;cursor:pointer;font-size:13px;height:30px;width:30px;flex:0 0 30px}
 .lib-play.playing{border-color:var(--primary);color:var(--primary)}
+.lib-group{border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden}
+.lib-group + .lib-group{margin-top:8px}
+.lib-group-head{align-items:center;background:color-mix(in oklab,var(--primary-lighter) 18%,var(--bg));cursor:pointer;display:flex;gap:8px;padding:7px 10px}
+.lib-group-name{flex:1;font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lib-group-meta{color:var(--text-dim,#8a93a6);flex:0 0 auto;font-size:12px}
+.lib-group-body{display:grid;gap:6px;padding:8px}
+.lib-group-body[hidden]{display:none}
+/* per-item download settings (⚙) + overlay dialog */
+.media-cfg{background:none;border:1px solid transparent;border-radius:6px;cursor:pointer;flex:0 0 24px;font-size:13px;height:24px;width:24px;color:inherit;opacity:.55}
+.media-cfg:hover{border-color:var(--border);opacity:1}
+.modal-overlay{align-items:center;background:rgba(10,14,22,.45);display:flex;inset:0;justify-content:center;position:fixed;z-index:999}
+.modal-card{background:var(--bg-elev,var(--bg));border:1px solid var(--border);border-radius:var(--radius);box-shadow:0 12px 40px rgba(0,0,0,.25);max-height:86vh;max-width:430px;overflow:auto;padding:16px 18px;width:92vw}
+.modal-card h3{margin:0 0 6px}
+.modal-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.modal-actions .btn-danger{border-color:var(--danger,#c0392b);color:var(--danger,#c0392b)}
+.row-cfg-name{margin:0 0 10px}
+/* search/parse/library lists share a uniform width */
+.home-results-list{margin-left:auto;margin-right:auto;max-width:960px}
+/* rich queue rows + dismiss/clear */
+.dq-row{align-items:center;display:flex;gap:10px}
+.dq-side{align-items:center;display:flex;flex:0 0 auto;gap:6px}
+.dq-pct{font-size:12px;opacity:.75;min-width:34px;text-align:right}
+.dq-dismiss{background:none;border:1px solid transparent;border-radius:6px;cursor:pointer;font-size:13px;opacity:.5}
+.dq-dismiss:hover{border-color:var(--border);opacity:1}
+.dq-group .lib-group-head{cursor:pointer}
+.btn-danger{background:none;border:1px solid var(--border);border-radius:6px;cursor:pointer;padding:4px 10px}
+.dl-tpl-actions{display:flex;flex-wrap:wrap;gap:8px}
+.lib-del{background:none;border:1px solid transparent;border-radius:6px;cursor:pointer;font-size:14px;flex:0 0 28px;opacity:.5}
+.lib-del:hover{border-color:var(--danger,#c0392b);opacity:1}

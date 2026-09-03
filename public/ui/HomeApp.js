@@ -52,7 +52,7 @@ export class HomeApp {
       if (!rows.length) return;
       const known = new Set((this.queueRows || []).map((x) => x.jobId || x.id));
       const restored = rows
-        .filter((j) => !known.has(j.id))
+        .filter((j) => !known.has(j.id) && !this.hiddenJobIds.has(j.id))
         .reverse() // oldest first so the list reads in submit order
         .map((j) => ({
           jobId: j.id,
@@ -64,6 +64,7 @@ export class HomeApp {
           format: j.format || 'original',
           bitrate: j.bitrate || 'auto',
           outputSubdir: j.outputSubdir || null,
+          rename: j.rename || null,
           status: j.status === 'processing' ? 'processing' : (j.status || 'queued'),
           progress: Number(j.progress) || 0,
           currentPhase: j.current_phase || null,
@@ -109,13 +110,23 @@ export class HomeApp {
     this.dlStatusFilter = 'all';
     this.dlTab = 'status';
     // Per-scope download config: songs and playlists are configured separately.
-    this.dlCfg = { song: { format: 'default', bitrate: 'auto', subdir: '' }, playlist: { format: 'default', bitrate: 'auto', subdir: '' } };
+    this.dlCfg = { song: { format: 'default', bitrate: 'auto', subdir: '', rename: '' }, playlist: { format: 'default', bitrate: 'auto', subdir: '', rename: '' } };
     this.cfgSongFormatSelect = document.getElementById('dlSongFormatSelect');
     this.cfgSongBitrateSelect = document.getElementById('dlSongBitrateSelect');
     this.cfgSongSubdirInput = document.getElementById('dlSongSubdirInput');
+    this.cfgSongRenameInput = document.getElementById('dlSongRenameInput');
     this.cfgListFormatSelect = document.getElementById('dlListFormatSelect');
     this.cfgListBitrateSelect = document.getElementById('dlListBitrateSelect');
     this.cfgListSubdirInput = document.getElementById('dlListSubdirInput');
+    this.cfgListRenameInput = document.getElementById('dlListRenameInput');
+    // Download settings templates (format/bitrate/subdir/rename presets).
+    this.tplSelect = document.getElementById('dlTplSelect');
+    this.tplApplyBtn = document.getElementById('dlTplApplyBtn');
+    this.tplSaveBtn = document.getElementById('dlTplSaveBtn');
+    this.tplDeleteBtn = document.getElementById('dlTplDeleteBtn');
+    // Display-only dismissal of finished queue rows (never deletes data).
+    this.hiddenJobIds = new Set(this.readJson('gharmonize_dq_hidden', []));
+    this.clearDoneBtn = document.getElementById('clearDoneBtn');
     // Download settings (live inside the settings page)
     this.convertCheckbox = document.getElementById('convertAfterCheckbox');
     this.formatSelect = document.getElementById('dlFormatSelect');
@@ -179,6 +190,10 @@ export class HomeApp {
       this.resultsList?.querySelectorAll('.media-group-check').forEach((c) => { c.checked = this.selectAll.checked; c.indeterminate = false; this.onPlaylistMasterToggle(Number(c.dataset.idx)); });
       this.updateSelectedCount();
     });    this.downloadBtn?.addEventListener('click', () => this.downloadSelected());
+    this.clearDoneBtn?.addEventListener('click', () => this.clearFinishedRows());
+    this.tplApplyBtn?.addEventListener('click', () => this.applyTemplate());
+    this.tplSaveBtn?.addEventListener('click', () => this.saveTemplateFromCurrent());
+    this.tplDeleteBtn?.addEventListener('click', () => this.deleteTemplate());
     this.convertCheckbox?.addEventListener('change', () => { this.syncConvertUi(); this.persistDlPrefs(); });
     this.formatSelect?.addEventListener('change', () => { this.syncBitrateOptions(); this.persistDlPrefs(); });
     this.bitrateSelect?.addEventListener('change', () => this.persistDlPrefs());
@@ -516,6 +531,7 @@ export class HomeApp {
     if (item.stats?.plays) chips.push(`<span class="media-chip plays">▶ ${item.stats.plays >= 10000 ? Math.round(item.stats.plays / 10000) + 'w' : item.stats.plays}</span>`);
     row.innerHTML = `
       <input type="checkbox" class="${checkClass}" data-idx="${idx}" ${trackOf !== null ? `data-parent="${trackOf}"` : ''} ${isTopPlaylist ? 'checked' : ''}>
+      <button type="button" class="media-cfg" data-idx="${idx}" title="${this.tt('home.rowCfgTitle', '此条目下载设置')}">⚙</button>
       ${isTopPlaylist ? `<button type="button" class="media-expand" aria-label="${this.tt('home.plDetail', '展开歌单')}"><span class="media-expand-arrow">▸</span></button>` : ''}
       <span class="media-row-cover">${item.cover ? `<img src="${item.cover}" alt="" loading="lazy" referrerpolicy="no-referrer">` : '🎵'}</span>
       <span class="media-row-body">
@@ -548,6 +564,12 @@ export class HomeApp {
     } else {
       row.querySelector('.media-item-check').addEventListener('change', () => this.updateSelectedCount());
     }
+    // ⚙ per-item download settings (format/subdir/rename override).
+    row.querySelector('.media-cfg')?.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      this.openRowCfgDialog(idx, isTopPlaylist);
+    });
     // Preview button: stop the label's default checkbox toggle.
     row.querySelector('.media-play')?.addEventListener('click', (e) => {
       e.preventDefault();
@@ -772,7 +794,8 @@ export class HomeApp {
       queue.push(...chosen.map((t) => ({
         ...t,
         platform: t.platform || item.platform,
-        fromPlaylist: item.title
+        fromPlaylist: item.title,
+        ...(item._override ? { _override: item._override } : {})
       })));
       return;
     }
@@ -783,7 +806,8 @@ export class HomeApp {
       const tracks = (d.items || []).map((t) => ({
         ...t,
         platform: item.platform,
-        fromPlaylist: item.title
+        fromPlaylist: item.title,
+        ...(item._override ? { _override: item._override } : {})
       }));
       this.notify(`${this.tt('home.expandPlaylists', '歌单已展开')}: ${item.title} → ${tracks.length}`, 'info');
       if (tracks.length) queue.push(...tracks);
@@ -860,7 +884,8 @@ export class HomeApp {
             autoCreateZip: false,
             title: row.title || '',
             artist: row.artist || '',
-            ...(row.cfg.subdir ? { outputSubdir: row.cfg.subdir } : {})
+            ...(row.cfg.subdir ? { outputSubdir: row.cfg.subdir } : {}),
+            ...(row.cfg.rename ? { rename: row.cfg.rename } : {})
           })
         });
         const data = await resp.json().catch(() => ({}));
@@ -902,55 +927,105 @@ export class HomeApp {
     if (this.dlTab === 'library') this.loadLibrary();
   }
 
-  // 音乐库: finished downloads from SQLite, played straight from the server's
-  // local disk (/download/... resolves to the media download dir).
+  // 音乐库: scans the server's download directory on disk and groups files by
+  // folder (base data), enriched with SQLite metadata; played via /download/….
   async loadLibrary() {
+    this.libraryGroups = [];
     try {
-      const r = await fetch('/api/media/library?limit=300');
+      const r = await fetch('/api/media/library-tree');
       const d = await r.json();
-      this.libraryFiles = Array.isArray(d?.files) ? d.files : [];
-      this.renderLibrary();
+      this.libraryGroups = Array.isArray(d?.groups) ? d.groups : [];
     } catch {
-      this.libraryFiles = [];
-      this.renderLibrary();
+      this.libraryGroups = [];
     }
+    this.renderLibrary();
   }
 
   renderLibrary() {
     if (!this.dlLibraryList) return;
     this.dlLibraryList.innerHTML = '';
-    const files = this.libraryFiles || [];
-    if (this.dlLibraryEmpty) this.dlLibraryEmpty.style.display = files.length ? 'none' : '';
-    for (const f of files) {
-      const row = document.createElement('div');
-      row.className = 'media-row lib-row';
-      const sizeTxt = f.size_bytes ? ` · ${(f.size_bytes / 1048576).toFixed(1)}MB` : '';
-      row.innerHTML = `
-        <button type="button" class="media-play lib-play" aria-label="Play">▶</button>
-        <span class="media-row-body">
-          <span class="media-row-main">
-            <span class="media-item-platform">${this.platTag(f.platform || '')}</span>
-            <span class="media-item-title"></span>
-          </span>
-          <span class="media-row-meta"><span class="media-chip fmt">${f.file_format || ''}${sizeTxt}</span></span>
-        </span>`;
-      row.querySelector('.media-item-title').textContent = [f.title, f.artist].filter(Boolean).join(' — ') || (f.file_path || '').split('/').pop() || '未命名';
-      const btn = row.querySelector('.lib-play');
-      btn?.addEventListener('click', () => this.playLocal(f, btn));
-      this.dlLibraryList.appendChild(row);
+    const groups = this.libraryGroups || [];
+    if (this.dlLibraryEmpty) this.dlLibraryEmpty.style.display = groups.length ? 'none' : '';
+    for (const g of groups) this.dlLibraryList.appendChild(this.libraryGroup(g));
+  }
+
+  libraryGroup(g) {
+    const group = document.createElement('div');
+    group.className = 'media-group lib-group';
+    const head = document.createElement('div');
+    head.className = 'lib-group-head';
+    const mb = g.total ? ` · ${(g.total / 1048576).toFixed(1)}MB` : '';
+    head.innerHTML = `
+      <button type="button" class="media-expand lib-expand" aria-label="toggle"><span class="media-expand-arrow">▾</span></button>
+      <span class="lib-group-name"></span>
+      <span class="lib-group-meta">${g.files.length} 首${mb}</span>`;
+    head.querySelector('.lib-group-name').textContent = g.dir === '/' ? '（根目录）' : g.dir;
+    const body = document.createElement('div');
+    body.className = 'lib-group-body';
+    for (const f of g.files) body.appendChild(this.libraryRow(f));
+    head.querySelector('.lib-expand').addEventListener('click', () => {
+      body.hidden = !body.hidden;
+      head.querySelector('.media-expand-arrow').textContent = body.hidden ? '▸' : '▾';
+    });
+    group.append(head, body);
+    return group;
+  }
+
+  libraryRow(f) {
+    const row = document.createElement('div');
+    row.className = 'media-row lib-row';
+    const sizeTxt = f.size ? ` · ${(f.size / 1048576).toFixed(1)}MB` : '';
+    const fmtTxt = `${(f.format || '').toUpperCase()}${sizeTxt}`;
+    row.innerHTML = `
+      <button type="button" class="media-play lib-play" aria-label="Play">▶</button>
+      <span class="media-row-body">
+        <span class="media-row-main">
+          ${f.platform ? `<span class="media-item-platform">${this.platTag(f.platform)}</span>` : ''}
+          <span class="media-item-title"></span>
+        </span>
+        <span class="media-row-meta">
+          <span class="media-chip fmt">${fmtTxt}</span>
+          ${f.duration_sec ? `<span class="media-chip">${Math.round(f.duration_sec / 60)}:${String(Math.round(f.duration_sec) % 60).padStart(2, '0')}</span>` : ''}
+          ${f.mtime ? `<span class="media-chip">${new Date(f.mtime).toLocaleDateString()}</span>` : ''}
+        </span>
+        <span class="media-row-sub"></span>
+      </span>
+      <button type="button" class="lib-del icon-btn" title="${this.tt('home.libDelete', '删除文件')}">🗑</button>`;
+    row.querySelector('.media-item-title').textContent = f.title || f.name;
+    const sub = row.querySelector('.media-row-sub');
+    const meta = [f.artist, f.name !== (f.title || f.name) ? f.name : null].filter(Boolean).join(' · ');
+    if (meta) sub.textContent = meta; else sub.remove();
+    const btn = row.querySelector('.lib-play');
+    btn?.addEventListener('click', () => this.playLocal(f, btn));
+    row.querySelector('.lib-del')?.addEventListener('click', () => this.deleteLibraryFile(f));
+    return row;
+  }
+
+  async deleteLibraryFile(f) {
+    if (!f?.path) return;
+    if (!window.confirm(`${this.tt('home.libDeleteConfirm', '确认删除该文件（不可恢复）？')}\n${f.title || f.name}`)) return;
+    try {
+      const r = await fetch(`/api/media/library-file?path=${encodeURIComponent(f.path)}`, { method: 'DELETE', credentials: 'include' });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok || !d.ok) throw new Error(d?.error?.message || `HTTP ${r.status}`);
+      this.notify(`${this.tt('home.libDeleted', '已删除')}: ${f.title || f.name}`, 'info');
+      this.loadLibrary();
+    } catch (err) {
+      this.notify(`${this.tt('home.libDeleteFailed', '删除失败')}: ${err.message}`, 'error');
     }
   }
 
   // Plays a finished LOCAL file through the mini player (default source is
   // the server's own copy — no remote stream involved).
   playLocal(file, btn) {
-    const key = `local:${file.id}`;
+    const src = file.file_path || file.path;
+    const key = `local:${file.id || src}`;
     if (this.playingKey === key) { this.closePreview(); return; }
     this.closePreview();
     const bar = document.getElementById('miniPlayer');
-    if (!bar || !file.file_path) return;
+    if (!bar || !src) return;
     const body = bar.querySelector('.mini-player__body');
-    body.innerHTML = `<audio class="mini-player__audio" controls autoplay src="${encodeURI(file.file_path)}"></audio>`;
+    body.innerHTML = `<audio class="mini-player__audio" controls autoplay src="${encodeURI(src)}"></audio>`;
     bar.querySelector('.mini-player__title').textContent =
       [file.title, file.artist].filter(Boolean).join(' — ') || '本地播放';
     bar.hidden = false;
@@ -966,13 +1041,14 @@ export class HomeApp {
   }
 
   persistScopeCfg() {
-    const read = (fmtSel, brSel, dirInput) => ({
+    const read = (fmtSel, brSel, dirInput, renameInput) => ({
       format: fmtSel?.value || 'default',
       bitrate: brSel?.value || 'auto',
-      subdir: String(dirInput?.value || '').trim().replace(/^\/+|\/+$/g, '')
+      subdir: String(dirInput?.value || '').trim().replace(/^\/+|\/+$/g, ''),
+      rename: String(renameInput?.value || '').trim()
     });
-    this.dlCfg.song = read(this.cfgSongFormatSelect, this.cfgSongBitrateSelect, this.cfgSongSubdirInput);
-    this.dlCfg.playlist = read(this.cfgListFormatSelect, this.cfgListBitrateSelect, this.cfgListSubdirInput);
+    this.dlCfg.song = read(this.cfgSongFormatSelect, this.cfgSongBitrateSelect, this.cfgSongSubdirInput, this.cfgSongRenameInput);
+    this.dlCfg.playlist = read(this.cfgListFormatSelect, this.cfgListBitrateSelect, this.cfgListSubdirInput, this.cfgListRenameInput);
     try { localStorage.setItem('gharmonize_dl_scope_cfg', JSON.stringify(this.dlCfg)); } catch { /* ignore */ }
   }
 
@@ -984,6 +1060,147 @@ export class HomeApp {
       if (saved?.song) this.dlCfg.song = { ...this.dlCfg.song, ...saved.song };
       if (saved?.playlist) this.dlCfg.playlist = { ...this.dlCfg.playlist, ...saved.playlist };
     } catch { /* ignore */ }
+    this.loadTemplates();
+  }
+
+  // ------------------------------------------------------------------
+  // Download settings templates: {name, format, bitrate, subdir, rename}
+  // ------------------------------------------------------------------
+  readJson(key, fallback) {
+    try {
+      const raw = localStorage.getItem(key);
+      return raw ? JSON.parse(raw) : fallback;
+    } catch { return fallback; }
+  }
+
+  loadTemplates() {
+    const list = this.readJson('gharmonize_dl_templates', null);
+    this.dlTemplates = Array.isArray(list) && list.length ? list : [
+      { name: '默认（跟随设置）', format: 'default', bitrate: 'auto', subdir: '', rename: '' },
+      { name: 'MP3 320k', format: 'mp3', bitrate: '320k', subdir: '', rename: '{artist} - {title}' },
+      { name: 'FLAC 原音质', format: 'flac', bitrate: 'auto', subdir: 'FLAC', rename: '{artist} - {title}' }
+    ];
+    this.populateTemplateSelect();
+  }
+
+  persistTemplates() {
+    try { localStorage.setItem('gharmonize_dl_templates', JSON.stringify(this.dlTemplates || [])); } catch { /* ignore */ }
+  }
+
+  populateTemplateSelect() {
+    if (!this.tplSelect) return;
+    this.tplSelect.innerHTML = '';
+    for (const t of this.dlTemplates || []) {
+      const opt = document.createElement('option');
+      opt.value = t.name;
+      opt.textContent = t.name;
+      this.tplSelect.appendChild(opt);
+    }
+  }
+
+  applyTemplate() {
+    const tpl = (this.dlTemplates || []).find((t) => t.name === this.tplSelect?.value);
+    if (!tpl) { this.notify(this.tt('home.tplMissing', '请先选择模板'), 'error'); return; }
+    for (const scope of ['song', 'playlist']) {
+      this.dlCfg[scope] = { ...this.dlCfg[scope], format: tpl.format, bitrate: tpl.bitrate, subdir: tpl.subdir || '', rename: tpl.rename || '' };
+    }
+    this.populateScopeConfig();
+    this.persistScopeCfg();
+    this.notify(`${this.tt('home.tplApplied', '模板已应用')}: ${tpl.name}`, 'info');
+  }
+
+  saveTemplateFromCurrent() {
+    const name = window.prompt(this.tt('home.tplNamePrompt', '模板名称'), this.tplSelect?.value || '');
+    if (!name) return;
+    const tpl = { name: name.trim(), format: this.dlCfg.song.format, bitrate: this.dlCfg.song.bitrate, subdir: this.dlCfg.song.subdir, rename: this.dlCfg.song.rename };
+    this.dlTemplates = (this.dlTemplates || []).filter((t) => t.name !== tpl.name);
+    this.dlTemplates.push(tpl);
+    this.persistTemplates();
+    this.populateTemplateSelect();
+    if (this.tplSelect) this.tplSelect.value = tpl.name;
+    this.notify(`${this.tt('home.tplSaved', '模板已保存')}: ${tpl.name}`, 'info');
+  }
+
+  deleteTemplate() {
+    const name = this.tplSelect?.value;
+    if (!name) return;
+    this.dlTemplates = (this.dlTemplates || []).filter((t) => t.name !== name);
+    this.persistTemplates();
+    this.populateTemplateSelect();
+    this.notify(`${this.tt('home.tplDeleted', '模板已删除')}: ${name}`, 'info');
+  }
+
+  // Per-item ⚙ override dialog (single song or whole playlist group).
+  openRowCfgDialog(idx, isPlaylist) {
+    const item = this.results?.[idx];
+    if (!item) return;
+    const base = item._override || this.dlCfg[isPlaylist ? 'playlist' : 'song'] || {};
+    const ov = document.createElement('div');
+    ov.className = 'modal-overlay';
+    ov.innerHTML = `
+      <div class="modal-card">
+        <h3>⚙ ${this.tt('home.rowCfgTitle', '此条目下载设置')}</h3>
+        <p class="comment row-cfg-name"></p>
+        <div class="form-group"><label>${this.tt('home.tplSelect', '模板')}</label>
+          <select class="form-control rowcfg-tpl"></select></div>
+        <div class="form-group"><label>${this.tt('media.format', '格式')}</label>
+          <select class="form-control rowcfg-format"></select></div>
+        <div class="form-group"><label>${this.tt('media.bitrate', '码率')}</label>
+          <select class="form-control rowcfg-bitrate"></select></div>
+        <div class="form-group"><label>${this.tt('home.subdirLabel', '子目录')}</label>
+          <input type="text" class="form-control rowcfg-subdir" placeholder="子目录（可留空）"></div>
+        <div class="form-group"><label>${this.tt('home.renameLabel', '重命名规则')}</label>
+          <input type="text" class="form-control rowcfg-rename" placeholder="{artist} - {title}（可留空）"></div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-primary rowcfg-save">${this.tt('home.rowCfgSave', '仅此条目生效')}</button>
+          <button type="button" class="btn rowcfg-tplsave">${this.tt('home.tplSave', '当前存为模板')}</button>
+          <button type="button" class="btn rowcfg-clear">${this.tt('home.rowCfgClear', '清除覆盖')}</button>
+          <button type="button" class="btn rowcfg-close">${this.tt('ui.close', '关闭')}</button>
+        </div>
+      </div>`;
+    ov.querySelector('.row-cfg-name').textContent = item.title || '';
+    const fmtSel = ov.querySelector('.rowcfg-format');
+    const brSel = ov.querySelector('.rowcfg-bitrate');
+    this.fillScopeSelects(fmtSel, brSel, base);
+    ov.querySelector('.rowcfg-subdir').value = base.subdir || '';
+    ov.querySelector('.rowcfg-rename').value = base.rename || '';
+    const tplSel = ov.querySelector('.rowcfg-tpl');
+    for (const t of this.dlTemplates || []) {
+      const o = document.createElement('option');
+      o.value = t.name;
+      o.textContent = t.name;
+      tplSel.appendChild(o);
+    }
+    tplSel.addEventListener('change', () => {
+      const t = (this.dlTemplates || []).find((x) => x.name === tplSel.value);
+      if (!t) return;
+      this.fillScopeSelects(fmtSel, brSel, t);
+      ov.querySelector('.rowcfg-subdir').value = t.subdir || '';
+      ov.querySelector('.rowcfg-rename').value = t.rename || '';
+    });
+    ov.querySelector('.rowcfg-save').addEventListener('click', () => {
+      item._override = {
+        format: fmtSel.value, bitrate: brSel.value,
+        subdir: ov.querySelector('.rowcfg-subdir').value.trim().replace(/^\/+|\/+$/g, ''),
+        rename: ov.querySelector('.rowcfg-rename').value.trim()
+      };
+      ov.remove();
+      this.notify(this.tt('home.rowCfgSaved', '已保存此条目的下载设置'), 'info');
+    });
+    ov.querySelector('.rowcfg-tplsave').addEventListener('click', () => {
+      const name = window.prompt(this.tt('home.tplNamePrompt', '模板名称'), tplSel.value || '');
+      if (!name) return;
+      const tpl = { name: name.trim(), format: fmtSel.value, bitrate: brSel.value, subdir: ov.querySelector('.rowcfg-subdir').value.trim(), rename: ov.querySelector('.rowcfg-rename').value.trim() };
+      this.dlTemplates = (this.dlTemplates || []).filter((t) => t.name !== tpl.name);
+      this.dlTemplates.push(tpl);
+      this.persistTemplates();
+      this.populateTemplateSelect();
+      if (this.tplSelect) this.tplSelect.value = tpl.name;
+    });
+    ov.querySelector('.rowcfg-clear').addEventListener('click', () => { delete item._override; ov.remove(); });
+    ov.querySelector('.rowcfg-close').addEventListener('click', () => ov.remove());
+    ov.addEventListener('click', (e) => { if (e.target === ov) ov.remove(); });
+    document.body.appendChild(ov);
   }
 
   fillScopeSelects(fmtSel, brSel, cfg) {
@@ -1025,6 +1242,8 @@ export class HomeApp {
     this.fillScopeSelects(this.cfgListFormatSelect, this.cfgListBitrateSelect, this.dlCfg.playlist);
     if (this.cfgSongSubdirInput && document.activeElement !== this.cfgSongSubdirInput) this.cfgSongSubdirInput.value = this.dlCfg.song.subdir || '';
     if (this.cfgListSubdirInput && document.activeElement !== this.cfgListSubdirInput) this.cfgListSubdirInput.value = this.dlCfg.playlist.subdir || '';
+    if (this.cfgSongRenameInput && document.activeElement !== this.cfgSongRenameInput) this.cfgSongRenameInput.value = this.dlCfg.song.rename || '';
+    if (this.cfgListRenameInput && document.activeElement !== this.cfgListRenameInput) this.cfgListRenameInput.value = this.dlCfg.playlist.rename || '';
   }
 
   syncScopeBitrates() {
@@ -1033,16 +1252,19 @@ export class HomeApp {
     this.fillScopeSelects(this.cfgListFormatSelect, this.cfgListBitrateSelect, this.dlCfg.playlist);
   }
 
-  // Effective format/bitrate/subdir for one queue row: concrete scope config
-  // wins; 'default' falls back to the settings-page download defaults.
+  // Effective format/bitrate/subdir/rename for one queue row: per-item
+  // override wins, then the concrete scope config; 'default' falls back to
+  // the settings-page download defaults.
   resolveRowCfg(row) {
-    const scope = this.dlCfg[this.rowKind(row)] || this.dlCfg.song;
+    const scope = { ...(this.dlCfg[this.rowKind(row)] || this.dlCfg.song) };
+    const ov = row._override;
+    if (ov) Object.assign(scope, ov);
     const convert = !!this.convertCheckbox?.checked;
     const defFormat = convert ? (this.formatSelect?.value || 'mp3') : 'original';
     const defBitrate = defFormat === 'original' ? 'auto' : (this.bitrateSelect?.value || '320k');
     const format = scope.format === 'default' ? defFormat : scope.format;
     const bitrate = format === 'original' ? 'auto' : (scope.format === 'default' ? defBitrate : (scope.bitrate || 'auto'));
-    return { format, bitrate, subdir: scope.subdir || '' };
+    return { format, bitrate, subdir: scope.subdir || '', rename: scope.rename || '' };
   }
 
   // ------------------------------------------------------------------
@@ -1216,7 +1438,8 @@ export class HomeApp {
           autoCreateZip: false,
           title: row.title || '',
           artist: row.artist || '',
-          ...(row.outputSubdir ? { outputSubdir: row.outputSubdir } : {})
+          ...(row.outputSubdir ? { outputSubdir: row.outputSubdir } : {}),
+          ...(row.rename ? { rename: row.rename } : {})
         })
       });
       const data = await resp.json().catch(() => ({}));
@@ -1242,38 +1465,105 @@ export class HomeApp {
   renderQueue() {
     if (!this.downloadQueueList) return;
     this.downloadQueueList.innerHTML = '';
-    const rows = this.queueRows || [];
+    const rows = (this.queueRows || []).filter((r) => !r.jobId || !this.hiddenJobIds.has(r.jobId));
     const visible = rows.filter((r) => this.dlStatusFilter === 'all' || this.rowKind(r) === this.dlStatusFilter);
+    // Playlist tracks (fromPlaylist) collapse under a group header; singles
+    // stay standalone — mirroring the search view's song/playlist layout.
+    const blocks = [];
+    const plIndex = new Map();
     for (const row of visible) {
-      const div = document.createElement('div');
-      div.className = 'dq-row';
-      const kindTag = this.rowKind(row) === 'playlist' ? '📃 ' : '';
-      const fmtChip = row.fileFormat ? `<span class="media-chip fmt">${row.fileFormat}${row.quality ? ' · ' + row.quality : ''}</span>` : '';
-      const vipChip = row.vip ? `<span class="media-chip vip">👑 ${this.tt('home.vipRequired', 'VIP')}</span>` : '';
-      const retryBtn = ['failed', 'error', 'missing'].includes(row.status)
-        ? `<button type="button" class="dq-retry icon-btn" title="${this.tt('home.retry', '重试')}">↻</button>` : '';
-      div.innerHTML = `
-        <span class="media-item-platform">${this.platTag(row.platform)}</span>
-        <span class="dq-title"></span>
-        <span class="dq-artist">${fmtChip}${vipChip}</span>
-        ${row.durationSec ? `<span class="dq-dur">${this.fmtDuration(row.durationSec)}</span>` : ''}
-        <span class="dq-status">${this.queueStatusBadge(row)}</span>
-        ${retryBtn}`;
-      div.querySelector('.dq-title').textContent = kindTag + (row.title || '');
-      div.querySelector('.dq-artist').textContent = row.artist || '';
-      const rbtn = div.querySelector('.dq-retry');
-      if (rbtn) {
-        rbtn.dataset.rowid = row.jobId || row.url || '';
-        rbtn.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); this.retryOne(row); });
-      }
-      this.downloadQueueList.appendChild(div);
+      const key = row.fromPlaylist || null;
+      if (!key) { blocks.push({ single: row }); continue; }
+      if (!plIndex.has(key)) { plIndex.set(key, { title: key, tracks: [] }); blocks.push(plIndex.get(key)); }
+      plIndex.get(key).tracks.push(row);
     }
-    if (this.downloadQueueEl) this.downloadQueueEl.style.display = rows.length ? '' : 'none';
+    for (const block of blocks) {
+      if (block.single) {
+        this.downloadQueueList.appendChild(this.buildQueueRow(block.single));
+        continue;
+      }
+      const group = document.createElement('div');
+      group.className = 'media-group dq-group';
+      const doneN = block.tracks.filter((t) => t.status === 'completed').length;
+      const head = document.createElement('div');
+      head.className = 'lib-group-head';
+      head.innerHTML = `<span class="lib-group-name">📃 <span class="dq-group-name"></span></span>
+        <span class="lib-group-meta">${block.tracks.length} 首 · ${this.tt('home.jobDone', '完成')} ${doneN}</span>`;
+      head.querySelector('.dq-group-name').textContent = block.title;
+      const body = document.createElement('div');
+      body.className = 'lib-group-body';
+      for (const t of block.tracks) body.appendChild(this.buildQueueRow(t));
+      head.addEventListener('click', () => { body.hidden = !body.hidden; });
+      group.append(head, body);
+      this.downloadQueueList.appendChild(group);
+    }
+    if (this.downloadQueueEl) this.downloadQueueEl.style.display = (this.queueRows || []).length ? '' : 'none';
     const done = rows.filter((r) => r.status === 'completed').length;
     const failed = rows.filter((r) => ['failed', 'error'].includes(r.status)).length;
     if (this.downloadQueueSummary) {
       this.downloadQueueSummary.textContent = `${done}/${rows.length}${failed ? ` • ${this.tt('home.jobFailed', '失败')} ${failed}` : ''}`;
     }
+    if (this.clearDoneBtn) this.clearDoneBtn.style.display = done || failed ? '' : 'none';
+  }
+
+  // One rich queue row — same visual language as the search view — with
+  // progress and a ✕ that only removes the row from the display (the job
+  // record and any downloaded file stay untouched).
+  buildQueueRow(row) {
+    const div = document.createElement('div');
+    div.className = 'media-row dq-row';
+    const kindTag = this.rowKind(row) === 'playlist' ? '📃 ' : '';
+    const chips = [];
+    if (row.fileFormat || row.format) chips.push(`<span class="media-chip fmt">${row.fileFormat || row.format}${row.quality ? ' · ' + row.quality : ''}</span>`);
+    if (row.vip) chips.push(`<span class="media-chip vip">👑 ${this.tt('home.vipRequired', 'VIP')}</span>`);
+    if (row.cfg?.rename || row.rename) chips.push(`<span class="media-chip">🪄 ${row.cfg?.rename || row.rename}</span>`);
+    div.innerHTML = `
+      <span class="media-row-cover">🎵</span>
+      <span class="media-row-body">
+        <span class="media-row-main">
+          <span class="media-item-platform">${this.platTag(row.platform)}</span>
+          <span class="media-item-title"></span>
+          ${row.durationSec ? `<span class="media-item-dur">${this.fmtDuration(row.durationSec)}</span>` : ''}
+        </span>
+        <span class="media-row-meta">${chips.join('')}</span>
+        <span class="media-row-sub dq-artist"></span>
+      </span>
+      <span class="dq-side">
+        <span class="dq-status">${this.queueStatusBadge(row)}</span>
+        ${row.status === 'processing' ? `<span class="dq-pct">${row.progress || 0}%</span>` : ''}
+        ${['failed', 'error', 'missing'].includes(row.status) ? `<button type="button" class="dq-retry icon-btn" title="${this.tt('home.retry', '重试')}">↻</button>` : ''}
+        ${['completed', 'failed', 'error', 'canceled', 'cancelled', 'missing'].includes(row.status) ? `<button type="button" class="dq-dismiss icon-btn" title="${this.tt('home.dismissRow', '从列表移除（不删除数据）')}">✕</button>` : ''}
+      </span>`;
+    div.querySelector('.media-item-title').textContent = kindTag + (row.title || row.url || '');
+    div.querySelector('.dq-artist').textContent = [row.artist, row.album].filter(Boolean).join(' — ');
+    const rbtn = div.querySelector('.dq-retry');
+    if (rbtn) rbtn.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); this.retryOne(row); });
+    const xbtn = div.querySelector('.dq-dismiss');
+    if (xbtn) xbtn.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); this.dismissRow(row); });
+    return div;
+  }
+
+  // Display-only: forget a finished row in this list (job + file untouched).
+  dismissRow(row) {
+    const id = row.jobId || row.id;
+    if (id) {
+      this.hiddenJobIds.add(id);
+      try { localStorage.setItem('gharmonize_dq_hidden', JSON.stringify([...this.hiddenJobIds].slice(-2000))); } catch { /* ignore */ }
+    }
+    this.queueRows = (this.queueRows || []).filter((r) => r !== row);
+    this.renderQueue();
+  }
+
+  // 🧹 clears finished/failed rows from the list display only.
+  clearFinishedRows() {
+    const finished = new Set(['completed', 'failed', 'error', 'canceled', 'cancelled', 'missing']);
+    for (const r of this.queueRows || []) {
+      if (finished.has(r.status) && (r.jobId || r.id)) this.hiddenJobIds.add(r.jobId || r.id);
+    }
+    try { localStorage.setItem('gharmonize_dq_hidden', JSON.stringify([...this.hiddenJobIds].slice(-2000))); } catch { /* ignore */ }
+    this.queueRows = (this.queueRows || []).filter((r) => !finished.has(r.status));
+    this.renderQueue();
+    this.notify(this.tt('home.clearedDone', '已清理列表（不删除数据/文件）'), 'info');
   }
 
   // ------------------------------------------------------------------

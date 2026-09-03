@@ -1232,6 +1232,15 @@ router.post("/api/jobs", rateLimit(60, 60_000), upload.single("file"), async (re
       }
     }
 
+    // Optional rename rule (下载设置 → 重命名规则), e.g. "{artist} - {title}".
+    // Tokens are expanded by the processor; filename-unsafe chars get stripped.
+    {
+      const rawRename = String(body.rename ?? "").trim();
+      if (rawRename) {
+        metadata.renameTemplate = rawRename.replace(/[\\/:*?"<>|]/g, "_").slice(0, 200);
+      }
+    }
+
     const isVideoOutput = format === "mp4" || format === "mkv";
     const autoCreateZip =
       !isVideoOutput && (
@@ -1798,6 +1807,7 @@ router.get("/api/stream", requireAuth, rateLimit(120, 60_000), (req, res) => {
       skipStats: j.metadata?.skipStats || { skippedCount: 0, errorsCount: 0 },
       spotifyTitle: j.metadata?.spotifyTitle || null,
       outputSubdir: j.metadata?.outputSubdir || null,
+      rename: j.metadata?.renameTemplate || null,
       originalName: j.metadata?.originalName || null,
       directoryName: j.metadata?.directoryName || null,
       includeLyrics: !!j.metadata?.includeLyrics,

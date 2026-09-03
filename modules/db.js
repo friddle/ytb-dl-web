@@ -264,6 +264,13 @@ export function listMusicFiles({ limit = 100 } = {}) {
   ).all(Math.max(1, Math.min(500, Number(limit) || 100))), []);
 }
 
+// Removes the library row for a "/download/…" path (file deletion companion).
+export function deleteMusicFile(filePath) {
+  const fp = String(filePath || "");
+  if (!fp.startsWith("/download/")) return;
+  safe(() => getDb().prepare("DELETE FROM music_files WHERE file_path = ?").run(fp));
+}
+
 // ---------------------------------------------------------------------------
 // searches + adapter-normalized items
 // ---------------------------------------------------------------------------

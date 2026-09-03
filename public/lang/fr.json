@@ -1431,5 +1431,35 @@
   "home.plHint": "Cliquez pour voir les titres",
   "home.dlTabLibrary": "🎵 Bibliothèque",
   "home.libraryEmpty": "Aucun téléchargement terminé.",
-  "home.retry": "Réessayer"
+  "home.retry": "Réessayer",
+  "home": {
+    "renameLabel": "Rename rule",
+    "renamePlaceholder": "{artist} - {title} (optional)",
+    "tplTitle": "📋 Download templates",
+    "tplSelect": "Template",
+    "tplApply": "Apply to songs+playlists",
+    "tplSave": "Save current as template",
+    "tplDelete": "Delete template",
+    "tplHint": "Templates cover: convert format, bitrate, download folder (subdir) and rename rule. Use the ⚙ next to any song/playlist in Search to override a single item.",
+    "rowCfgTitle": "Download settings for this item",
+    "rowCfgSave": "Apply to this item only",
+    "rowCfgClear": "Clear override",
+    "rowCfgSaved": "Saved settings for this item",
+    "tplMissing": "Select a template first",
+    "tplApplied": "Template applied",
+    "tplSaved": "Template saved",
+    "tplNamePrompt": "Template name",
+    "tplDeleted": "Template deleted",
+    "clearDone": "Clear finished",
+    "dismissRow": "Remove from list (keeps data)",
+    "clearedDone": "List cleared (files/data kept)",
+    "jobDone": "done",
+    "libDelete": "Delete file",
+    "libDeleteConfirm": "Delete this file permanently?",
+    "libDeleted": "Deleted",
+    "libDeleteFailed": "Delete failed"
+  },
+  "ui": {
+    "close": "Close"
+  }
 }

@@ -9,11 +9,12 @@ import { requireAuth } from "../modules/settings.js";
 import { loginStatus, isPlatformLoggedIn, exportCookiesTxt, collectCookies } from "../modules/chromeDriverless.js";
 import { adaptSearchItem } from "../modules/searchAdapter.js";
 import { makeSpotify } from "../modules/spotify.js";
-import { recordSearch, listSearches, listMusicFiles, getStats, upsertPlatformStatus, listRecentJobs, clearAllJobs } from "../modules/db.js";
+import { recordSearch, listSearches, listMusicFiles, deleteMusicFile, getStats, upsertPlatformStatus, listRecentJobs, clearAllJobs } from "../modules/db.js";
 import { getJob } from "../modules/store.js";
 import { YTDLP_BIN, getBinaryRuntimeEnv } from "../modules/binaries.js";
 import { getExtraArgs } from "../modules/config.js";
 import { resolveQqMusicStreamUrl } from "../modules/platform.js";
+import { OUTPUT_ROOT_DIR, resolveDownloadPathToAbs } from "../modules/outputPaths.js";
 
 const router = express.Router();
 
@@ -867,11 +868,93 @@ router.get("/api/media/jobs-recent", rateLimit(120, 60_000), (req, res) => {
   res.json({ ok: true, jobs });
 });
 
+// Deletes one library file from disk (and its music_files row). The path
+// must resolve inside the download root — never anywhere else.
+router.delete("/api/media/library-file", requireAuth, rateLimit(30, 60_000), async (req, res) => {
+  const raw = String(req.query.path || "").trim();
+  if (!raw.startsWith("/download/")) {
+    return res.status(400).json({ error: { code: "INVALID_PATH", message: "path must start with /download/" } });
+  }
+  const abs = resolveDownloadPathToAbs(decodeURIComponent(raw));
+  if (!abs) return res.status(400).json({ error: { code: "INVALID_PATH", message: "Bad path" } });
+  try {
+    await fs.promises.unlink(abs);
+  } catch (e) {
+    if (e?.code !== "ENOENT") {
+      return res.status(500).json({ error: { code: "DELETE_FAILED", message: String(e?.message || e).slice(0, 200) } });
+    }
+  }
+  deleteMusicFile(decodeURIComponent(raw));
+  res.json({ ok: true });
+});
+
 // Finished-music library (one row per produced file) for the 音乐库 tab —
 // file_path is the /download/… URL the <audio> element can stream directly.
 router.get("/api/media/library", rateLimit(120, 60_000), (req, res) => {
   const limit = Math.max(1, Math.min(500, Number(req.query.limit) || 200));
   res.json({ ok: true, files: listMusicFiles({ limit }) });
+});
+
+// Library grouped by folder, sourced from the actual download directory on
+// disk (base data), enriched with SQLite metadata (title/artist/platform).
+router.get("/api/media/library-tree", rateLimit(60, 60_000), async (req, res) => {
+  try {
+    const root = OUTPUT_ROOT_DIR;
+    const AUDIO_EXT = /\.(mp3|m4a|flac|wav|ogg|opus|aac|wma|alac)$/i;
+    const SKIP = /(^|\/)(@eaDir|#recycle|lost\+found)(\/|$)/i;
+    let rels = [];
+    try {
+      const dirents = await fs.promises.readdir(root, { recursive: true, withFileTypes: true });
+      for (const d of dirents) {
+        if (!d.isFile()) continue;
+        const base = d.parentPath || d.path || "";
+        const rel = path.relative(root, path.join(base, d.name)).replace(/\\/g, "/");
+        if (!AUDIO_EXT.test(rel) || SKIP.test(rel)) continue;
+        rels.push(rel);
+      }
+    } catch { /* root missing → empty library */ }
+
+    // Merge DB metadata by relative path (music_files stores "/download/<rel>",
+    // sometimes URL-encoded).
+    const byPath = new Map();
+    for (const f of listMusicFiles({ limit: 500 })) {
+      const rel = decodeURIComponent(String(f.file_path || "")).replace(/^\/download\//, "");
+      if (rel) byPath.set(rel, f);
+    }
+
+    const groups = new Map();
+    for (const rel of rels) {
+      let st = null;
+      try { st = await fs.promises.stat(path.join(root, rel)); } catch { /* best-effort */ }
+      const slash = rel.lastIndexOf("/");
+      const dir = slash === -1 ? "/" : rel.slice(0, slash);
+      const name = rel.slice(slash + 1);
+      const db = byPath.get(rel) || {};
+      const size = st ? st.size : (db.size_bytes ?? null);
+      const file = {
+        path: "/download/" + rel.split("/").map(encodeURIComponent).join("/"),
+        name,
+        dir,
+        title: db.title || null,
+        artist: db.artist || null,
+        platform: db.platform || null,
+        duration_sec: db.duration_sec ?? null,
+        format: (name.split(".").pop() || "").toLowerCase(),
+        size,
+        mtime: st ? st.mtimeMs : null
+      };
+      if (!groups.has(dir)) groups.set(dir, { dir, files: [], total: 0, latest: 0 });
+      const g = groups.get(dir);
+      g.files.push(file);
+      if (size) g.total += size;
+      if (file.mtime) g.latest = Math.max(g.latest, file.mtime);
+    }
+    const list = [...groups.values()].sort((a, b) => b.latest - a.latest || a.dir.localeCompare(b.dir));
+    for (const g of list) g.files.sort((a, b) => a.name.localeCompare(b.name, "zh"));
+    res.json({ ok: true, groups: list, count: rels.length });
+  } catch (e) {
+    res.status(500).json({ error: { code: "LIBRARY_SCAN_FAILED", message: String(e?.message || e).slice(0, 200) } });
+  }
 });
 
 // Clears the whole download history (destructive → admin only).

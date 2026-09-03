@@ -222,6 +222,7 @@
             <div class="home-dl-queue__head">
               <span data-i18n="home.progressTitle">📥 下载进度</span>
               <span id="downloadQueueSummary" class="comment"></span>
+              <button type="button" id="clearDoneBtn" class="btn-outline home-retry-btn">🧹 <span data-i18n="home.clearDone">清理已完成</span></button>
               <button type="button" id="retryFailedBtn" class="btn-outline home-retry-btn" style="display:none;">🔁 <span data-i18n="home.retryFailed">重试失败</span></button>
             </div>
             <div id="downloadQueueList" class="home-dl-queue__list"></div>
@@ -249,6 +250,10 @@
                 <input type="text" id="dlSongSubdirInput" class="form-control" data-i18n-ph="home.subdirPlaceholder" placeholder="子目录（可留空）" autocomplete="off">
               </div>
             </div>
+            <div class="form-group">
+              <label for="dlSongRenameInput" data-i18n="home.renameLabel">重命名规则</label>
+              <input type="text" id="dlSongRenameInput" class="form-control" data-i18n-ph="home.renamePlaceholder" placeholder="{artist} - {title}（可留空）" autocomplete="off">
+            </div>
           </div>
           <div class="card dl-cfg-card">
             <h3 data-i18n="home.listCfgTitle">📃 歌单下载配置</h3>
@@ -267,6 +272,23 @@
                 <input type="text" id="dlListSubdirInput" class="form-control" data-i18n-ph="home.subdirPlaceholder" placeholder="子目录（可留空）" autocomplete="off">
               </div>
             </div>
+            <div class="form-group">
+              <label for="dlListRenameInput" data-i18n="home.renameLabel">重命名规则</label>
+              <input type="text" id="dlListRenameInput" class="form-control" data-i18n-ph="home.renamePlaceholder" placeholder="{artist} - {title}（可留空）" autocomplete="off">
+            </div>
+          </div>
+          <div class="card dl-cfg-card">
+            <h3 data-i18n="home.tplTitle">📋 下载设置模板</h3>
+            <div class="form-group">
+              <label for="dlTplSelect" data-i18n="home.tplSelect">选择模板</label>
+              <select id="dlTplSelect" class="form-control"></select>
+            </div>
+            <div class="form-group dl-tpl-actions">
+              <button type="button" id="dlTplApplyBtn" class="btn btn-primary" data-i18n="home.tplApply">应用到歌曲+歌单</button>
+              <button type="button" id="dlTplSaveBtn" class="btn" data-i18n="home.tplSave">当前存为模板</button>
+              <button type="button" id="dlTplDeleteBtn" class="btn btn-danger" data-i18n="home.tplDelete">删除模板</button>
+            </div>
+            <p class="comment" data-i18n="home.tplHint">模板包含：转换格式、码率、下载地址（子目录）、重命名规则。搜索页每首歌/歌单旁的 ⚙ 可对单条目临时覆盖。</p>
           </div>
         </div>
 

@@ -2702,6 +2702,26 @@ export async function processJob(jobId, inputPath, format, bitrate) {
         }
 
         baseTitle = baseTitle.replace(/\.[^.]*$/, "");
+
+        // Per-job rename rule (下载设置 → 重命名规则): tokens {title}
+        // {artist} {album} {track} {platform} are replaced from job metadata;
+        // anything that renders empty just falls through to baseTitle.
+        const renameTpl = String(job.metadata?.renameTemplate || "").trim();
+        if (renameTpl) {
+          const rnMap = {
+            title: titleForFilename || job.metadata?.frozenTitle || job.metadata?.extracted?.title || singleMeta?.title || baseTitle,
+            artist: artistForName || singleMeta?.artist || singleMeta?.uploader || "",
+            album: singleMeta?.album || job.metadata?.extracted?.album || "",
+            track: singleMeta?.track || "",
+            platform: String(job.metadata?.mediaPlatform || job.metadata?.platform || "").toLowerCase()
+          };
+          const rendered = renameTpl
+            .replace(/\{(?:title|artist|album|track|platform)\}/g, (k) => String(rnMap[k.slice(1, -1)] ?? ""))
+            .replace(/\s+-\s*$/, "")
+            .trim();
+          if (rendered) baseTitle = rendered;
+        }
+
         const safeBase = sanitizeFilename(toNFC(baseTitle)) || "output";
 
         const currentAbs = resolveDownloadPathToAbs(r.outputPath, OUTPUT_DIR);
