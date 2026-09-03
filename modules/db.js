@@ -202,6 +202,7 @@ export function upsertJob(job) {
         current_phase=excluded.current_phase, error=excluded.error,
         result_path=excluded.result_path, result_size_bytes=excluded.result_size_bytes,
         updated_at=excluded.updated_at, finished_at=excluded.finished_at
+      WHERE jobs.status != 'canceled'
     `).run(p);
   });
 }
