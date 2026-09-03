@@ -161,6 +161,26 @@ function applyDownloadHeaders(res, abs, stat) {
   res.setHeader("Content-Disposition", contentDispositionForFilename(filename));
 }
 
+// Single-range parser for audio seeking (mini player). Returns {start,end}
+// or null when the header is absent/malformed/unsatisfiable.
+function parseByteRange(header, size) {
+  const m = /^bytes=(\d*)-(\d*)$/.exec(String(header || "").trim());
+  if (!m || (m[1] === "" && m[2] === "")) return null;
+  let start;
+  let end;
+  if (m[1] === "") {
+    const n = parseInt(m[2], 10);
+    if (!Number.isFinite(n) || n <= 0 || size === 0) return null;
+    start = Math.max(0, size - n);
+    end = size - 1;
+  } else {
+    start = parseInt(m[1], 10);
+    end = m[2] === "" ? size - 1 : parseInt(m[2], 10);
+  }
+  if (!Number.isFinite(start) || !Number.isFinite(end) || start > end || start >= size) return null;
+  return { start, end: Math.min(end, size - 1) };
+}
+
 function clearDownloadHeaders(res) {
   res.removeHeader("Content-Type");
   res.removeHeader("Content-Length");
@@ -199,13 +219,28 @@ function handleDownload(req, res) {
       return res.status(404).send("Not found");
     }
 
-    applyDownloadHeaders(res, abs, stat);
-
-    if (req.method === "HEAD") {
-      return res.status(200).end();
+    // HTTP Range support so <audio> in the mini player can seek without
+    // re-downloading whole files.
+    const byteRange = parseByteRange(req.headers.range, stat.size);
+    if (req.headers.range && !byteRange) {
+      res.status(416);
+      res.setHeader("Content-Range", `bytes */${stat.size}`);
+      return res.end();
     }
 
-    const stream = fs.createReadStream(abs);
+    applyDownloadHeaders(res, abs, stat);
+    res.setHeader("Accept-Ranges", "bytes");
+    if (byteRange) {
+      res.status(206);
+      res.setHeader("Content-Range", `bytes ${byteRange.start}-${byteRange.end}/${stat.size}`);
+      res.setHeader("Content-Length", String(byteRange.end - byteRange.start + 1));
+    }
+
+    if (req.method === "HEAD") {
+      return res.status(byteRange ? 206 : 200).end();
+    }
+
+    const stream = fs.createReadStream(abs, byteRange ? { start: byteRange.start, end: byteRange.end } : undefined);
 
     stream.once("error", (sendErr) => {
       // User-controlled log fields are normalized by sanitizeLogValue before reaching the sink.
