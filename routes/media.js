@@ -778,6 +778,68 @@ router.get("/api/media/preview", rateLimit(120, 60_000), async (req, res) => {
   }
 });
 
+// Streaming preview proxy: QQ/CDN direct URLs are frequently IP-bound, so a
+// 302 to the client can 403. Instead the SERVER resolves the stream (same
+// yt-dlp + cookies path as downloads — full VIP-quality audio) and pipes it
+// to the client, passing Range through for seeking.
+const previewStreamCache = new Map(); // url → { at, location }
+const PREVIEW_STREAM_TTL_MS = 20 * 60_000;
+
+router.get("/api/media/preview-stream", rateLimit(120, 60_000), async (req, res) => {
+  const url = String(req.query.url || "").trim();
+  if (!/^https?:\/\//i.test(url)) {
+    return res.status(400).json({ error: { code: "URL_REQUIRED", message: "url is required" } });
+  }
+  try {
+    let location = previewStreamCache.get(url);
+    if (!location || Date.now() - location.at > PREVIEW_STREAM_TTL_MS || !location.src) {
+      const src = await resolvePreviewLocation(url, String(req.query.platform || ""));
+      location = { at: Date.now(), src };
+      previewStreamCache.set(url, location);
+    }
+    const upstream = await fetch(location.src, {
+      headers: {
+        Referer: "https://y.qq.com/",
+        "User-Agent": UA,
+        ...(req.headers.range ? { Range: req.headers.range } : {})
+      },
+      redirect: "follow",
+      signal: AbortSignal.timeout(30000)
+    });
+    if (!upstream.ok && upstream.status !== 206) {
+      throw new Error(`upstream HTTP ${upstream.status}`);
+    }
+    const headers = {
+      "Content-Type": upstream.headers.get("content-type") || "audio/mpeg",
+      "Accept-Ranges": "bytes",
+      "Cache-Control": "no-store"
+    };
+    const len = upstream.headers.get("content-length");
+    const cr = upstream.headers.get("content-range");
+    if (len) headers["Content-Length"] = len;
+    if (cr) headers["Content-Range"] = cr;
+    res.writeHead(upstream.status === 206 ? 206 : 200, headers);
+    const reader = upstream.body.getReader();
+    req.on("close", () => { try { reader.cancel(); } catch {} });
+    try {
+      for (;;) {
+        const { done, value } = await reader.next();
+        if (done) break;
+        res.write(Buffer.from(value));
+      }
+      res.end();
+    } catch (e) {
+      try { res.destroy(); } catch { /* client gone */ }
+    }
+  } catch (e) {
+    if (!res.headersSent) {
+      res.status(502).json({ error: { code: "PREVIEW_FAILED", message: e?.message || "preview stream failed" } });
+    } else {
+      try { res.destroy(); } catch { /* already streaming */ }
+    }
+  }
+});
+
 // ---------------------------------------------------------------------------
 // Routes
 // ---------------------------------------------------------------------------
@@ -955,8 +1017,17 @@ router.get("/api/media/stream", rateLimit(30, 60_000), async (req, res) => {
       }
       if (!upstream) throw lastErr || new Error("netease upstream unreachable");
     } else if (platform === "qqmusic") {
-      const info = await resolveQqMusicStreamUrl(`https://y.qq.com/n/ryqq/songDetail/${encodeURIComponent(id)}`);
-      upstream = await fetch(info.purl, { redirect: "follow", headers: { Referer: "https://y.qq.com/", "User-Agent": UA } });
+      // QQ's vkey purl path is risk-controlled (500003); resolve through the
+      // same yt-dlp+cookies pipeline as downloads (VIP songs stream flac).
+      let src = null;
+      try {
+        src = await resolvePreviewLocation(`https://y.qq.com/n/ryqq/songDetail/${encodeURIComponent(id)}`, "qqmusic");
+      } catch { /* fall through to legacy vkey */ }
+      if (!src) {
+        const info = await resolveQqMusicStreamUrl(`https://y.qq.com/n/ryqq/songDetail/${encodeURIComponent(id)}`);
+        src = info.purl;
+      }
+      upstream = await fetch(src, { redirect: "follow", headers: { Referer: "https://y.qq.com/", "User-Agent": UA } });
     } else {
       return notFound("no preview stream for this platform");
     }
