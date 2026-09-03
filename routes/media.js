@@ -543,69 +543,41 @@ const PLATFORM_PROBES = {
       try {
         const ck = document.cookie || '';
         const has = (re) => re.test(ck);
-        const loggedIn = has(/(?:^|;\\s*)SID=/) || has(/(?:^|;\\s*)SAPISID=/) || has(/(?:^|;\\s*)__Secure-[13]PAPISID=/);
-        let uname = '', vip = false, vipLabel = '', premiumTitles = [];
-        // Account name via innertube accounts_list (robust against DOM changes).
+        let loggedIn = has(/(?:^|;\\s*)SID=/) || has(/(?:^|;\\s*)SAPISID=/) || has(/(?:^|;\\s*)__Secure-[13]PAPISID=/);
         try {
-          const get = (k) => window.ytcfg ? (typeof window.ytcfg.get === 'function' ? window.ytcfg.get(k) : (window.ytcfg.data_ || {})[k]) : undefined;
-          const ctx = get('INNERTUBE_CONTEXT');
-          const key = get('INNERTUBE_API_KEY');
-          if (ctx && key) {
-            const r = await fetch('https://www.youtube.com/youtubei/v1/account/accounts_list?key=' + encodeURIComponent(key) + '&prettyPrint=false', {
-              method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ context: ctx })
-            });
-            const j = await r.json();
-            const cards = ((((j || {}).contents || [])[0] || {}).accountPickerSectionRenderer || {}).contents || [];
-            const items = (((cards[0] || {}).accountItemSectionRenderer || {}).contents) || [];
-            for (const c of items) {
-              const air = (c || {}).accountItemRenderer;
-              if (!air) continue;
-              const nm = (air.accountName && (air.accountName.simpleText || (air.accountName.runs || []).map((x) => x.text).join(''))) || '';
-              if (nm && (air.isSelected || !uname)) uname = nm;
-              if (air.isSelected && nm) break;
-            }
+          const cfgVal = window.ytcfg ? (typeof window.ytcfg.get === 'function' ? window.ytcfg.get('LOGGED_IN') : (window.ytcfg.data_ || {}).LOGGED_IN) : null;
+          if (cfgVal === true) loggedIn = true;
+        } catch (e) {}
+        let uname = '', vip = false, vipLabel = '';
+        // Account identity from the /account page HTML: innertube calls reject
+        // our SAPISIDHASH and document.cookie misses HttpOnly cookies, but the
+        // page itself is authoritative (200 without a ServiceLogin redirect).
+        try {
+          const r = await fetch('https://www.youtube.com/account?hl=en', { credentials: 'include' });
+          const redirected = r.redirected || /ServiceLogin|accounts\\.google\\.com/.test(r.url || '');
+          if (r.ok && !redirected) {
+            loggedIn = true;
+            const txt = await r.text();
+            const m = txt.match(/"accountName":"([^"]{1,60})"/)
+              || txt.match(/"memberDisplayName":"([^"]{1,60})"/)
+              || txt.match(/([A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,})/);
+            if (m) uname = m[1];
+          } else if (redirected) {
+            loggedIn = false;
           }
         } catch (e) {}
-        // Premium best-effort: the sidebar guide carries a /premium entry.
-        // Non-members always see an upsell CTA (Get/Try/Free, 获取/开通/试用);
-        // members see benefits/manage wording instead.
+        // Premium from the /premium page: the HTML embeds \\u-escaped localized
+        // text, so decode it first, then look for member wording and the ABSENCE
+        // of an upsell CTA.
         try {
-          const visit = (node, depth) => {
-            if (!node || typeof node !== 'object' || depth > 24) return;
-            if (Array.isArray(node)) { for (const n of node) visit(n, depth + 1); return; }
-            if (node.guideEntryRenderer) {
-              const nav = node.guideEntryRenderer.navigationEndpoint || {};
-              const url = ((nav.urlEndpoint || {}).url) || (((nav.commandMetadata || {}).webCommandMetadata || {}).url) || '';
-              if (/(^|=|\\/)premium($|\\?|&)/.test(String(url))) {
-                const t = node.guideEntryRenderer.formatedTitle || node.guideEntryRenderer.title || {};
-                const txt = t.simpleText || (t.runs || []).map((x) => x.text).join('') || '';
-                if (txt) premiumTitles.push(txt);
-              }
-            }
-            for (const k of Object.keys(node)) visit(node[k], depth + 1);
-          };
-          let data = window.ytInitialData;
-          if (!data) {
-            const get = (k) => window.ytcfg ? (typeof window.ytcfg.get === 'function' ? window.ytcfg.get(k) : (window.ytcfg.data_ || {})[k]) : undefined;
-            const ctx = get('INNERTUBE_CONTEXT');
-            const key = get('INNERTUBE_API_KEY');
-            if (ctx && key) {
-              const r = await fetch('https://www.youtube.com/youtubei/v1/guide?key=' + encodeURIComponent(key) + '&prettyPrint=false', {
-                method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ context: ctx })
-              });
-              data = await r.json();
-            }
+          const r = await fetch('https://www.youtube.com/premium', { credentials: 'include' });
+          if (r.ok) {
+            let txt = await r.text();
+            txt = txt.replace(/\\\\u([0-9a-fA-F]{4})/g, (m, h) => String.fromCharCode(parseInt(h, 16)));
+            const upsell = /(Try it free|Try premium|Get Premium|Start free|免費試用|免费试用|立即試用|立即试用|開通|开通|免費體驗|免费体验)/i.test(txt);
+            const member = /(Manage your membership|Your Premium benefits|you have Premium|管理会员|管理會員|您的 Premium|你的 Premium|已加入 Premium|已開通|已开通|會員權益|会员权益)/i.test(txt);
+            if (member && !upsell) { vip = true; vipLabel = 'Premium'; }
           }
-          visit(data, 0);
-          const upsell = /(get|try|free|trial|upgrade|join|obtener|prueba|gratis|probar|essai|essayer|gratuit|kostenlos|testen|ücretsiz|deneme|dene|katıl|yükselt|获取|獲取|开通|開通|免费|免費|试用|試用|加入|体验|體驗|升级|升級)/i;
-          const member = /(benefits|manage|member|your premium|权益|權益|权限|權限|管理|会员|會員|已加入|已开通|已開通|已购买|已購買)/i;
-          for (const t of premiumTitles) {
-            if (member.test(t)) { vip = true; break; }
-          }
-          if (!vip && premiumTitles.length) vip = !premiumTitles.every((t) => upsell.test(t));
-          if (vip) vipLabel = 'Premium';
         } catch (e) {}
         return { loggedIn, vip, vipLabel, uname };
       } catch (e) { return { loggedIn: false, vip: false, vipLabel: '', error: String(e).slice(0, 100) }; }
