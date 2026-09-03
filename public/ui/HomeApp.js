@@ -46,7 +46,7 @@ export class HomeApp {
   // from this session) always win over their stale DB twins.
   async hydrateQueueFromDb() {
     try {
-      const r = await fetch('/api/media/jobs-recent?limit=300');
+      const r = await fetch('/api/media/jobs-recent?limit=600');
       const d = await r.json();
       const rows = Array.isArray(d?.jobs) ? d.jobs : [];
       if (!rows.length) return;
