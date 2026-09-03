@@ -185,7 +185,7 @@
 .dq-retry:hover{border-color:var(--primary);color:var(--primary)}
 .lib-play{background:color-mix(in oklab,var(--primary-lighter) 40%,var(--bg));border:1px solid var(--border);border-radius:50%;cursor:pointer;font-size:13px;height:30px;width:30px;flex:0 0 30px}
 .lib-play.playing{border-color:var(--primary);color:var(--primary)}
-.lib-group{border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden}
+.lib-group{border:1px solid var(--border);border-radius:var(--radius-sm);flex:0 0 auto;overflow:hidden}
 .lib-group + .lib-group{margin-top:8px}
 .lib-group-head{align-items:center;background:color-mix(in oklab,var(--primary-lighter) 18%,var(--bg));cursor:pointer;display:flex;gap:8px;padding:7px 10px}
 .lib-group-name{flex:1;font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
