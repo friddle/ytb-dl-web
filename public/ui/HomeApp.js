@@ -46,36 +46,48 @@ export class HomeApp {
   // from this session) always win over their stale DB twins.
   async hydrateQueueFromDb() {
     try {
-      const r = await fetch('/api/media/jobs-recent?limit=600');
-      const d = await r.json();
-      const rows = Array.isArray(d?.jobs) ? d.jobs : [];
-      if (!rows.length) return;
+      // Active queue (submit order) + recently finished, fetched separately:
+      // a 900+ pending backlog must not hide completed downloads.
+      const [aR, fR] = await Promise.all([
+        fetch('/api/media/jobs-recent?limit=300'),
+        fetch('/api/media/jobs-finished?limit=60')
+      ]);
+      const aD = await aR.json().catch(() => ({}));
+      const fD = await fR.json().catch(() => ({}));
+      const active = Array.isArray(aD?.jobs) ? aD.jobs : [];
+      const finished = Array.isArray(fD?.jobs) ? fD.jobs : [];
+      if (!active.length && !finished.length) return;
       const known = new Set((this.queueRows || []).map((x) => x.jobId || x.id));
-      const restored = rows
+      const mapJob = (j) => ({
+        jobId: j.id,
+        url: j.url || '',
+        platform: j.platform || '',
+        title: j.title || '',
+        artist: j.artist || '',
+        album: j.album || '',
+        format: j.format || 'original',
+        bitrate: j.bitrate || 'auto',
+        outputSubdir: j.outputSubdir || null,
+        rename: j.rename || null,
+        status: j.status === 'processing' ? 'processing' : (j.status || 'queued'),
+        progress: Number(j.progress) || 0,
+        currentPhase: j.current_phase || null,
+        error: j.error || null,
+        fromDb: true
+      });
+      const restoredActive = active
         .filter((j) => !known.has(j.id) && !this.hiddenJobIds.has(j.id))
-        .reverse() // oldest first so the list reads in submit order
-        .map((j) => ({
-          jobId: j.id,
-          url: j.url || '',
-          platform: j.platform || '',
-          title: j.title || '',
-          artist: j.artist || '',
-          album: j.album || '',
-          format: j.format || 'original',
-          bitrate: j.bitrate || 'auto',
-          outputSubdir: j.outputSubdir || null,
-          rename: j.rename || null,
-          status: j.status === 'processing' ? 'processing' : (j.status || 'queued'),
-          progress: Number(j.progress) || 0,
-          currentPhase: j.current_phase || null,
-          error: j.error || null,
-          fromDb: true
-        }));
-      if (!restored.length) return;
-      this.queueRows = [...restored, ...(this.queueRows || [])];
+        .map(mapJob);
+      // Finished: newest first from the API → oldest first for display.
+      const restoredFinished = finished
+        .filter((j) => !known.has(j.id) && !this.hiddenJobIds.has(j.id))
+        .reverse()
+        .map(mapJob);
+      if (!restoredActive.length && !restoredFinished.length) return;
+      this.queueRows = [...restoredActive, ...(this.queueRows || []), ...restoredFinished];
       this.renderQueue();
       if (this.downloadQueueEl) this.downloadQueueEl.style.display = '';
-      if (restored.some((x) => !['completed', 'error', 'canceled', 'missing'].includes(x.status))) {
+      if (restoredActive.some((x) => !['completed', 'error', 'canceled', 'missing'].includes(x.status))) {
         this.pollQueueStatuses();
       }
     } catch { /* transient */ }

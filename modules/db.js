@@ -393,18 +393,29 @@ export function markJobError(id, message) {
 }
 
 // Recent jobs for UI queue restore after a page refresh.
-export function listRecentJobs({ limit = 120 } = {}) {
-  // Active jobs first (submit order), then the most recently *created*
-  // finished ones — a large pending backlog must not push completed jobs
-  // out of the visible window.
+const JOB_COLS = `
+  SELECT id, url, platform, media_kind, title, artist, album, format, bitrate,
+         status, progress, current_phase, error, is_playlist, created_at, updated_at
+  FROM jobs`;
+
+// Active jobs (pending/queued/processing) in submit order — the queue view.
+export function listActiveJobs({ limit = 300 } = {}) {
   return safe(() => getDb().prepare(`
-    SELECT id, url, platform, media_kind, title, artist, album, format, bitrate,
-           status, progress, current_phase, error, is_playlist, created_at, updated_at
-    FROM jobs
-    ORDER BY CASE WHEN status IN ('pending', 'queued', 'processing') THEN 0 ELSE 1 END,
-             created_at DESC, id DESC
+    ${JOB_COLS}
+    WHERE status IN ('pending', 'queued', 'processing')
+    ORDER BY created_at ASC, id ASC
     LIMIT ?
-  `).all(Math.max(1, Math.min(600, Number(limit) || 120))), []);
+  `).all(Math.max(1, Math.min(1000, Number(limit) || 300))), []);
+}
+
+// Recently finished jobs (completed/error/canceled), newest first.
+export function listFinishedJobs({ limit = 100 } = {}) {
+  return safe(() => getDb().prepare(`
+    ${JOB_COLS}
+    WHERE status NOT IN ('pending', 'queued', 'processing')
+    ORDER BY updated_at DESC, id DESC
+    LIMIT ?
+  `).all(Math.max(1, Math.min(1000, Number(limit) || 100))), []);
 }
 
 // Clears the whole download history (jobs + produced-file index).
@@ -429,6 +440,7 @@ export default {
   getStats,
   listResumableJobs,
   markJobError,
-  listRecentJobs,
+  listActiveJobs,
+  listFinishedJobs,
   clearAllJobs
 };

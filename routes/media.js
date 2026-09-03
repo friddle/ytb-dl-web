@@ -9,7 +9,7 @@ import { requireAuth } from "../modules/settings.js";
 import { loginStatus, isPlatformLoggedIn, exportCookiesTxt, collectCookies } from "../modules/chromeDriverless.js";
 import { adaptSearchItem } from "../modules/searchAdapter.js";
 import { makeSpotify } from "../modules/spotify.js";
-import { recordSearch, listSearches, listMusicFiles, deleteMusicFile, getStats, upsertPlatformStatus, listRecentJobs, clearAllJobs } from "../modules/db.js";
+import { recordSearch, listSearches, listMusicFiles, deleteMusicFile, getStats, upsertPlatformStatus, listActiveJobs, listFinishedJobs, clearAllJobs } from "../modules/db.js";
 import { getJob } from "../modules/store.js";
 import { YTDLP_BIN, getBinaryRuntimeEnv } from "../modules/binaries.js";
 import { getExtraArgs } from "../modules/config.js";
@@ -859,8 +859,20 @@ router.get("/api/media/jobs-status", rateLimit(240, 60_000), (req, res) => {
 // so it stays public like /api/media/jobs-status. Also carries the fields a
 // single-job retry needs (format/bitrate/outputSubdir).
 router.get("/api/media/jobs-recent", rateLimit(120, 60_000), (req, res) => {
-  const limit = Math.max(1, Math.min(300, Number(req.query.limit) || 120));
-  const jobs = listRecentJobs({ limit }).map((j) => {
+  const limit = Math.max(1, Math.min(1000, Number(req.query.limit) || 300));
+  const jobs = listActiveJobs({ limit }).map((j) => {
+    let subdir = null;
+    try { subdir = j.meta_json ? (JSON.parse(j.meta_json) || {}).outputSubdir || null : null; } catch { /* tolerate */ }
+    return { ...j, outputSubdir: subdir };
+  });
+  res.json({ ok: true, jobs });
+});
+
+// Recently finished jobs (completed/error/canceled), newest first — kept
+// separate so a huge pending backlog can't push them out of the window.
+router.get("/api/media/jobs-finished", rateLimit(120, 60_000), (req, res) => {
+  const limit = Math.max(1, Math.min(1000, Number(req.query.limit) || 100));
+  const jobs = listFinishedJobs({ limit }).map((j) => {
     let subdir = null;
     try { subdir = j.meta_json ? (JSON.parse(j.meta_json) || {}).outputSubdir || null : null; } catch { /* tolerate */ }
     return { ...j, outputSubdir: subdir };
