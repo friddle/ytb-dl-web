@@ -1053,6 +1053,8 @@ export class HomeApp {
   }
 
   restoreScopeCfg() {
+    // Templates must load even on first run (no saved scope config yet).
+    this.loadTemplates();
     try {
       const raw = localStorage.getItem('gharmonize_dl_scope_cfg');
       if (!raw) return;
@@ -1060,7 +1062,6 @@ export class HomeApp {
       if (saved?.song) this.dlCfg.song = { ...this.dlCfg.song, ...saved.song };
       if (saved?.playlist) this.dlCfg.playlist = { ...this.dlCfg.playlist, ...saved.playlist };
     } catch { /* ignore */ }
-    this.loadTemplates();
   }
 
   // ------------------------------------------------------------------
