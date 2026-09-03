@@ -249,11 +249,30 @@ export class HomeApp {
     // "去设置调整" hint buttons on HOME / SEARCH / DOWNLOAD
     document.querySelectorAll('[data-open-settings]').forEach((btn) => btn.addEventListener('click', () => this.showView('settings')));
     // Language icon cycles languages
-    this.langIconBtn?.addEventListener('click', () => {
-      const order = ['zh', 'en', 'tr', 'es', 'de', 'fr'];
-      const current = window.i18n?.lang || 'zh';
-      const next = order[(order.indexOf(current) + 1) % order.length] || 'zh';
-      window.i18n?.setLang?.(next);
+    // Language picker: the globe opens a dropdown; picking a language applies
+    // it immediately (click-outside closes the menu).
+    const langMenu = document.getElementById('langMenu');
+    const closeLangMenu = () => {
+      if (langMenu) langMenu.hidden = true;
+      this.langIconBtn?.setAttribute('aria-expanded', 'false');
+    };
+    this.langIconBtn?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (!langMenu) return;
+      langMenu.hidden = !langMenu.hidden;
+      this.langIconBtn?.setAttribute('aria-expanded', langMenu.hidden ? 'false' : 'true');
+      const cur = window.i18n?.lang || window.i18n?.getCurrentLang?.() || 'zh';
+      langMenu.querySelectorAll('button[data-lang]').forEach((b) => b.classList.toggle('active', b.dataset.lang === cur));
+    });
+    langMenu?.querySelectorAll('button[data-lang]').forEach((b) => {
+      b.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        try { await window.i18n?.setLang?.(b.dataset.lang); } catch (err) { console.error('lang switch failed:', err); }
+        closeLangMenu();
+      });
+    });
+    document.addEventListener('click', (e) => {
+      if (langMenu && !langMenu.hidden && !e.target.closest?.('.lang-wrap')) closeLangMenu();
     });
     document.getElementById('settingsSaveBtn')?.addEventListener('click', () => this.saveSettings());
     this.settingsBundledCheckbox?.addEventListener('change', () => this.syncSettingsLockUi());

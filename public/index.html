@@ -36,7 +36,17 @@
 
       <button type="button" id="themeToggle" class="theme-icon-btn" data-i18n-title="btn.theme" title="Theme">🌙</button>
 
-      <button type="button" id="langIconBtn" class="theme-icon-btn" data-i18n-title="btn.lang" title="Language">🌐</button>
+      <div class="lang-wrap">
+        <button type="button" id="langIconBtn" class="theme-icon-btn" data-i18n-title="btn.lang" title="Language" aria-haspopup="menu" aria-expanded="false">🌐</button>
+        <div class="lang-menu" id="langMenu" hidden>
+          <button type="button" data-lang="zh">中文</button>
+          <button type="button" data-lang="en">English</button>
+          <button type="button" data-lang="tr">Türkçe</button>
+          <button type="button" data-lang="de">Deutsch</button>
+          <button type="button" data-lang="fr">Français</button>
+          <button type="button" data-lang="es">Español</button>
+        </div>
+      </div>
 
       <button id="jobsBell" class="jobs-bell" type="button" hidden data-i18n-title="jobsPanel.bellTitle" title="Active jobs" aria-label="Active jobs">
         <span class="jobs-bell__ring">
