@@ -247,26 +247,10 @@ export class HomeApp {
     document.getElementById('chromeBrowserOpenBtn')?.addEventListener('click', () => {
       window.open(this.browserBase(), '_blank', 'noopener,noreferrer');
     });
-
-    this.bindThemeToggle();
   }
 
-  bindThemeToggle() {
-    const themeToggle = document.getElementById('themeToggle');
-    if (!themeToggle) return;
-    themeToggle.addEventListener('click', () => {
-      document.documentElement.classList.add('no-transition');
-      const current = document.documentElement.getAttribute('data-theme');
-      const next = current === 'light' ? 'dark' : 'light';
-      document.documentElement.setAttribute('data-theme', next);
-      localStorage.setItem('theme', next);
-      const meta = document.querySelector('meta[name="color-scheme"]');
-      if (meta) meta.content = next;
-      setTimeout(() => document.documentElement.classList.remove('no-transition'), 2);
-      themeToggle.classList.add('switching');
-      setTimeout(() => themeToggle.classList.remove('switching'), 400);
-    });
-  }
+  // Theme toggling is handled by MediaConverterApp.initializeTheme — binding
+  // it here too would flip the theme twice per click (net zero change).
 
   // ------------------------------------------------------------------
   // i18n / notifications
@@ -993,7 +977,8 @@ export class HomeApp {
       <button type="button" class="lib-del icon-btn" title="${this.tt('home.libDelete', '删除文件')}">🗑</button>`;
     row.querySelector('.media-item-title').textContent = f.title || f.name;
     const sub = row.querySelector('.media-row-sub');
-    const meta = [f.artist, f.name !== (f.title || f.name) ? f.name : null].filter(Boolean).join(' · ');
+    const stem = f.name.replace(/\.[^.]*$/, '');
+    const meta = [f.artist, f.title && stem !== f.title ? f.name : null].filter(Boolean).join(' · ');
     if (meta) sub.textContent = meta; else sub.remove();
     const btn = row.querySelector('.lib-play');
     btn?.addEventListener('click', () => this.playLocal(f, btn));
