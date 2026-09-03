@@ -393,11 +393,17 @@ export function markJobError(id, message) {
 
 // Recent jobs for UI queue restore after a page refresh.
 export function listRecentJobs({ limit = 120 } = {}) {
+  // Active jobs first (submit order), then the most recently *created*
+  // finished ones — a large pending backlog must not push completed jobs
+  // out of the visible window.
   return safe(() => getDb().prepare(`
     SELECT id, url, platform, media_kind, title, artist, album, format, bitrate,
            status, progress, current_phase, error, is_playlist, created_at, updated_at
-    FROM jobs ORDER BY created_at DESC, id DESC LIMIT ?
-  `).all(Math.max(1, Math.min(300, Number(limit) || 120))), []);
+    FROM jobs
+    ORDER BY CASE WHEN status IN ('pending', 'queued', 'processing') THEN 0 ELSE 1 END,
+             created_at DESC, id DESC
+    LIMIT ?
+  `).all(Math.max(1, Math.min(600, Number(limit) || 120))), []);
 }
 
 // Clears the whole download history (jobs + produced-file index).

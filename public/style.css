@@ -210,6 +210,7 @@
 .dq-dismiss{background:none;border:1px solid transparent;border-radius:6px;cursor:pointer;font-size:13px;opacity:.5}
 .dq-dismiss:hover{border-color:var(--border);opacity:1}
 .dq-group .lib-group-head{cursor:pointer}
+.dq-pager{align-items:center;display:flex;gap:10px;justify-content:center;margin-top:8px}
 .btn-danger{background:none;border:1px solid var(--border);border-radius:6px;cursor:pointer;padding:4px 10px}
 .dl-tpl-actions{display:flex;flex-wrap:wrap;gap:8px}
 .lib-del{background:none;border:1px solid transparent;border-radius:6px;cursor:pointer;font-size:14px;flex:0 0 28px;opacity:.5}

@@ -46,7 +46,7 @@ export class HomeApp {
   // from this session) always win over their stale DB twins.
   async hydrateQueueFromDb() {
     try {
-      const r = await fetch('/api/media/jobs-recent?limit=120');
+      const r = await fetch('/api/media/jobs-recent?limit=300');
       const d = await r.json();
       const rows = Array.isArray(d?.jobs) ? d.jobs : [];
       if (!rows.length) return;
@@ -127,6 +127,13 @@ export class HomeApp {
     // Display-only dismissal of finished queue rows (never deletes data).
     this.hiddenJobIds = new Set(this.readJson('gharmonize_dq_hidden', []));
     this.clearDoneBtn = document.getElementById('clearDoneBtn');
+    // Queue list pagination (50 rows per page).
+    this.queuePage = 1;
+    this.queuePageSize = 50;
+    this.dqPager = document.getElementById('dqPager');
+    this.dqPageInfo = document.getElementById('dqPageInfo');
+    document.getElementById('dqPrevBtn')?.addEventListener('click', () => { this.queuePage = Math.max(1, this.queuePage - 1); this.renderQueue(); });
+    document.getElementById('dqNextBtn')?.addEventListener('click', () => { this.queuePage += 1; this.renderQueue(); });
     // Download settings (live inside the settings page)
     this.convertCheckbox = document.getElementById('convertAfterCheckbox');
     this.formatSelect = document.getElementById('dlFormatSelect');
@@ -1453,11 +1460,15 @@ export class HomeApp {
     this.downloadQueueList.innerHTML = '';
     const rows = (this.queueRows || []).filter((r) => !r.jobId || !this.hiddenJobIds.has(r.jobId));
     const visible = rows.filter((r) => this.dlStatusFilter === 'all' || this.rowKind(r) === this.dlStatusFilter);
+    // Pagination: keep long backlogs manageable (50 rows per page).
+    const pages = Math.max(1, Math.ceil(visible.length / this.queuePageSize));
+    this.queuePage = Math.min(Math.max(1, this.queuePage), pages);
+    const pageRows = visible.slice((this.queuePage - 1) * this.queuePageSize, this.queuePage * this.queuePageSize);
     // Playlist tracks (fromPlaylist) collapse under a group header; singles
     // stay standalone — mirroring the search view's song/playlist layout.
     const blocks = [];
     const plIndex = new Map();
-    for (const row of visible) {
+    for (const row of pageRows) {
       const key = row.fromPlaylist || null;
       if (!key) { blocks.push({ single: row }); continue; }
       if (!plIndex.has(key)) { plIndex.set(key, { title: key, tracks: [] }); blocks.push(plIndex.get(key)); }
@@ -1484,10 +1495,14 @@ export class HomeApp {
       this.downloadQueueList.appendChild(group);
     }
     if (this.downloadQueueEl) this.downloadQueueEl.style.display = (this.queueRows || []).length ? '' : 'none';
+    if (this.dqPager) {
+      this.dqPager.hidden = visible.length <= this.queuePageSize;
+      if (this.dqPageInfo) this.dqPageInfo.textContent = `${this.queuePage} / ${pages}`;
+    }
     const done = rows.filter((r) => r.status === 'completed').length;
     const failed = rows.filter((r) => ['failed', 'error'].includes(r.status)).length;
     if (this.downloadQueueSummary) {
-      this.downloadQueueSummary.textContent = `${done}/${rows.length}${failed ? ` • ${this.tt('home.jobFailed', '失败')} ${failed}` : ''}`;
+      this.downloadQueueSummary.textContent = `${this.tt('home.jobDone', '完成')} ${done} / ${rows.length}${failed ? ` • ${this.tt('home.jobFailed', '失败')} ${failed}` : ''}`;
     }
     if (this.clearDoneBtn) this.clearDoneBtn.style.display = done || failed ? '' : 'none';
   }

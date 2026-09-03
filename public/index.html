@@ -226,6 +226,11 @@
               <button type="button" id="retryFailedBtn" class="btn-outline home-retry-btn" style="display:none;">🔁 <span data-i18n="home.retryFailed">重试失败</span></button>
             </div>
             <div id="downloadQueueList" class="home-dl-queue__list"></div>
+            <div class="dq-pager" id="dqPager" hidden>
+              <button type="button" id="dqPrevBtn" class="btn-outline">←</button>
+              <span id="dqPageInfo" class="comment"></span>
+              <button type="button" id="dqNextBtn" class="btn-outline">→</button>
+            </div>
           </div>
           <small class="comment" data-i18n="home.libraryHint">提示：下载完成后可直接用 Infuse / Jellyfin / Navidrome 等播放器扫描媒体库。</small>
         </div>
