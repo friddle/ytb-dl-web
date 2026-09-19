@@ -16,6 +16,8 @@ cookies/
 uploads/
 outputs/
 temp/
+tmp/
+r.log
 cache/
 local-inputs/
 *.db

@@ -1691,6 +1691,7 @@ export class HomeApp {
     orig.textContent = this.tt('media.taskOriginal', '不转换（原样音频）');
     this.parseTaskFormat.appendChild(orig);
     for (const f of this.allFormats || this.formats) {
+      if (f.format === 'original') continue; // already added above
       const opt = document.createElement('option');
       opt.value = f.format;
       opt.textContent = f.format === 'mp4' || f.format === 'mkv'

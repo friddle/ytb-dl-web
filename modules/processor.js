@@ -2492,7 +2492,12 @@ export async function processJob(jobId, inputPath, format, bitrate) {
           const extRaw = path.extname(directMoveInputAbs);
           const ext = extRaw ? extRaw.toLowerCase() : ".mp4";
           const baseRaw = path.basename(directMoveInputAbs, extRaw);
-          const base = sanitizeFilename(baseRaw) || jobId;
+          // yt-dlp's single-video template names files "<jobId> - <title>";
+          // strip the jobId prefix so outputs land as "<title><ext>".
+          const titleBaseRaw = baseRaw.startsWith(`${jobId} - `)
+            ? baseRaw.slice(jobId.length + 3)
+            : baseRaw;
+          const base = sanitizeFilename(titleBaseRaw) || sanitizeFilename(baseRaw) || jobId;
           const targetAbs = buildUniqueOutputPath(outputDir, `${base}${ext}`);
 
           // User-controlled log fields are normalized by sanitizeLogValue before reaching the sink.
@@ -2502,7 +2507,8 @@ export async function processJob(jobId, inputPath, format, bitrate) {
           queueOwnershipFix(targetAbs);
 
           // Sidecar subtitles (written next to the video by yt-dlp, e.g.
-          // "<id>.zh-Hans.srt") move to the output folder together with it.
+          // "<jobId> - <title>.zh-Hans.srt") move to the output folder with
+          // it, renamed to "<title>.<lang>.srt".
           try {
             const SUB_EXTS = [".srt", ".vtt", ".ass", ".ssa"];
             const subDir = path.dirname(directMoveInputAbs);
@@ -2512,9 +2518,12 @@ export async function processJob(jobId, inputPath, format, bitrate) {
               if (!SUB_EXTS.includes(fExt)) continue;
               const subSrc = path.join(subDir, f);
               if (!fs.statSync(subSrc).isFile()) continue;
+              const subTitleRaw = f.startsWith(`${jobId} - `)
+                ? f.slice(jobId.length + 3)
+                : f;
               const subTarget = buildUniqueOutputPath(
                 outputDir,
-                sanitizeFilename(f) || `${base}${fExt}`
+                sanitizeFilename(subTitleRaw) || `${base}${fExt}`
               );
               safeMoveFileSync(subSrc, subTarget);
               queueOwnershipFix(subTarget);
