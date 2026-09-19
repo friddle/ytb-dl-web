@@ -170,6 +170,7 @@ export class HomeApp {
     this.parseMeta = document.getElementById('parseMeta');
     this.parseResultsList = document.getElementById('parseResultsList');
     this.parseDownloadBtn = document.getElementById('parseDownloadBtn');
+    this.parseQualitySelect = document.getElementById('parseQualitySelect');
     this.parsedItems = [];
     // Download view
     this.downloadViewEl = document.getElementById('downloadView');
@@ -842,12 +843,15 @@ export class HomeApp {
     }
   }
 
-  async downloadSelected() {
+  async downloadSelected(preselected = null) {
     if (this.submitting) return;
-    const checked = [...(this.resultsList?.querySelectorAll('.media-item-check:checked') || [])];
-    const groups = [...(this.resultsList?.querySelectorAll('.media-group-check:checked') || [])];
-    if (!checked.length && !groups.length) { this.notify(this.tt('home.selectRequired', '请先勾选要下载的条目'), 'error'); return; }
-    const selected = checked.map((c) => this.results[Number(c.dataset.idx)]).filter(Boolean);
+    // Callers may pass the exact items to download (the parse flow keeps its
+    // checkboxes in parseResultsList, not in searchResultsList).
+    const hasPre = Array.isArray(preselected) && preselected.length > 0;
+    const checked = hasPre ? [] : [...(this.resultsList?.querySelectorAll('.media-item-check:checked') || [])];
+    const groups = hasPre ? [] : [...(this.resultsList?.querySelectorAll('.media-group-check:checked') || [])];
+    if (!checked.length && !groups.length && !hasPre) { this.notify(this.tt('home.selectRequired', '请先勾选要下载的条目'), 'error'); return; }
+    const selected = hasPre ? [...preselected] : checked.map((c) => this.results[Number(c.dataset.idx)]).filter(Boolean);
     // Playlist groups: master checked → its selected tracks (or expand-all
     // when the track list was never loaded); unchecked → skip entirely.
     const playlists = groups.map((g) => ({ item: this.results[Number(g.dataset.idx)], masterChecked: true })).filter((g) => g.item);
@@ -1348,8 +1352,17 @@ export class HomeApp {
       this.notify(this.tt('home.selectRequired', '请先勾选要下载的条目'), 'error');
       return;
     }
+    // Resolution picker: a concrete quality downloads the selection as video
+    // (mp4, capped at the chosen height, no audio conversion); empty follows
+    // the regular format settings (audio pipeline).
+    const quality = String(this.parseQualitySelect?.value || '').trim();
+    if (quality) {
+      for (const it of checked) {
+        it._override = { ...(it._override || {}), format: 'mp4', bitrate: quality };
+      }
+    }
     this.results = checked;
-    this.downloadSelected();
+    this.downloadSelected(checked);
   }
 
   // Polls the batched jobs-status endpoint until every row reaches a terminal state.

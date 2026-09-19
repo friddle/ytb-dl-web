@@ -470,6 +470,210 @@ function ytdlpFlatJson(url) {
 }
 
 // ---------------------------------------------------------------------------
+// Bilibili space 合集 / 系列 "lists" support
+//
+// The space lists page (https://space.bilibili.com/<mid>/lists?sid=<sid>) is a
+// SPA route yt-dlp does not understand ("Unsupported URL"). The same data is
+// available through the public web APIs (with real titles / ordering), and on
+// newer yt-dlp builds through the equivalent /lists/<sid> path URL. Expand the
+// list here so 链接解析 works for it.
+// ---------------------------------------------------------------------------
+
+const BILI_LIST_PAGE_SIZE = 20;
+const BILI_LIST_MAX_PAGES = 30; // hard cap: 600 videos per list
+
+// Netscape cookies.txt → "k=v; k=v" Cookie header with only *.bilibili.com
+// cookies. Risk control is milder with buvid cookies attached, and SESSDATA
+// (HttpOnly, "#HttpOnly_"-prefixed lines) unlocks full-quality metadata when
+// the user is logged in.
+function bilibiliCookieHeader() {
+  try {
+    if (!fs.existsSync(COOKIES_FILE)) return "";
+    const txt = fs.readFileSync(COOKIES_FILE, "utf8");
+    const pairs = [];
+    for (const rawLine of txt.split("\n")) {
+      let line = rawLine;
+      if (!line.trim()) continue;
+      if (line.startsWith("#HttpOnly_")) {
+        line = line.slice("#HttpOnly_".length);
+      } else if (line.startsWith("#")) {
+        continue;
+      }
+      const cols = line.split("\t");
+      if (cols.length < 7) continue;
+      const domain = String(cols[0] || "").toLowerCase();
+      const name = String(cols[5] || "").trim();
+      const value = String(cols[6] || "").trim();
+      if (!domain.includes("bilibili.com") || !name) continue;
+      pairs.push(`${name}=${value}`);
+    }
+    return pairs.join("; ");
+  } catch {
+    return "";
+  }
+}
+
+// GET a bilibili web API endpoint with browser-like headers (+ cookies).
+async function biliApiJson(url) {
+  const headers = {
+    "User-Agent": UA,
+    Referer: "https://space.bilibili.com/",
+    Origin: "https://space.bilibili.com",
+    Accept: "application/json, text/plain, */*"
+  };
+  const cookie = bilibiliCookieHeader();
+  if (cookie) headers.Cookie = cookie;
+  return curlJson(url, { headers, timeoutMs: 15000 });
+}
+
+// Detects space lists URLs: /<mid>/lists?sid=<sid>[&type=…] and /<mid>/lists/<sid>.
+function parseBilibiliSpaceListsUrl(rawUrl) {
+  try {
+    const u = new URL(String(rawUrl || ""));
+    const host = u.hostname.toLowerCase();
+    if (host !== "space.bilibili.com" && !host.endsWith(".space.bilibili.com")) return null;
+    const m = u.pathname.match(/^\/(\d+)\/lists(?:\/(\d+))?\/?$/);
+    if (!m) return null;
+    const mid = m[1];
+    const sid =
+      m[2] ||
+      String(u.searchParams.get("sid") || u.searchParams.get("season_id") || "").trim();
+    if (!/^\d+$/.test(sid) || !/^\d+$/.test(mid)) return null;
+    const type = String(u.searchParams.get("type") || "").trim().toLowerCase();
+    return { mid, sid, type }; // type: "season" (合集) | "series" (系列) | ""
+  } catch {
+    return null;
+  }
+}
+
+function buildBiliListResult(meta, archives) {
+  const seen = new Set();
+  const items = [];
+  (Array.isArray(archives) ? archives : []).forEach((a, i) => {
+    const bvid = String(a?.bvid || "").trim();
+    if (!bvid || seen.has(bvid)) return;
+    seen.add(bvid);
+    items.push({
+      id: bvid,
+      index: items.length + 1,
+      title: stripHtml(a?.title || `P${i + 1}`),
+      artist: stripHtml(meta?.owner?.name || ""),
+      durationSec: Number(a?.duration) || null,
+      url: `https://www.bilibili.com/video/${bvid}`
+    });
+  });
+  return { title: stripHtml(meta?.name || meta?.title || ""), items };
+}
+
+async function fetchBiliSeasonArchives({ mid, sid }) {
+  const base = (pageNum) =>
+    `https://api.bilibili.com/x/polymer/web-space/seasons_archives_list?mid=${mid}&season_id=${sid}&page_num=${pageNum}&page_size=${BILI_LIST_PAGE_SIZE}`;
+  const first = await biliApiJson(base(1));
+  if (Number(first?.code) !== 0) throw new Error(`season api code ${first?.code}`);
+  const data = first.data || {};
+  const total = Number(data.page?.total) || 0;
+  const archives = [...(data.archives || [])];
+  const pages = Math.min(Math.ceil(total / BILI_LIST_PAGE_SIZE) || 1, BILI_LIST_MAX_PAGES);
+  for (let p = 2; p <= pages; p++) {
+    const j = await biliApiJson(base(p));
+    if (Number(j?.code) !== 0) throw new Error(`season api code ${j?.code}`);
+    archives.push(...(j.data?.archives || []));
+  }
+  return buildBiliListResult(data.meta, archives);
+}
+
+async function fetchBiliSeriesArchives({ mid, sid }) {
+  const base = (pageNum) =>
+    `https://api.bilibili.com/x/series/archives?mid=${mid}&series_id=${sid}&only_normal=true&sort=asc&pn=${pageNum}&ps=${BILI_LIST_PAGE_SIZE}`;
+  const first = await biliApiJson(base(1));
+  if (Number(first?.code) !== 0) throw new Error(`series api code ${first?.code}`);
+  const data = first.data || {};
+  const total = Number(data.page?.total) || 0;
+  const archives = [...(data.archives || [])];
+  const pages = Math.min(Math.ceil(total / BILI_LIST_PAGE_SIZE) || 1, BILI_LIST_MAX_PAGES);
+  for (let p = 2; p <= pages; p++) {
+    const j = await biliApiJson(base(p));
+    if (Number(j?.code) !== 0) throw new Error(`series api code ${j?.code}`);
+    archives.push(...(j.data?.archives || []));
+  }
+  return buildBiliListResult(data.meta, archives);
+}
+
+// API-first expansion of a space list; returns null when everything fails so
+// the caller can surface the generic resolver error.
+async function resolveBilibiliSpaceListWithFallback({ mid, sid, type }) {
+  const apiAttempts =
+    type === "series"
+      ? [fetchBiliSeriesArchives, fetchBiliSeasonArchives]
+      : [fetchBiliSeasonArchives, fetchBiliSeriesArchives];
+  for (const attempt of apiAttempts) {
+    try {
+      const out = await attempt({ mid, sid });
+      if (out && out.items.length) return out;
+    } catch (e) {
+      console.warn(
+        `[media] bilibili list api (${attempt === fetchBiliSeasonArchives ? "season" : "series"}) failed: ${e?.message || e}`
+      );
+    }
+  }
+
+  // yt-dlp fallback: the /lists/<sid> path form (new extractors) then the
+  // legacy collectiondetail / seriesdetail URLs (older extractors).
+  const candidates = [
+    `https://space.bilibili.com/${mid}/lists/${sid}`,
+    `https://space.bilibili.com/${mid}/channel/collectiondetail?sid=${sid}`,
+    `https://space.bilibili.com/${mid}/channel/seriesdetail?sid=${sid}&mid=${mid}`
+  ];
+  for (const candidate of candidates) {
+    try {
+      const data = await ytdlpFlatJson(candidate);
+      const entries = Array.isArray(data?.entries) ? data.entries : [];
+      if (entries.length) {
+        return {
+          title: stripHtml(data.title || ""),
+          items: mapBilibiliListEntries(data)
+        };
+      }
+    } catch (e) {
+      console.warn(`[media] bilibili list yt-dlp fallback failed (${candidate}): ${e?.message || e}`);
+    }
+  }
+  return null;
+}
+
+// Maps flat yt-dlp entries of a bilibili collection/series into items. Titles
+// are often empty in flat mode → fall back to "<playlist title> P<n>"; entry
+// URLs prefer the per-entry bvid/url over the "<bvid>/?p=<n>" multi-part form.
+function mapBilibiliListEntries(data) {
+  const playlistTitle = stripHtml(data?.title || "");
+  const entries = Array.isArray(data?.entries) ? data.entries : [];
+  return entries
+    .map((e, i) => {
+      const pagePart = e.playlist_index || i + 1;
+      const rawTitle = stripHtml(e.title || "");
+      const title = rawTitle && !/^p\d+$/i.test(rawTitle)
+        ? rawTitle
+        : `${playlistTitle ? playlistTitle + " " : ""}P${pagePart}`;
+      const entryUrl = String(e.url || "").trim();
+      const entryId = String(e.id || "").trim();
+      const itemUrl = /^https?:\/\//i.test(entryUrl)
+        ? entryUrl
+        : /^BV[0-9A-Za-z]{8,}$/i.test(entryId)
+          ? `https://www.bilibili.com/video/${entryId}`
+          : `https://www.bilibili.com/video/${data?.id || ""}/?p=${pagePart}`;
+      return {
+        id: entryId || String(pagePart),
+        index: pagePart,
+        title,
+        artist: stripHtml(e.uploader || ""),
+        durationSec: Number(e.duration) || null,
+        url: itemUrl
+      };
+    })
+    .filter((it) => it.title);
+}
+
+// ---------------------------------------------------------------------------
 // Live platform login / VIP probes
 //
 // The cookie-file based loginStatus() only sees the profile snapshot saved by
@@ -1143,6 +1347,27 @@ router.get("/api/media/resolve", rateLimit(20, 60_000), async (req, res) => {
         return res.status(502).json({ error: { code: "RESOLVE_FAILED", message: qqErr?.message || "resolve failed" } });
       }
     }
+    // Bilibili space 合集/系列 lists (space.bilibili.com/<mid>/lists?sid=…):
+    // the SPA route is not understood by yt-dlp ("Unsupported URL"), so expand
+    // it here — public web APIs first (real titles), then yt-dlp with the
+    // equivalent legacy URLs as fallback.
+    const biliList = parseBilibiliSpaceListsUrl(url);
+    if (biliList) {
+      const list = await resolveBilibiliSpaceListWithFallback(biliList);
+      if (list && list.items.length) {
+        return res.json({
+          ok: true,
+          mode: "list",
+          platform: "bilibili",
+          title: list.title,
+          totalCount: list.items.length,
+          items: list.items.map((it) =>
+            adaptSearchItem({ ...it, platform: "bilibili" })
+          )
+        });
+      }
+      // fall through to the generic resolver (surfaces its error if all fail)
+    }
     const data = await ytdlpFlatJson(url);
     const entries = Array.isArray(data?.entries) ? data.entries : null;
     // Detect the platform once so every mapped entry (and the adapter) gets a
@@ -1181,18 +1406,27 @@ router.get("/api/media/resolve", rateLimit(20, 60_000), async (req, res) => {
           };
         }
         // yt-dlp flat-playlist entries for Bilibili collections often carry an
-        // empty title; fall back to "<playlist title> P<n>".
+        // empty title; fall back to "<playlist title> P<n>". For collection /
+        // series lists every entry is its own video (bvid + url), so prefer
+        // those over the "<bvid>/?p=<n>" multi-part form.
         const rawTitle = stripHtml(e.title || "");
         const title = rawTitle && !/^p\d+$/i.test(rawTitle)
           ? rawTitle
           : `${playlistTitle ? playlistTitle + " " : ""}P${pagePart}`;
+        const entryUrl = String(e.url || "").trim();
+        const entryId = String(e.id || "").trim();
+        const itemUrl = /^https?:\/\//i.test(entryUrl)
+          ? entryUrl
+          : /^BV[0-9A-Za-z]{8,}$/i.test(entryId)
+            ? `https://www.bilibili.com/video/${entryId}`
+            : `https://www.bilibili.com/video/${data.id}/?p=${pagePart}`;
         return {
-          id: e.id || String(i + 1),
+          id: entryId || String(i + 1),
           index: pagePart,
           title,
           artist: stripHtml(e.uploader || ""),
           durationSec: Number(e.duration) || null,
-          url: `https://www.bilibili.com/video/${data.id}/?p=${pagePart}`
+          url: itemUrl
         };
       }).filter((it) => it.title);
       return res.json({ ok: true, mode: "list", platform: entryPlatform, title: stripHtml(data.title || ""), totalCount: items.length, items: items.map((it) => adaptSearchItem({ ...it, platform: it.platform || entryPlatform })) });

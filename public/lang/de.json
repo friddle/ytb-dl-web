@@ -1253,6 +1253,7 @@
   "media.modeSingle": "Single (current part only)",
   "media.modeList": "Collection / list (expand all parts)",
   "media.linkLabel": "Video / collection link",
+  "media.qualityFollow": "Follow format settings (audio)",
   "media.linkPlaceholder": "Bilibili video/collection/live, NetEase playlist, YouTube, QQ Music — any platform link",
   "media.resolve": "🔗 Resolve",
   "media.searchTitle": "🔍 Platform search",

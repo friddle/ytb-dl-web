@@ -4831,6 +4831,17 @@ if (opts.video) {
       "-o", path.join(playlistDir, "%(id)s.%(ext)s"),
       "-a", listFile
     ];
+    if (opts.writeSubs) {
+      // Sidecar subtitles next to the video (manual + auto/AI captions),
+      // converted to srt when ffmpeg is available. Missing subs are a no-op.
+      const langs = String(opts.subsLangs || "zh-Hans,zh-Hant,zh-CN,zh,ai-zh,en").trim();
+      args.push(
+        "--write-subs",
+        "--write-auto-subs",
+        "--sub-langs", langs,
+        "--convert-subs", "srt"
+      );
+    }
   } else {
     args = [
       "--ignore-config", "--no-warnings",

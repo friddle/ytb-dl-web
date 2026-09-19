@@ -1254,6 +1254,7 @@
   "media.modeSingle": "单视频（仅当前分P）",
   "media.modeList": "合集 / 列表（展开所有分P）",
   "media.linkLabel": "视频 / 合集链接",
+  "media.qualityFollow": "按格式设置下载（音频）",
   "media.linkPlaceholder": "B站视频/合集/直播、网易云歌单、YouTube、QQ音乐等所有平台链接",
   "media.resolve": "🔗 解析",
   "media.searchTitle": "🔍 平台搜索",

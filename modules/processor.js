@@ -2501,6 +2501,26 @@ export async function processJob(jobId, inputPath, format, bitrate) {
           safeMoveFileSync(directMoveInputAbs, targetAbs);
           queueOwnershipFix(targetAbs);
 
+          // Sidecar subtitles (written next to the video by yt-dlp, e.g.
+          // "<id>.zh-Hans.srt") move to the output folder together with it.
+          try {
+            const SUB_EXTS = [".srt", ".vtt", ".ass", ".ssa"];
+            const subDir = path.dirname(directMoveInputAbs);
+            for (const f of fs.readdirSync(subDir)) {
+              if (!f.startsWith(`${baseRaw}.`)) continue;
+              const fExt = path.extname(f).toLowerCase();
+              if (!SUB_EXTS.includes(fExt)) continue;
+              const subSrc = path.join(subDir, f);
+              if (!fs.statSync(subSrc).isFile()) continue;
+              const subTarget = buildUniqueOutputPath(
+                outputDir,
+                sanitizeFilename(f) || `${base}${fExt}`
+              );
+              safeMoveFileSync(subSrc, subTarget);
+              queueOwnershipFix(subTarget);
+            }
+          } catch { /* subtitles are best-effort */ }
+
           job.convertProgress = 100;
           job.progress = Math.floor(
             (job.downloadProgress + job.convertProgress) / 2

@@ -611,6 +611,7 @@ export async function downloadPlatformMedia(
         },
         {
           video: opts?.video === true,
+          writeSubs: opts?.video === true && opts?.writeSubs !== false,
           maxHeight:
             Number.isFinite(Number(opts?.maxHeight))
               ? Number(opts.maxHeight)

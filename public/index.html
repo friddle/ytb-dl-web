@@ -140,6 +140,16 @@
         <div id="parseResultsWrap" style="display:none;margin-top:12px;">
           <div class="home-results-toolbar">
             <span id="parseMeta" class="comment"></span>
+            <label for="parseQualitySelect" class="comment" style="white-space:nowrap;">分辨率</label>
+            <select id="parseQualitySelect" class="form-control" style="max-width:190px;" title="选择分辨率后按视频（mp4）下载，不转换音频">
+              <option value="" data-i18n="media.qualityFollow">按格式设置下载（音频）</option>
+              <option value="2160p">视频 2160p · 4K</option>
+              <option value="1440p">视频 1440p · 2K</option>
+              <option value="1080p">视频 1080p · 高清</option>
+              <option value="720p">视频 720p · 高清</option>
+              <option value="480p">视频 480p · 清晰</option>
+              <option value="360p">视频 360p · 流畅</option>
+            </select>
             <button type="button" id="parseDownloadBtn" class="btn">⬇️ <span data-i18n="home.downloadParsed">下载解析结果</span></button>
           </div>
           <div id="parseResultsList" class="home-results-list"></div>
