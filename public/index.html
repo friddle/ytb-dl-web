@@ -140,17 +140,17 @@
         <div id="parseResultsWrap" style="display:none;margin-top:12px;">
           <div class="home-results-toolbar">
             <span id="parseMeta" class="comment"></span>
-            <label for="parseQualitySelect" class="comment" style="white-space:nowrap;">分辨率</label>
-            <select id="parseQualitySelect" class="form-control" style="max-width:190px;" title="选择分辨率后按视频（mp4）下载，不转换音频">
-              <option value="" data-i18n="media.qualityFollow">按格式设置下载（音频）</option>
-              <option value="2160p">视频 2160p · 4K</option>
-              <option value="1440p">视频 1440p · 2K</option>
-              <option value="1080p">视频 1080p · 高清</option>
-              <option value="720p">视频 720p · 高清</option>
-              <option value="480p">视频 480p · 清晰</option>
-              <option value="360p">视频 360p · 流畅</option>
-            </select>
             <button type="button" id="parseDownloadBtn" class="btn">⬇️ <span data-i18n="home.downloadParsed">下载解析结果</span></button>
+          </div>
+          <div class="home-results-toolbar" id="parseTaskBar" style="gap:8px;flex-wrap:wrap;">
+            <span class="comment" style="white-space:nowrap;">本次任务：</span>
+            <select id="parseTaskFormat" class="form-control" style="max-width:180px;" title="默认跟随主设置；选 MP4/MKV 按视频下载，不转换音频">
+              <option value="default" data-i18n="media.taskFollow">跟随主设置</option>
+              <option value="original" data-i18n="media.taskOriginal">不转换（原样音频）</option>
+            </select>
+            <select id="parseTaskBitrate" class="form-control" style="max-width:150px;" disabled title="码率 / 视频分辨率"></select>
+            <input type="text" id="parseTaskSubdir" class="form-control" style="max-width:140px;" placeholder="子目录（可空）" autocomplete="off">
+            <input type="text" id="parseTaskRename" class="form-control" style="max-width:190px;" placeholder="重命名模板（可空）" autocomplete="off">
           </div>
           <div id="parseResultsList" class="home-results-list"></div>
         </div>

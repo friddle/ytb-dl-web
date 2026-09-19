@@ -170,7 +170,10 @@ export class HomeApp {
     this.parseMeta = document.getElementById('parseMeta');
     this.parseResultsList = document.getElementById('parseResultsList');
     this.parseDownloadBtn = document.getElementById('parseDownloadBtn');
-    this.parseQualitySelect = document.getElementById('parseQualitySelect');
+    this.parseTaskFormat = document.getElementById('parseTaskFormat');
+    this.parseTaskBitrate = document.getElementById('parseTaskBitrate');
+    this.parseTaskSubdir = document.getElementById('parseTaskSubdir');
+    this.parseTaskRename = document.getElementById('parseTaskRename');
     this.parsedItems = [];
     // Download view
     this.downloadViewEl = document.getElementById('downloadView');
@@ -282,6 +285,7 @@ export class HomeApp {
     this.parseBtn?.addEventListener('click', () => this.resolveParse());
     this.parseUrlInput?.addEventListener('keydown', (e) => { if (e.key === 'Enter') this.resolveParse(); });
     this.parseDownloadBtn?.addEventListener('click', () => this.downloadParsed());
+    this.parseTaskFormat?.addEventListener('change', () => this.syncTaskBitrates());
     // LOG view
     this.logRefreshBtn?.addEventListener('click', () => this.loadLogs());
     // Mini preview player close button
@@ -1352,13 +1356,24 @@ export class HomeApp {
       this.notify(this.tt('home.selectRequired', '请先勾选要下载的条目'), 'error');
       return;
     }
-    // Resolution picker: a concrete quality downloads the selection as video
-    // (mp4, capped at the chosen height, no audio conversion); empty follows
-    // the regular format settings (audio pipeline).
-    const quality = String(this.parseQualitySelect?.value || '').trim();
-    if (quality) {
+    // Per-task download settings (本次任务): a concrete format/bitrate
+    // overrides the main settings for just this batch; empty subdir/rename
+    // follows the scope config. Video formats (mp4/mkv) pick a resolution
+    // cap and download the video without audio conversion.
+    const tf = String(this.parseTaskFormat?.value || 'default');
+    const tb = String(this.parseTaskBitrate?.value || '').trim();
+    const ts = String(this.parseTaskSubdir?.value || '').trim();
+    const tr = String(this.parseTaskRename?.value || '').trim();
+    if (checked.length && (tf !== 'default' || ts || tr)) {
       for (const it of checked) {
-        it._override = { ...(it._override || {}), format: 'mp4', bitrate: quality };
+        const ov = { ...(it._override || {}) };
+        if (tf !== 'default') {
+          ov.format = tf;
+          ov.bitrate = tf === 'original' ? 'auto' : (tb || 'auto');
+        }
+        if (ts) ov.subdir = ts;
+        if (tr) ov.rename = tr;
+        it._override = ov;
       }
     }
     this.results = checked;
@@ -1638,9 +1653,11 @@ export class HomeApp {
     try {
       const r = await fetch('/api/formats');
       const d = await r.json();
-      this.formats = (d.formats || []).filter((f) => !f.hidden && f.type === 'audio');
+      this.allFormats = (d.formats || []).filter((f) => !f.hidden);
+      this.formats = this.allFormats.filter((f) => f.type === 'audio');
     } catch {
       this.formats = [{ format: 'mp3', bitrates: ['320k', '192k', '128k'], defaultBitrate: '320k' }];
+      this.allFormats = [...this.formats];
     }
     if (!this.formatSelect) return;
     this.formatSelect.innerHTML = '';
@@ -1652,11 +1669,53 @@ export class HomeApp {
     }
     const preferred = this.formats.find((f) => f.format === 'mp3') || this.formats[0];
     if (preferred) this.formatSelect.value = preferred.format;
+    this.populateTaskFormats();
     this.restoreDlPrefs();
     this.restoreScopeCfg();
     this.populateScopeConfig();
     this.syncBitrateOptions();
     this.syncConvertUi();
+  }
+
+  // Per-task settings selects (链接解析 → 本次任务): all non-hidden formats,
+  // audio + video, prefixed "跟随主设置" / "原样". Default = follow main.
+  populateTaskFormats() {
+    if (!this.parseTaskFormat) return;
+    this.parseTaskFormat.innerHTML = '';
+    const def = document.createElement('option');
+    def.value = 'default';
+    def.textContent = this.tt('media.taskFollow', '跟随主设置');
+    this.parseTaskFormat.appendChild(def);
+    const orig = document.createElement('option');
+    orig.value = 'original';
+    orig.textContent = this.tt('media.taskOriginal', '不转换（原样音频）');
+    this.parseTaskFormat.appendChild(orig);
+    for (const f of this.allFormats || this.formats) {
+      const opt = document.createElement('option');
+      opt.value = f.format;
+      opt.textContent = f.format === 'mp4' || f.format === 'mkv'
+        ? `${f.format.toUpperCase()}（视频）`
+        : f.format.toUpperCase();
+      this.parseTaskFormat.appendChild(opt);
+    }
+    this.parseTaskFormat.value = 'default';
+    this.syncTaskBitrates();
+  }
+
+  // Bitrate / resolution options follow the chosen task format; disabled for
+  // 跟随主设置 / 原样 (the main settings or the source decide).
+  syncTaskBitrates() {
+    if (!this.parseTaskBitrate) return;
+    const fmt = String(this.parseTaskFormat?.value || 'default');
+    const fmtObj = (this.allFormats || this.formats).find((f) => f.format === fmt);
+    this.parseTaskBitrate.innerHTML = '';
+    for (const br of (fmtObj?.bitrates || ['auto'])) {
+      const opt = document.createElement('option');
+      opt.value = br;
+      opt.textContent = br;
+      this.parseTaskBitrate.appendChild(opt);
+    }
+    this.parseTaskBitrate.disabled = !fmtObj;
   }
 
   // Download preferences survive reloads via localStorage.

@@ -546,6 +546,22 @@ function parseBilibiliSpaceListsUrl(rawUrl) {
   }
 }
 
+// Detects bilibili user space URLs: https://space.bilibili.com/<mid> (root),
+// /<mid>/video, /<mid>/uploads… — the bare SPA root is blocked with 412 by
+// yt-dlp, so it gets normalized to the /video URL the extractor understands.
+function parseBilibiliUserUrl(rawUrl) {
+  try {
+    const u = new URL(String(rawUrl || ""));
+    const host = u.hostname.toLowerCase();
+    if (host !== "space.bilibili.com" && !host.endsWith(".space.bilibili.com")) return null;
+    const m = u.pathname.match(/^\/(\d+)(?:\/(?:video|uploads|uploads\/video))?\/?$/);
+    if (!m) return null;
+    return { mid: m[1], videoUrl: `https://space.bilibili.com/${m[1]}/video` };
+  } catch {
+    return null;
+  }
+}
+
 function buildBiliListResult(meta, archives) {
   const seen = new Set();
   const items = [];
@@ -1367,6 +1383,30 @@ router.get("/api/media/resolve", rateLimit(20, 60_000), async (req, res) => {
         });
       }
       // fall through to the generic resolver (surfaces its error if all fail)
+    }
+    // Bilibili user space (space.bilibili.com/<mid>[/video]) — normalize the
+    // SPA root to /video, which the yt-dlp space-video extractor understands
+    // (the bare root gets blocked with 412).
+    const biliUser = parseBilibiliUserUrl(url);
+    if (biliUser) {
+      try {
+        const data = await ytdlpFlatJson(biliUser.videoUrl);
+        const entries = Array.isArray(data?.entries) ? data.entries : [];
+        if (entries.length) {
+          const items = mapBilibiliListEntries(data);
+          return res.json({
+            ok: true,
+            mode: "list",
+            platform: "bilibili",
+            title: stripHtml(data.title || ""),
+            totalCount: items.length,
+            items: items.map((it) => adaptSearchItem({ ...it, platform: "bilibili" }))
+          });
+        }
+      } catch (e) {
+        console.warn("[media] bilibili user resolve failed:", e?.message || e);
+        // fall through to the generic resolver (surfaces the raw error)
+      }
     }
     const data = await ytdlpFlatJson(url);
     const entries = Array.isArray(data?.entries) ? data.entries : null;
