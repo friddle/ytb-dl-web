@@ -1467,7 +1467,11 @@ router.get("/api/media/resolve", rateLimit(20, 60_000), async (req, res) => {
           )
         });
       }
-      // fall through to the generic resolver (surfaces its error if all fail)
+      // 空/无效合集：给出明确报错，而不是落到通用解析器
+      //（yt-dlp 对 space SPA 链接只会抛 "Unsupported URL"，误导用户）。
+      return res.status(404).json({
+        error: { code: "BILI_LIST_EMPTY", message: "合集 / 系列不存在、为空或暂无法访问（sid 无效）" }
+      });
     }
     // Bilibili user space (space.bilibili.com/<mid>[/video]) — normalize the
     // SPA root to /video, which the yt-dlp space-video extractor understands
