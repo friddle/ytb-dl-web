@@ -1465,5 +1465,10 @@
   "ui": {
     "close": "Close"
   },
-  "home.dlDownloadedTitle": "📥 İndirilenler Listesi"
+  "home.dlDownloadedTitle": "📥 İndirilenler Listesi",
+  "home.libRootDir": "(kök klasör)",
+  "home.libGroupTracks": "{n} parça",
+  "home.ytRelated": "YouTube ilgili videoları",
+  "home.ytRelatedAdded": "{n} ilgili video eklendi — indirmek istediklerinizi işaretleyin",
+  "home.ytRelatedFailed": "İlgili videolar alınamadı"
 }

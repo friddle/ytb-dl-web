@@ -1465,5 +1465,10 @@
   "ui": {
     "close": "Close"
   },
-  "home.dlDownloadedTitle": "📥 Downloaded List"
+  "home.dlDownloadedTitle": "📥 Downloaded List",
+  "home.libRootDir": "(root folder)",
+  "home.libGroupTracks": "{n} tracks",
+  "home.ytRelated": "YouTube related",
+  "home.ytRelatedAdded": "Added {n} related videos — check the ones to download",
+  "home.ytRelatedFailed": "Failed to fetch related videos"
 }

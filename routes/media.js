@@ -15,6 +15,7 @@ import { YTDLP_BIN, getBinaryRuntimeEnv } from "../modules/binaries.js";
 import { getExtraArgs } from "../modules/config.js";
 import { resolveQqMusicStreamUrl } from "../modules/platform.js";
 import { OUTPUT_ROOT_DIR, resolveDownloadPathToAbs } from "../modules/outputPaths.js";
+import { proxyFetch } from "../modules/proxyFetch.js";
 
 const router = express.Router();
 
@@ -398,6 +399,72 @@ async function searchYoutube(keyword, limit) {  // YouTube search via yt-dlp (yt
     view_count: e.view_count || null,
     thumbnails: Array.isArray(e.thumbnails) ? e.thumbnails : null
   })).filter((it) => it.id && it.title && it.url);
+}
+
+// YouTube 相关推荐（R3.2）：走公开的 innertube "next" 接口（WEB 客户端，无需登录）。
+// 相关条目可能出现在 compactVideoRenderer（旧版侧栏）、endScreenVideoRenderer
+// （片尾推荐，最稳定）、lockupViewModel（新版 UI）——递归收集三种形态。
+function collectYtRelatedRenderers(node, out) {
+  if (Array.isArray(node)) {
+    for (const it of node) collectYtRelatedRenderers(it, out);
+    return;
+  }
+  if (!node || typeof node !== "object") return;
+  if (node.compactVideoRenderer) out.push(node.compactVideoRenderer);
+  if (node.endScreenVideoRenderer) out.push(node.endScreenVideoRenderer);
+  for (const v of Object.values(node)) collectYtRelatedRenderers(v, out);
+}
+
+function parseYtTimeToSec(text) {
+  const m = String(text || "").match(/^(?:(\d+):)?(\d{1,2}):(\d{2})$/);
+  if (!m) return null;
+  return [m[1], m[2], m[3]].filter(Boolean).map(Number).reduce((acc, n) => acc * 60 + n, 0);
+}
+
+async function fetchYoutubeRelated(videoId) {
+  const body = {
+    context: {
+      client: { clientName: "WEB", clientVersion: "2.20240101.00.00", hl: "en", gl: "US" }
+    },
+    videoId
+  };
+  const r = await proxyFetch("https://www.youtube.com/youtubei/v1/next?prettyPrint=false", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+      "Origin": "https://www.youtube.com",
+      "Referer": `https://www.youtube.com/watch?v=${videoId}`
+    },
+    body: JSON.stringify(body)
+  });
+  if (!r.ok) throw new Error(`youtube next HTTP ${r.status}`);
+  const data = await r.json();
+  const renderers = [];
+  collectYtRelatedRenderers(data, renderers);
+  const items = [];
+  const seen = new Set();
+  for (const v of renderers) {
+    const id = String(v.videoId || "");
+    const title = v.title?.simpleText || v.title?.runs?.map((x) => x.text).join("") || "";
+    if (!id || !title || seen.has(id)) continue;
+    seen.add(id);
+    const byline =
+      v.shortBylineText?.runs?.map((x) => x.text).join("") ||
+      v.longBylineText?.runs?.map((x) => x.text).join("") ||
+      v.metadataText?.runs?.map((x) => x.text).join("") || "";
+    items.push({
+      id,
+      platform: "youtube",
+      type: "song",
+      title: stripHtml(title),
+      artist: stripHtml(byline),
+      album: "",
+      durationSec: parseYtTimeToSec(v.lengthText?.simpleText),
+      url: `https://www.youtube.com/watch?v=${id}`
+    });
+  }
+  return items;
 }
 
 async function searchBilibili(keyword, limit) {
@@ -1329,6 +1396,24 @@ router.get("/api/media/stream", rateLimit(30, 60_000), async (req, res) => {
   } catch (err) {
     console.warn(`[media] stream ${platform}/${id} failed:`, err?.message || err);
     return notFound(err?.message || "preview unavailable");
+  }
+});
+
+// YouTube 相关推荐（R3.2）：给解析视图里的 YouTube 单视频一键拉推荐列表。
+router.get("/api/media/yt-related", rateLimit(20, 60_000), async (req, res) => {
+  const videoId = String(req.query.videoId || "").trim();
+  if (!/^[A-Za-z0-9_-]{6,20}$/.test(videoId)) {
+    return res.status(400).json({ error: { code: "VIDEO_ID_REQUIRED", message: "videoId is required" } });
+  }
+  try {
+    const items = await fetchYoutubeRelated(videoId);
+    if (!items.length) {
+      return res.status(502).json({ error: { code: "RELATED_EMPTY", message: "no related videos found" } });
+    }
+    return res.json({ ok: true, platform: "youtube", totalCount: items.length, items });
+  } catch (e) {
+    console.warn("[media] yt-related failed:", e?.message || e);
+    return res.status(502).json({ error: { code: "RELATED_FAILED", message: e?.message || "related fetch failed" } });
   }
 });
 

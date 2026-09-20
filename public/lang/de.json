@@ -1436,5 +1436,10 @@
   "ui": {
     "close": "Close"
   },
-  "home.dlDownloadedTitle": "📥 Download-Liste"
+  "home.dlDownloadedTitle": "📥 Download-Liste",
+  "home.libRootDir": "(Stammordner)",
+  "home.libGroupTracks": "{n} Titel",
+  "home.ytRelated": "YouTube-Ähnliche",
+  "home.ytRelatedAdded": "{n} ähnliche Videos hinzugefügt — zum Herunterladen ankreuzen",
+  "home.ytRelatedFailed": "Abrufen ähnlicher Videos fehlgeschlagen"
 }

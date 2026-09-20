@@ -1464,5 +1464,10 @@
   "ui": {
     "close": "Close"
   },
-  "home.dlDownloadedTitle": "📥 Liste téléchargée"
+  "home.dlDownloadedTitle": "📥 Liste téléchargée",
+  "home.libRootDir": "(dossier racine)",
+  "home.libGroupTracks": "{n} pistes",
+  "home.ytRelated": "Suggestions YouTube",
+  "home.ytRelatedAdded": "{n} vidéos suggérées ajoutées — cochez celles à télécharger",
+  "home.ytRelatedFailed": "Échec de récupération des suggestions"
 }

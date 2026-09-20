@@ -230,3 +230,18 @@
 #dlDownloadedList .media-item-title{font-size:12.5px}
 #dlDownloadedList .lib-play{flex:0 0 24px;font-size:11px;height:24px;width:24px}
 #dlDownloadedList .media-row-cover{display:none}
+
+/* ---- Downloaded List (R1.2/R1.3): adaptive layout ---- */
+.home-dl-queue #dlDownloadedList{display:flex;flex-direction:column;gap:4px}
+.lib-row{align-items:center;flex-wrap:wrap;row-gap:2px}
+.lib-row .media-row-body{min-width:0;flex:1 1 160px}
+.lib-row .media-item-title{display:inline-block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:bottom}
+.lib-row .media-row-main{flex-wrap:wrap}
+.lib-row .media-play,.lib-row .lib-del{flex:0 0 auto;min-height:36px;min-width:36px}
+@media (max-width:768px){
+  .lib-row{padding:6px 8px}
+  .lib-row .media-chip{font-size:10px;padding:1px 6px}
+  .lib-group-head{flex-wrap:wrap;gap:6px}
+  .lib-group-name{display:inline-block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .lib-group-meta{flex:0 0 auto}
+}

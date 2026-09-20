@@ -1437,5 +1437,10 @@
   "ui": {
     "close": "关闭"
   },
-  "home.dlDownloadedTitle": "📥 下载完成列表"
+  "home.dlDownloadedTitle": "📥 下载完成列表",
+  "home.libRootDir": "（根目录）",
+  "home.libGroupTracks": "{n} 首",
+  "home.ytRelated": "YouTube 相关推荐",
+  "home.ytRelatedAdded": "已追加 {n} 条相关推荐，勾选后可一起下载",
+  "home.ytRelatedFailed": "相关推荐获取失败"
 }

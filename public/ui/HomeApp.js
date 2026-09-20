@@ -170,6 +170,7 @@ export class HomeApp {
     this.parseMeta = document.getElementById('parseMeta');
     this.parseResultsList = document.getElementById('parseResultsList');
     this.parseDownloadBtn = document.getElementById('parseDownloadBtn');
+    this.parseYtRelatedBtn = document.getElementById('parseYtRelatedBtn');
     this.parseTaskFormat = document.getElementById('parseTaskFormat');
     this.parseTaskBitrate = document.getElementById('parseTaskBitrate');
     this.parseTaskSubdir = document.getElementById('parseTaskSubdir');
@@ -285,6 +286,7 @@ export class HomeApp {
     this.parseBtn?.addEventListener('click', () => this.resolveParse());
     this.parseUrlInput?.addEventListener('keydown', (e) => { if (e.key === 'Enter') this.resolveParse(); });
     this.parseDownloadBtn?.addEventListener('click', () => this.downloadParsed());
+    this.parseYtRelatedBtn?.addEventListener('click', () => this.loadYtRelated());
     this.parseTaskFormat?.addEventListener('change', () => this.syncTaskBitrates());
     // LOG view
     this.logRefreshBtn?.addEventListener('click', () => this.loadLogs());
@@ -1002,8 +1004,9 @@ export class HomeApp {
     head.innerHTML = `
       <button type="button" class="media-expand lib-expand" aria-label="toggle"><span class="media-expand-arrow">▾</span></button>
       <span class="lib-group-name"></span>
-      <span class="lib-group-meta">${g.files.length} 首${mb}</span>`;
-    head.querySelector('.lib-group-name').textContent = g.dir === '/' ? '（根目录）' : g.dir;
+      <span class="lib-group-meta"></span>`;
+    head.querySelector('.lib-group-name').textContent = g.dir === '/' ? this.tt('home.libRootDir', '（根目录）') : g.dir;
+    head.querySelector('.lib-group-meta').textContent = `${this.tt('home.libGroupTracks', '{n} 首').replace('{n}', g.files.length)}${mb}`;
     const body = document.createElement('div');
     body.className = 'lib-group-body';
     for (const f of g.files) body.appendChild(this.libraryRow(f));
@@ -1335,6 +1338,7 @@ export class HomeApp {
         this.parseMeta.textContent = `${d.title || ''}（${d.totalCount ?? items.length} 项）`;
       }
       this.renderParseResults();
+      this.syncYtRelatedBtn();
       this.parseResultsWrap?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     } catch (err) {
       this.notify(`${this.tt('home.parseFailed', '解析失败')}: ${err.message}`, 'error');
@@ -1347,6 +1351,36 @@ export class HomeApp {
     if (!this.parseResultsList) return;
     this.parseResultsList.innerHTML = '';
     this.parsedItems.forEach((item, idx) => this.parseResultsList.appendChild(this.buildMediaRow(item, idx)));
+  }
+
+  // R3.2: show the YouTube 相关推荐 button only when the parse result has a
+  // YouTube video we can ask recommendations for.
+  syncYtRelatedBtn() {
+    const ytItem = (this.parsedItems || []).find((it) => it.platform === 'youtube' && /^[A-Za-z0-9_-]{6,20}$/.test(String(it.id || '')));
+    if (this.parseYtRelatedBtn) this.parseYtRelatedBtn.style.display = ytItem ? '' : 'none';
+  }
+
+  // R3.2: fetch YouTube related (推荐) videos for the first parsed YT video
+  // and append them to the parse results for selection.
+  async loadYtRelated() {
+    const ytItem = (this.parsedItems || []).find((it) => it.platform === 'youtube' && /^[A-Za-z0-9_-]{6,20}$/.test(String(it.id || '')));
+    if (!ytItem) return;
+    this.parseYtRelatedBtn?.setAttribute('disabled', '1');
+    try {
+      const r = await fetch(`/api/media/yt-related?videoId=${encodeURIComponent(ytItem.id)}`);
+      const d = await r.json();
+      if (!r.ok || !d.ok) throw new Error(d?.error?.message || `HTTP ${r.status}`);
+      const items = Array.isArray(d.items) ? d.items : [];
+      const existing = new Set((this.parsedItems || []).map((it) => it.url));
+      const fresh = items.filter((it) => !existing.has(it.url));
+      this.parsedItems = [...(this.parsedItems || []), ...fresh];
+      this.renderParseResults();
+      this.notify(this.tt('home.ytRelatedAdded', '已追加 {n} 条相关推荐，勾选后可一起下载').replace('{n}', fresh.length), 'success');
+    } catch (err) {
+      this.notify(`${this.tt('home.ytRelatedFailed', '相关推荐获取失败')}: ${err.message}`, 'error');
+    } finally {
+      this.parseYtRelatedBtn?.removeAttribute('disabled');
+    }
   }
 
   // Downloads the checked PARSE results (reuses the DOWNLOAD queue pipeline).

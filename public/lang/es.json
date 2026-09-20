@@ -1464,5 +1464,10 @@
   "ui": {
     "close": "Close"
   },
-  "home.dlDownloadedTitle": "📥 Lista descargada"
+  "home.dlDownloadedTitle": "📥 Lista descargada",
+  "home.libRootDir": "(carpeta raíz)",
+  "home.libGroupTracks": "{n} pistas",
+  "home.ytRelated": "Relacionados de YouTube",
+  "home.ytRelatedAdded": "Se añadieron {n} videos relacionados — marca los que quieras descargar",
+  "home.ytRelatedFailed": "Error al obtener videos relacionados"
 }
