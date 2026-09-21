@@ -862,11 +862,14 @@ const PLATFORM_PROBES = {
           if (r.ok) {
             // 原始 HTML 的 <script> 里嵌着给所有用户的 i18n 资源串（如
             // MANAGE_MEMBERSHIP_EDU_TEXT「…管理會員資格…」），直接正则会把
-            // 非会员误判成 Premium。剥掉 script/style 后只看正文。
+            // 非会员误判成 Premium。页面启用 Trusted Types（DOMParser 被禁），
+            // 所以用正则剥掉 script/style 再取正文。
             const html = await r.text();
-            const doc = new DOMParser().parseFromString(html, "text/html");
-            doc.querySelectorAll("script,style,noscript").forEach((e) => e.remove());
-            const txt = (doc.body && doc.body.textContent || "").replace(/\\s+/g, " ");
+            const txt = html
+              .replace(/<script[\\s\\S]*?<\\/script>/gi, " ")
+              .replace(/<style[\\s\\S]*?<\\/style>/gi, " ")
+              .replace(/<[^>]+>/g, " ")
+              .replace(/\\s+/g, " ");
             const upsell = /(Try it free|Try premium|Get Premium|Start free|免費試用|免费试用|立即試用|立即试用|開通|开通|免費體驗|免费体验|免费试享|免費試享|試用 Premium|试用 Premium)/i.test(txt);
             const member = /(Manage your membership|Manage membership|Your Premium benefits|you have Premium|管理会员资格|管理會員資格|管理你的会员|管理你的會員)/i.test(txt);
             if (loggedIn && member && !upsell) { vip = true; vipLabel = 'Premium'; }
