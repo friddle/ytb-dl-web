@@ -245,3 +245,16 @@
   .lib-group-name{display:inline-block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .lib-group-meta{flex:0 0 auto}
 }
+
+/* ---- Download queue: compact single-line rows ---- */
+#downloadQueueList .media-row{flex-wrap:nowrap;align-items:center;padding:4px 10px;min-height:0}
+#downloadQueueList .media-row-cover{display:none}
+#downloadQueueList .media-row-body{flex:1 1 auto;flex-direction:row;align-items:center;gap:10px;min-width:0}
+#downloadQueueList .media-row-main{flex:1 1 auto;min-width:0}
+#downloadQueueList .media-item-title{display:inline-block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:bottom}
+#downloadQueueList .media-row-meta{flex:0 1 auto;flex-wrap:nowrap;overflow:hidden}
+#downloadQueueList .media-row-sub{display:none}
+#downloadQueueList .dq-side{flex:0 0 auto}
+
+/* ---- Downloaded list: use full card width ---- */
+#dlDownloadedList{margin:0;max-width:none}

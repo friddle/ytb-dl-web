@@ -862,9 +862,11 @@ const PLATFORM_PROBES = {
           if (r.ok) {
             let txt = await r.text();
             txt = txt.replace(/\\\\u([0-9a-fA-F]{4})/g, (m, h) => String.fromCharCode(parseInt(h, 16)));
-            const upsell = /(Try it free|Try premium|Get Premium|Start free|免費試用|免费试用|立即試用|立即试用|開通|开通|免費體驗|免费体验)/i.test(txt);
-            const member = /(Manage your membership|Your Premium benefits|you have Premium|管理会员|管理會員|您的 Premium|你的 Premium|已加入 Premium|已開通|已开通|會員權益|会员权益)/i.test(txt);
-            if (member && !upsell) { vip = true; vipLabel = 'Premium'; }
+            // 会员页判定从严：marketing 页也会出现「会员权益」这类弱词，曾导致非会员误报。
+            // upsell 宽匹配（营销 CTA 出现即视为非会员）；member 只认管理类强标记。
+            const upsell = /(Try it free|Try premium|Get Premium|Start free|免費試用|免费试用|立即試用|立即试用|開通|开通|免費體驗|免费体验|免费试享|免費試享|了解会员|了解會員|比較會員|比较会员|查看方案|查看方案)/i.test(txt);
+            const member = /(Manage your membership|Your Premium benefits|you have Premium|管理会员|管理會員|您的 Premium 会员|你的 Premium 会员|已加入 Premium)/i.test(txt);
+            if (loggedIn && member && !upsell) { vip = true; vipLabel = 'Premium'; }
           }
         } catch (e) {}
         return { loggedIn, vip, vipLabel, uname };
