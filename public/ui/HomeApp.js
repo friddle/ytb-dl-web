@@ -749,7 +749,9 @@ export class HomeApp {
     } else if (item.platform === 'spotify') {
       body.innerHTML = `<iframe class="mini-player__frame mini-player__frame--spotify" src="https://open.spotify.com/embed/${item.type === 'playlist' ? 'playlist' : 'track'}/${encodeURIComponent(item.id)}?utm_source=gharmonize" allow="autoplay; encrypted-media" allowfullscreen></iframe>`;
     } else if (item.platform === 'bilibili') {
-      body.innerHTML = `<iframe class="mini-player__frame" src="https://player.bilibili.com/player.html?bvid=${encodeURIComponent(item.id)}&autoplay=1&high_quality=0&danmaku=0" allow="autoplay; encrypted-media" allowfullscreen></iframe>`;
+      // B站 iframe 外链播放器对版权/禁止站外播放视频会显示「内容被屏蔽」，
+      // 改走服务端代理的纯音频流（与网易云一致）。
+      body.innerHTML = `<audio class="mini-player__audio" controls autoplay src="/api/media/stream?platform=bilibili&id=${encodeURIComponent(item.id)}"></audio>`;
     } else if (item.platform === 'netease' || item.platform === 'qqmusic') {
       body.innerHTML = `<audio class="mini-player__audio" controls autoplay src="/api/media/stream?platform=${encodeURIComponent(item.platform)}&id=${encodeURIComponent(item.id)}"></audio>`;
     } else {

@@ -506,6 +506,35 @@ async function searchBilibili(keyword, limit) {
 // Bilibili URL resolve (single video vs. multi-part collection) via yt-dlp
 // ---------------------------------------------------------------------------
 
+// B站试听：yt-dlp 取最优纯音频直链（-g），由 /api/media/stream 带 Referer 代理。
+function ytdlpAudioUrl(url) {
+  return new Promise((resolve, reject) => {
+    const args = ["--ignore-config", "--no-warnings", "--socket-timeout", "15", "--force-ipv4", "-f", "ba/b", "-g", "--no-playlist"];
+    for (const extra of getExtraArgs()) args.push(extra);
+    if (fs.existsSync(COOKIES_FILE)) args.push("--cookies", COOKIES_FILE);
+    args.push(url);
+    const child = spawnSafe(YTDLP_BIN, args, {
+      stdio: ["ignore", "pipe", "pipe"],
+      env: getBinaryRuntimeEnv()
+    });
+    let out = "";
+    let errOut = "";
+    const timer = setTimeout(() => {
+      try { child.kill("SIGKILL"); } catch {}
+      reject(new Error("stream resolve timeout"));
+    }, 45000);
+    child.stdout.on("data", (c) => { out += c.toString(); });
+    child.stderr.on("data", (c) => { errOut += c.toString(); });
+    child.on("close", (code) => {
+      clearTimeout(timer);
+      const first = out.split("\n").map((l) => l.trim()).filter(Boolean)[0];
+      if (code === 0 && first && /^https?:\/\//.test(first)) resolve(first);
+      else reject(new Error(`yt-dlp exit ${code}: ${errOut.split("\n").slice(-3).join(" ").slice(0, 200)}`));
+    });
+    child.on("error", (e) => { clearTimeout(timer); reject(e); });
+  });
+}
+
 function ytdlpFlatJson(url) {
   return new Promise((resolve, reject) => {
     const args = ["--ignore-config", "--no-warnings", "--socket-timeout", "15", "--force-ipv4", "-J", "--flat-playlist"];
@@ -1390,6 +1419,17 @@ router.get("/api/media/stream", rateLimit(30, 60_000), async (req, res) => {
         src = info.purl;
       }
       upstream = await fetch(src, { redirect: "follow", headers: { Referer: "https://y.qq.com/", "User-Agent": UA } });
+    } else if (platform === "bilibili") {
+      // B站 iframe 外链播放器对版权/禁止站外播放视频会显示「内容被屏蔽」，
+      // 改为服务端代理最优纯音频（yt-dlp -g + Referer），与网易云同路径。
+      if (!/^BV[A-Za-z0-9]{8,12}$/.test(id)) {
+        return notFound("invalid bilibili id");
+      }
+      const src = await ytdlpAudioUrl(`https://www.bilibili.com/video/${id}`);
+      upstream = await fetch(src, {
+        redirect: "follow",
+        headers: { Referer: "https://www.bilibili.com/", "User-Agent": UA }
+      });
     } else {
       return notFound("no preview stream for this platform");
     }
