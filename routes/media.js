@@ -860,12 +860,15 @@ const PLATFORM_PROBES = {
         try {
           const r = await fetch('https://www.youtube.com/premium', { credentials: 'include' });
           if (r.ok) {
-            let txt = await r.text();
-            txt = txt.replace(/\\\\u([0-9a-fA-F]{4})/g, (m, h) => String.fromCharCode(parseInt(h, 16)));
-            // 会员页判定从严：marketing 页也会出现「会员权益」这类弱词，曾导致非会员误报。
-            // upsell 宽匹配（营销 CTA 出现即视为非会员）；member 只认管理类强标记。
-            const upsell = /(Try it free|Try premium|Get Premium|Start free|免費試用|免费试用|立即試用|立即试用|開通|开通|免費體驗|免费体验|免费试享|免費試享|了解会员|了解會員|比較會員|比较会员|查看方案|查看方案)/i.test(txt);
-            const member = /(Manage your membership|Your Premium benefits|you have Premium|管理会员|管理會員|您的 Premium 会员|你的 Premium 会员|已加入 Premium)/i.test(txt);
+            // 原始 HTML 的 <script> 里嵌着给所有用户的 i18n 资源串（如
+            // MANAGE_MEMBERSHIP_EDU_TEXT「…管理會員資格…」），直接正则会把
+            // 非会员误判成 Premium。剥掉 script/style 后只看正文。
+            const html = await r.text();
+            const doc = new DOMParser().parseFromString(html, "text/html");
+            doc.querySelectorAll("script,style,noscript").forEach((e) => e.remove());
+            const txt = (doc.body && doc.body.textContent || "").replace(/\\s+/g, " ");
+            const upsell = /(Try it free|Try premium|Get Premium|Start free|免費試用|免费试用|立即試用|立即试用|開通|开通|免費體驗|免费体验|免费试享|免費試享|試用 Premium|试用 Premium)/i.test(txt);
+            const member = /(Manage your membership|Manage membership|Your Premium benefits|you have Premium|管理会员资格|管理會員資格|管理你的会员|管理你的會員)/i.test(txt);
             if (loggedIn && member && !upsell) { vip = true; vipLabel = 'Premium'; }
           }
         } catch (e) {}
