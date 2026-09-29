@@ -674,7 +674,16 @@ function buildBiliListResult(meta, archives) {
       url: `https://www.bilibili.com/video/${bvid}`
     });
   });
-  return { title: stripHtml(meta?.name || meta?.title || ""), items };
+  // 合集内的系列 / 分段列表（meta.seasons）：同一个合集可拆成多个小节，每节
+  // 有自己的 season_id，前端用它做系列切换。
+  const sections = (Array.isArray(meta?.seasons) ? meta.seasons : [])
+    .map((s) => ({
+      seasonId: String(s?.season_id ?? s?.id ?? "").trim(),
+      name: stripHtml(s?.name || s?.title || ""),
+      total: Number(s?.total) || null
+    }))
+    .filter((s) => /^\d+$/.test(s.seasonId));
+  return { title: stripHtml(meta?.name || meta?.title || ""), items, sections };
 }
 
 async function fetchBiliSeasonArchives({ mid, sid }) {
@@ -1502,7 +1511,12 @@ router.get("/api/media/resolve", rateLimit(20, 60_000), async (req, res) => {
     // equivalent legacy URLs as fallback.
     const biliList = parseBilibiliSpaceListsUrl(url);
     if (biliList) {
-      const list = await resolveBilibiliSpaceListWithFallback(biliList);
+      // ?season_id= 前端系列切换：把展开目标锁定为合集里的某一个系列 / 分段。
+      const seasonOverride = String(req.query.season_id || "").trim();
+      const target = /^\d+$/.test(seasonOverride)
+        ? { ...biliList, sid: seasonOverride, type: "season" }
+        : biliList;
+      const list = await resolveBilibiliSpaceListWithFallback(target);
       if (list && list.items.length) {
         return res.json({
           ok: true,
@@ -1510,6 +1524,7 @@ router.get("/api/media/resolve", rateLimit(20, 60_000), async (req, res) => {
           platform: "bilibili",
           title: list.title,
           totalCount: list.items.length,
+          sections: list.sections || [],
           items: list.items.map((it) =>
             adaptSearchItem({ ...it, platform: "bilibili" })
           )

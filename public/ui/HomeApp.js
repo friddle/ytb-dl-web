@@ -171,6 +171,10 @@ export class HomeApp {
     this.parseResultsList = document.getElementById('parseResultsList');
     this.parseDownloadBtn = document.getElementById('parseDownloadBtn');
     this.parseYtRelatedBtn = document.getElementById('parseYtRelatedBtn');
+    this.parseSelectAll = document.getElementById('parseSelectAll');
+    this.parseSeriesSelect = document.getElementById('parseSeriesSelect');
+    this.parseSections = [];
+    this.parseSourceUrl = '';
     this.parseTaskFormat = document.getElementById('parseTaskFormat');
     this.parseTaskBitrate = document.getElementById('parseTaskBitrate');
     this.parseTaskSubdir = document.getElementById('parseTaskSubdir');
@@ -287,6 +291,13 @@ export class HomeApp {
     this.parseUrlInput?.addEventListener('keydown', (e) => { if (e.key === 'Enter') this.resolveParse(); });
     this.parseDownloadBtn?.addEventListener('click', () => this.downloadParsed());
     this.parseYtRelatedBtn?.addEventListener('click', () => this.loadYtRelated());
+    this.parseSelectAll?.addEventListener('change', () => {
+      const checked = this.parseSelectAll.checked;
+      this.parseResultsList?.querySelectorAll('.media-item-check').forEach((c) => { c.checked = checked; });
+      this.parseResultsList?.querySelectorAll('.media-group-check').forEach((c) => { c.checked = checked; c.indeterminate = false; this.onPlaylistMasterToggle(Number(c.dataset.idx)); });
+      this.updateSelectedCount();
+    });
+    this.parseSeriesSelect?.addEventListener('change', () => this.applySection(this.parseSeriesSelect.value));
     this.parseTaskFormat?.addEventListener('change', () => this.syncTaskBitrates());
     // LOG view
     this.logRefreshBtn?.addEventListener('click', () => this.loadLogs());
@@ -563,7 +574,7 @@ export class HomeApp {
     if (item.album) chips.push(`<span class="media-chip album">${this.tt('home.album', '专辑')}: </span>`);
     if (item.stats?.plays) chips.push(`<span class="media-chip plays">▶ ${item.stats.plays >= 10000 ? Math.round(item.stats.plays / 10000) + 'w' : item.stats.plays}</span>`);
     row.innerHTML = `
-      <input type="checkbox" class="${checkClass}" data-idx="${idx}" ${trackOf !== null ? `data-parent="${trackOf}"` : ''} ${isTopPlaylist ? 'checked' : ''}>
+      <input type="checkbox" class="${checkClass}" data-idx="${idx}" ${trackOf !== null ? `data-parent="${trackOf}"` : ''} ${(isTopPlaylist || opts.checked) ? 'checked' : ''}>
       <button type="button" class="media-cfg" data-idx="${idx}" title="${this.tt('home.rowCfgTitle', '此条目下载设置')}">⚙</button>
       ${isTopPlaylist ? `<button type="button" class="media-expand" aria-label="${this.tt('home.plDetail', '展开歌单')}"><span class="media-expand-arrow">▸</span></button>` : ''}
       <span class="media-row-cover">${item.cover ? `<img src="${item.cover}" alt="" loading="lazy" referrerpolicy="no-referrer">` : '🎵'}</span>
@@ -1335,10 +1346,16 @@ export class HomeApp {
       if (!r.ok || !d.ok) throw new Error(d?.error?.message || `HTTP ${r.status}`);
       const items = Array.isArray(d.items) ? d.items : [];
       this.parsedItems = items.map((it) => ({ ...it, platform: it.platform || 'unknown' }));
+      this.parseSections = Array.isArray(d.sections) ? d.sections : [];
+      this.parseSourceUrl = url;
       if (this.parseResultsWrap) this.parseResultsWrap.style.display = '';
       if (this.parseMeta) {
         this.parseMeta.textContent = `${d.title || ''}（${d.totalCount ?? items.length} 项）`;
       }
+      // 系列 / 分段切换：合集内含多个系列时显示选择器，默认选中“日常篇”
+      //（没有“日常篇”时退回第一个系列）；若默认系列与链接里的 sid 不同则自动重新加载。
+      const sidMatch = String(url).match(/[?&]sid=(\d+)/) || String(url).match(/\/lists\/(\d+)/);
+      this.renderSeriesSelect(sidMatch ? sidMatch[1] : '');
       this.renderParseResults();
       this.syncYtRelatedBtn();
       this.parseResultsWrap?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -1349,10 +1366,59 @@ export class HomeApp {
     }
   }
 
+  // Renders the 系列 / 分段 selector when the parsed bilibili collection has
+  // multiple sections; 默认选中“日常篇”。
+  renderSeriesSelect(currentSid = '') {
+    const sel = this.parseSeriesSelect;
+    if (!sel) return;
+    const sections = (this.parseSections || []).filter((s) => s.seasonId);
+    if (sections.length <= 1) {
+      sel.style.display = 'none';
+      sel.innerHTML = '';
+      return;
+    }
+    sel.innerHTML = '';
+    for (const s of sections) {
+      const opt = document.createElement('option');
+      opt.value = s.seasonId;
+      opt.textContent = `${s.name}${s.total ? `（${s.total}）` : ''}`;
+      sel.appendChild(opt);
+    }
+    const prefer = sections.find((s) => /日常/.test(s.name || '')) || sections[0];
+    sel.value = prefer.seasonId;
+    sel.style.display = '';
+    if (currentSid && String(currentSid) !== String(prefer.seasonId)) {
+      this.applySection(prefer.seasonId);
+    }
+  }
+
+  // Re-resolves the same source link pinned to one 系列 / 分段 (season_id).
+  async applySection(seasonId) {
+    const url = this.parseSourceUrl;
+    if (!url || !seasonId) return;
+    this.parseSeriesSelect?.setAttribute('disabled', '1');
+    try {
+      const r = await fetch(`/api/media/resolve?url=${encodeURIComponent(url)}&season_id=${encodeURIComponent(seasonId)}`);
+      const d = await r.json();
+      if (!r.ok || !d.ok) throw new Error(d?.error?.message || `HTTP ${r.status}`);
+      const items = Array.isArray(d.items) ? d.items : [];
+      this.parsedItems = items.map((it) => ({ ...it, platform: it.platform || 'unknown' }));
+      if (this.parseMeta) {
+        this.parseMeta.textContent = `${d.title || ''}（${d.totalCount ?? items.length} 项）`;
+      }
+      this.renderParseResults();
+    } catch (err) {
+      this.notify(`${this.tt('home.parseFailed', '解析失败')}: ${err.message}`, 'error');
+    } finally {
+      this.parseSeriesSelect?.removeAttribute('disabled');
+    }
+  }
+
   renderParseResults() {
     if (!this.parseResultsList) return;
     this.parseResultsList.innerHTML = '';
-    this.parsedItems.forEach((item, idx) => this.parseResultsList.appendChild(this.buildMediaRow(item, idx)));
+    this.parsedItems.forEach((item, idx) => this.parseResultsList.appendChild(this.buildMediaRow(item, idx, { checked: true })));
+    if (this.parseSelectAll) this.parseSelectAll.checked = this.parsedItems.length > 0;
   }
 
   // R3.2: show the YouTube 相关推荐 button only when the parse result has a

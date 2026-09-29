@@ -139,7 +139,9 @@
         </div>
         <div id="parseResultsWrap" style="display:none;margin-top:12px;">
           <div class="home-results-toolbar">
+            <label style="display:flex;align-items:center;gap:6px;"><input type="checkbox" id="parseSelectAll"> <span data-i18n="home.selectAll">全选</span></label>
             <span id="parseMeta" class="comment"></span>
+            <select id="parseSeriesSelect" class="form-control" style="display:none;max-width:240px;" title="系列 / 分段"></select>
             <button type="button" id="parseYtRelatedBtn" class="btn-outline" style="display:none;">🔗 <span data-i18n="home.ytRelated">YouTube 相关推荐</span></button>
             <button type="button" id="parseDownloadBtn" class="btn">⬇️ <span data-i18n="home.downloadParsed">下载解析结果</span></button>
           </div>
