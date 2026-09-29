@@ -121,6 +121,7 @@ export class HomeApp {
     this.dlDownloadedList = document.getElementById('dlDownloadedList');
     this.dlDownloadedEmpty = document.getElementById('dlDownloadedEmpty');
     this.dlDownloadedCount = document.getElementById('dlDownloadedCount');
+    this.dlDownloadedClearBtn = document.getElementById('dlDownloadedClearBtn');
     this.dlLibraryEmpty = document.getElementById('dlLibraryEmpty');
     this.dlStatusFilterEl = document.getElementById('dlStatusFilter');
     this.dlStatusFilter = 'all';
@@ -223,6 +224,12 @@ export class HomeApp {
       this.updateSelectedCount();
     });    this.downloadBtn?.addEventListener('click', () => this.downloadSelected());
     this.clearDoneBtn?.addEventListener('click', () => this.clearFinishedRows());
+    // 下载完成列表：只清空面板显示，不删除磁盘文件（下次刷新会重新扫描）。
+    this.dlDownloadedClearBtn?.addEventListener('click', () => {
+      this.libraryGroups = [];
+      this.renderLibrary();
+      this.notify(this.tt('home.clearedDownloaded', '已清理下载完成列表（不删除文件）'), 'info');
+    });
     this.tplApplyBtn?.addEventListener('click', () => this.applyTemplate());
     this.tplSaveBtn?.addEventListener('click', () => this.saveTemplateFromCurrent());
     this.tplDeleteBtn?.addEventListener('click', () => this.deleteTemplate());
