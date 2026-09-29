@@ -21,6 +21,8 @@ services:
       - GHARMONIZE_MASTER_KEY_FILE=/usr/src/app/cache/.gharmonize-key
       - GHARMONIZE_INITIAL_ADMIN_PASSWORD_FILE=/usr/src/app/cache/INITIAL_ADMIN_PASSWORD.txt
       - YTDLP_EXTRA=--force-ipv4
+      # 并发下载数（默认 3，可 1–16）
+      - DOWNLOAD_CONCURRENCY=${DOWNLOAD_CONCURRENCY:-3}
       - GHARMONIZE_WEB_BINARIES_IN_DOCKER=1
       - GHARMONIZE_WEB_CACHE_DIR=/usr/src/app/cache/binaries
       - CHROME_DRIVERLESS_URL=http://127.0.0.1:9223
